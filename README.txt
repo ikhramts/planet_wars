@@ -18,7 +18,7 @@ Table of contents:
 * tools\ various useful tools, including the tournament program.
 
 * make_submission.bat - a Windows batch script for compiling a submission
-.zip file from the Visual Studio project files.
+.zip file from the planet_wars directory files.
 
 * planet_wars.sln - Visual Studio solution for the main submission.
 
