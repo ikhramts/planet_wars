@@ -5,6 +5,7 @@ Release/
 # Ignore temporary visual studio project files.
 *.user
 *.suo
+*.ncb
 
 # Ignore the submissions.
 submission/
