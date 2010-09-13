@@ -2,8 +2,9 @@
 Debug/
 Release/
 
-# Ignore local project settings.
+# Ignore temporary visual studio project files.
 *.user
+*.suo
 
 # Ignore the submissions.
 submission/
