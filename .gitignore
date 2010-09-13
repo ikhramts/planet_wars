@@ -4,3 +4,7 @@ Release/
 
 # Ignore local project settings.
 *.user
+
+# Ignore the submissions.
+submission/
+submission.zip
