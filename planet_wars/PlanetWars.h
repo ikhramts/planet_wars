@@ -9,6 +9,13 @@
 #include <string>
 #include <vector>
 
+//Pre-define classes.
+class StringUtil;
+class Fleet;
+class Planet;
+class PlanetMap;
+class PlanetWars;
+
 // This is a utility class that parses strings.
 class StringUtil {
 public:
@@ -68,6 +75,22 @@ private:
     int turns_remaining_;
 };
 
+// This helps to compute some planetary data.
+class PlanetMap {
+public:
+    // Initialize the distance calculator
+    PlanetMap();
+    void initialize(const std::vector<Planet>& planets);
+
+    //Find the distance between two planets
+    int GetDistance(const Planet& first_planet, const Planet& second_planet) const;
+
+private:
+    int num_planets_;
+    std::vector<int> planet_distances_;
+};
+
+
 // Stores information about one planet. There is one instance of this class
 // for each planet on the map.
 class Planet {
@@ -100,7 +123,6 @@ public:
     // The position of the planet in space.
     double X() const;
     double Y() const;
-    double distanceTo(const Planet& other) const;
 
     // Use the following functions to set the properties of this planet. Note
     // that these functions only affect your program's copy of the game state.

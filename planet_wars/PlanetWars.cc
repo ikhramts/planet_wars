@@ -110,14 +110,6 @@ double Planet::Y() const {
     return y_;
 }
 
-double Planet::distanceTo(const Planet& other) const {
-    double x_distance = this->x_ - other.x_;
-    double y_distance = this->y_ - other.y_;
-    double distance = sqrt(x_distance * x_distance + y_distance * y_distance);
-    return distance;
-}
-
-
 void Planet::Owner(int new_owner) {
     owner_ = new_owner;
 }
@@ -132,6 +124,39 @@ void Planet::AddShips(int amount) {
 
 void Planet::RemoveShips(int amount) {
     num_ships_ -= amount;
+}
+
+/************************************************
+                PlanetMap class
+************************************************/
+PlanetMap::PlanetMap()
+:num_planets_(0), planet_distances_() {
+}
+
+void PlanetMap::initialize(const std::vector<Planet>& planets) {
+    num_planets_ = static_cast<int>(planets.size());
+
+    //Initialize the distances between the planets.
+    planet_distances_.reserve(num_planets_ * num_planets_);
+
+    for (int origin = 0; origin < num_planets_; ++origin) {
+        for (int destination = 0; destination < num_planets_; ++destination) {
+            const double dx = planets[origin].X() - planets[destination].X();
+            const double dy = planets[origin].Y() - planets[destination].Y();
+
+            const int distance = static_cast<int>(ceil(sqrt(dx * dx + dy * dy)));
+
+            planet_distances_.push_back(distance);
+        }
+    }
+}
+
+int PlanetMap::GetDistance(const Planet &first_planet, const Planet &second_planet) const {
+    
+    const int pair_index = first_planet.PlanetID() * num_planets_ + 
+        second_planet.PlanetID();
+    const int distance = planet_distances_[pair_index];
+    return distance;
 }
 
 /************************************************
