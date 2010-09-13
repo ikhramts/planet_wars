@@ -1,0 +1,6 @@
+# Ignore all products of compilation/linking
+Debug/
+Release/
+
+# Ignore local project settings.
+*.user
