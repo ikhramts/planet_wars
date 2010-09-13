@@ -9,7 +9,7 @@ Table of contents:
 1. Folder Contents
 ------------------
 
-* planet wars\ - code for the main submission, together with Visual Studio project file.
+* planet_wars\ - code for the main submission, together with Visual Studio project file.
 
 * maps\ - maps to test the solution on.
 
