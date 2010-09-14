@@ -10,3 +10,6 @@ Release/
 # Ignore the submissions.
 submission/
 submission.zip
+
+# Ignore products of tool use.
+log.txt
