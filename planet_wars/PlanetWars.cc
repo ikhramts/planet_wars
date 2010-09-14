@@ -94,6 +94,18 @@ int Planet::Owner() const {
     return owner_;
 }
 
+bool Planet::IsEnemys() const {
+    return (2 == owner_);
+}
+
+bool Planet::IsNeutral() const {
+    return (0 == owner_);
+}
+
+bool Planet::IsMine() const {
+    return (1 == owner_);
+}
+
 int Planet::NumShips() const {
     return num_ships_;
 }

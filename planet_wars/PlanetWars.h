@@ -111,6 +111,9 @@ public:
     // the planet is neutral. If the owner is 2 or some other number, then this
     // planet belongs to the enemy.
     int Owner() const;
+    bool IsEnemys() const;
+    bool IsNeutral() const;
+    bool IsMine() const;
 
     // The number of ships on the planet. This is the "population" of the planet.
     int NumShips() const;
