@@ -1,4 +1,5 @@
 #include "PlanetWars.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -169,6 +170,17 @@ std::vector<Planet> GameMap::Planets() const {
     return r;
 }
 
+std::vector<Planet*> GameMap::PlanetPointers() {
+    std::vector<Planet*> result;
+    result.reserve(planets_.size());
+
+    for (int i = 0; i < num_planets_; ++i) {
+        result.push_back(&planets_[i]);
+    }
+
+    return result;
+}
+
 std::vector<Planet> GameMap::MyPlanets() const {
     std::vector<Planet> r;
     for (int i = 0; i < planets_.size(); ++i) {
@@ -211,6 +223,57 @@ std::vector<Planet> GameMap::NotMyPlanets() const {
         }
     }
     return r;
+}
+
+std::vector<Planet*> GameMap::PlanetsByDistance(const Planet& origin) {
+    const int origin_id = origin.PlanetID();
+    const int offset = origin_id * num_planets_;
+    
+    std::vector<Planet*> planets_by_distance;
+    planets_by_distance.reserve(planets_.size());
+
+    for (int i = 0; i < num_planets_; ++i) {
+        const int planet_index = offset + i;
+        planets_by_distance.push_back(planets_by_distance_[planet_index]);
+    }
+
+    return planets_by_distance;
+}
+
+std::vector<Planet*> GameMap::MyPlanetsByDistance(const Planet& origin) {
+    const int origin_id = origin.PlanetID();
+    const int offset = origin_id * num_planets_;
+    
+    std::vector<Planet*> planets_by_distance;
+    planets_by_distance.reserve(planets_.size());
+
+    for (int i = 0; i < num_planets_; ++i) {
+        const int planet_index = offset + i;
+
+        if (planets_by_distance_[planet_index]->IsMine()) {
+            planets_by_distance.push_back(planets_by_distance_[planet_index]);
+        }
+    }
+
+    return planets_by_distance;
+}
+
+std::vector<Planet*> GameMap::NotMyPlanetsByDistance(const Planet& origin) {
+    const int origin_id = origin.PlanetID();
+    const int offset = origin_id * num_planets_;
+    
+    std::vector<Planet*> planets_by_distance;
+    planets_by_distance.reserve(planets_.size());
+
+    for (int i = 0; i < num_planets_; ++i) {
+        const int planet_index = offset + i;
+
+        if (!planets_by_distance_[planet_index]->IsMine()) {
+            planets_by_distance.push_back(planets_by_distance_[planet_index]);
+        }
+    }
+
+    return planets_by_distance;
 }
 
 std::vector<Fleet> GameMap::Fleets() const {
@@ -311,6 +374,22 @@ int GameMap::NumShips(int player_id) const {
     return num_ships;
 }
 
+//A functor to be used in the following function.
+struct DistanceComparer {
+    GameMap* game_map_;
+    int origin_id;
+    
+    //Return true if the first planet at least as close to the origin planet
+    //than the second planet.
+    bool operator() (Planet* first_planet , Planet* second_planet) {
+        const int first_planet_id = first_planet->PlanetID();
+        const int second_planet_id = second_planet->PlanetID();
+        const int first_distance = game_map_->GetDistance(origin_id, first_planet_id);
+        const int second_distance = game_map_->GetDistance(origin_id, second_planet_id);
+        return (first_distance <= second_distance);
+    }
+};
+
 int GameMap::Initialize(const std::string& s) {
     planets_.clear();
     fleets_.clear();
@@ -376,7 +455,27 @@ int GameMap::Initialize(const std::string& s) {
             planet_distances_.push_back(distance);
         }
     }
+    
+    //Pre-sort planets by distance from each other.
+    //Use a functor defined immediately before this function.
+    DistanceComparer distance_comparer;
+    distance_comparer.game_map_ = this;
+    distance_comparer.origin_id = 0;
 
+    planets_by_distance_.clear();
+    planets_by_distance_.reserve(num_planets_ * num_planets_);
+    
+    for (planet_id = 0; planet_id < num_planets_; ++planet_id) {
+        //Sort the planets by distance from the origin planet and
+        //append the result to the general vector of planets sorted
+        //by distance.
+        std::vector<Planet*> planets_to_sort(this->PlanetPointers());
+        distance_comparer.origin_id = planet_id;
+        std::sort(planets_to_sort.begin(), planets_to_sort.end(), distance_comparer);
+        planets_by_distance_.insert(planets_by_distance_.end(),
+            planets_to_sort.begin(), planets_to_sort.end());
+    }
+    
     return 1;
 }
 

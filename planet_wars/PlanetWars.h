@@ -154,30 +154,22 @@ public:
     const Fleet& GetFleet(int fleet_id) const;
 
     // Returns a list of all the planets.
+    // Get various lists of planets.
     std::vector<Planet> Planets() const;
-
-    // Return a list of all the planets owned by the current player. By
-    // convention, the current player is always player number 1.
+    std::vector<Planet*> PlanetPointers();
     std::vector<Planet> MyPlanets() const;
-
-    // Return a list of all neutral planets.
     std::vector<Planet> NeutralPlanets() const;
-
-    // Return a list of all the planets owned by rival players. This excludes
-    // planets owned by the current player, as well as neutral planets.
     std::vector<Planet> EnemyPlanets() const;
-
-    // Return a list of all the planets that are not owned by the current
-    // player. This includes all enemy planets and neutral planets.
     std::vector<Planet> NotMyPlanets() const;
+    
+    //Get planets sorted by distance from a certain planet.
+    std::vector<Planet*> PlanetsByDistance(const Planet& origin);
+    std::vector<Planet*> MyPlanetsByDistance(const Planet& origin);
+    std::vector<Planet*> NotMyPlanetsByDistance(const Planet& origin);
 
-    // Return a list of all the fleets.
+    // Get various lists of fleets.
     std::vector<Fleet> Fleets() const;
-
-    // Return a list of all the fleets owned by the current player.
     std::vector<Fleet> MyFleets() const;
-
-    // Return a list of all the fleets owned by enemy players.
     std::vector<Fleet> EnemyFleets() const;
 
     // Writes a string which represents the current game state. This string
@@ -218,6 +210,7 @@ private:
     std::vector<Fleet> fleets_;
     std::vector<int> planet_distances_;
     int num_planets_;
+    std::vector<Planet*> planets_by_distance_;
 };
 
 #endif
