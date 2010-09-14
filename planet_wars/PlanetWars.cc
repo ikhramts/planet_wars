@@ -87,7 +87,7 @@ Planet::Planet(int planet_id,
     y_ = y;
 }
 
-int Planet::PlanetID() const {
+int Planet::Id() const {
     return planet_id_;
 }
 
@@ -226,7 +226,7 @@ std::vector<Planet> GameMap::NotMyPlanets() const {
 }
 
 std::vector<Planet*> GameMap::PlanetsByDistance(const Planet& origin) {
-    const int origin_id = origin.PlanetID();
+    const int origin_id = origin.Id();
     const int offset = origin_id * num_planets_;
     
     std::vector<Planet*> planets_by_distance;
@@ -241,7 +241,7 @@ std::vector<Planet*> GameMap::PlanetsByDistance(const Planet& origin) {
 }
 
 std::vector<Planet*> GameMap::MyPlanetsByDistance(const Planet& origin) {
-    const int origin_id = origin.PlanetID();
+    const int origin_id = origin.Id();
     const int offset = origin_id * num_planets_;
     
     std::vector<Planet*> planets_by_distance;
@@ -259,7 +259,7 @@ std::vector<Planet*> GameMap::MyPlanetsByDistance(const Planet& origin) {
 }
 
 std::vector<Planet*> GameMap::NotMyPlanetsByDistance(const Planet& origin) {
-    const int origin_id = origin.PlanetID();
+    const int origin_id = origin.Id();
     const int offset = origin_id * num_planets_;
     
     std::vector<Planet*> planets_by_distance;
@@ -330,8 +330,8 @@ int GameMap::GetDistance(int source_planet_id, int destination_planet_id) const 
 }
 
 int GameMap::GetDistance(const Planet& first_planet, const Planet& second_planet) const {
-    const int first_planet_id = first_planet.PlanetID();
-    const int second_planet_id = second_planet.PlanetID();
+    const int first_planet_id = first_planet.Id();
+    const int second_planet_id = second_planet.Id();
     const int distance = this->GetDistance(first_planet_id, second_planet_id);
     return distance;
 }
@@ -382,8 +382,8 @@ struct DistanceComparer {
     //Return true if the first planet at least as close to the origin planet
     //than the second planet.
     bool operator() (Planet* first_planet , Planet* second_planet) {
-        const int first_planet_id = first_planet->PlanetID();
-        const int second_planet_id = second_planet->PlanetID();
+        const int first_planet_id = first_planet->Id();
+        const int second_planet_id = second_planet->Id();
         const int first_distance = game_map_->GetDistance(origin_id, first_planet_id);
         const int second_distance = game_map_->GetDistance(origin_id, second_planet_id);
         return (first_distance <= second_distance);

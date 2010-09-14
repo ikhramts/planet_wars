@@ -88,7 +88,7 @@ public:
            double y);
 
     // Returns the ID of this planets. Planets are numbered starting at zero.
-    int PlanetID() const;
+    int Id() const;
 
     // Returns the ID of the player that owns this planet. Your playerID is
     // always 1. If the owner is 1, this is your planet. If the owner is 0, then

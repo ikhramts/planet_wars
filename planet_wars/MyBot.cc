@@ -57,7 +57,7 @@ void DoTurn(const GameMap& game_map) {
     double score = (double)p.NumShips();
     if (score > source_score) {
       source_score = score;
-      source = p.PlanetID();
+      source = p.Id();
       source_num_ships = p.NumShips();
     }
   }
@@ -70,7 +70,7 @@ void DoTurn(const GameMap& game_map) {
     double score = 1.0 / (1 + p.NumShips());
     if (score > dest_score) {
       dest_score = score;
-      dest = p.PlanetID();
+      dest = p.Id();
     }
   }
   // (4) Send half the ships from my strongest planet to the weakest
