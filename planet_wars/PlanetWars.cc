@@ -163,7 +163,7 @@ const Fleet& GameMap::GetFleet(int fleet_id) const {
 
 std::vector<Planet> GameMap::Planets() const {
     std::vector<Planet> r;
-    for (int i = 0; i < planets_.size(); ++i) {
+    for (int i = 0; i < num_planets_; ++i) {
         const Planet& p = planets_[i];
         r.push_back(p);
     }
@@ -183,7 +183,7 @@ std::vector<Planet*> GameMap::PlanetPointers() {
 
 std::vector<Planet> GameMap::MyPlanets() const {
     std::vector<Planet> r;
-    for (int i = 0; i < planets_.size(); ++i) {
+    for (int i = 0; i < num_planets_; ++i) {
         const Planet& p = planets_[i];
         if (p.Owner() == 1) {
             r.push_back(p);
@@ -194,7 +194,7 @@ std::vector<Planet> GameMap::MyPlanets() const {
 
 std::vector<Planet> GameMap::NeutralPlanets() const {
     std::vector<Planet> r;
-    for (int i = 0; i < planets_.size(); ++i) {
+    for (int i = 0; i < num_planets_; ++i) {
         const Planet& p = planets_[i];
         if (p.Owner() == 0) {
             r.push_back(p);
@@ -205,7 +205,7 @@ std::vector<Planet> GameMap::NeutralPlanets() const {
 
 std::vector<Planet> GameMap::EnemyPlanets() const {
     std::vector<Planet> r;
-    for (int i = 0; i < planets_.size(); ++i) {
+    for (int i = 0; i < num_planets_; ++i) {
         const Planet& p = planets_[i];
         if (p.Owner() > 1) {
             r.push_back(p);
@@ -216,7 +216,7 @@ std::vector<Planet> GameMap::EnemyPlanets() const {
 
 std::vector<Planet> GameMap::NotMyPlanets() const {
     std::vector<Planet> r;
-    for (int i = 0; i < planets_.size(); ++i) {
+    for (int i = 0; i < num_planets_; ++i) {
         const Planet& p = planets_[i];
         if (p.Owner() != 1) {
             r.push_back(p);
@@ -278,7 +278,9 @@ std::vector<Planet*> GameMap::NotMyPlanetsByDistance(const Planet& origin) {
 
 std::vector<Fleet> GameMap::Fleets() const {
     std::vector<Fleet> r;
-    for (int i = 0; i < fleets_.size(); ++i) {
+    const int num_fleets = static_cast<int>(fleets_.size());
+    
+    for (int i = 0; i < num_fleets; ++i) {
         const Fleet& f = fleets_[i];
         r.push_back(f);
     }
@@ -287,7 +289,9 @@ std::vector<Fleet> GameMap::Fleets() const {
 
 std::vector<Fleet> GameMap::MyFleets() const {
     std::vector<Fleet> r;
-    for (int i = 0; i < fleets_.size(); ++i) {
+    const int num_fleets = static_cast<int>(fleets_.size());
+    
+    for (int i = 0; i < num_fleets; ++i) {
         const Fleet& f = fleets_[i];
         if (f.Owner() == 1) {
             r.push_back(f);
@@ -298,7 +302,9 @@ std::vector<Fleet> GameMap::MyFleets() const {
 
 std::vector<Fleet> GameMap::EnemyFleets() const {
     std::vector<Fleet> r;
-    for (int i = 0; i < fleets_.size(); ++i) {
+    const int num_fleets = static_cast<int>(fleets_.size());
+    
+    for (int i = 0; i < num_fleets; ++i) {
         const Fleet& f = fleets_[i];
         if (f.Owner() > 1) {
             r.push_back(f);
@@ -309,17 +315,20 @@ std::vector<Fleet> GameMap::EnemyFleets() const {
 
 std::string GameMap::ToString() const {
     std::stringstream s;
+
     for (unsigned int i = 0; i < planets_.size(); ++i) {
         const Planet& p = planets_[i];
         s << "P " << p.X() << " " << p.Y() << " " << p.Owner()
           << " " << p.NumShips() << " " << p.GrowthRate() << std::endl;
     }
+
     for (unsigned int i = 0; i < fleets_.size(); ++i) {
         const Fleet& f = fleets_[i];
         s << "F " << f.Owner() << " " << f.NumShips() << " "
           << f.SourcePlanet() << " " << f.DestinationPlanet() << " "
           << f.TotalTripLength() << " " << f.TurnsRemaining() << std::endl;
     }
+
     return s.str();
 }
 
