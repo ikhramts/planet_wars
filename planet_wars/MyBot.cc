@@ -11,7 +11,7 @@
 // starting point, or you can throw it out entirely and replace it with your
 // own. Check out the tutorials and articles on the contest website at
 // http://www.ai-contest.com/resources.
-void DoTurn(const PlanetWars& game_map) {
+void DoTurn(const GameMap& game_map) {
 /*    //A simple starting strategy: sort the non-owned planets by 
     //"planet score", and send fleets to those that can be
     //captured.
@@ -31,16 +31,19 @@ void DoTurn(const PlanetWars& game_map) {
     
     //Allocate ships to some of the planets by picking
     //the planet with the highest projected return in ships over the target
-    //time horizon.
+    //time horizon per ship spent on invading it.
     const int time_horizon = 50;
     std::vector<double> planet_scores;
     planet_scores.reserve(num_not_my_planets.size());
     
     for (int p = 0; p < num_not_my_planets; ++p) {
+        Planet target_planet = not_my_planets[p];
+        const int planet_base_strength = target_planet.NumShips();
+        const int planet_growth_rate = target_planet.GrowthRate();
+        const bool is_enemy_owned = target_planet.IsEnemys();
+        
         //Figure out how many steps it will take to take this planet.
         
-        
-        for 
 
 */
 
@@ -81,7 +84,7 @@ void DoTurn(const PlanetWars& game_map) {
 // This is just the main game loop that takes care of communicating with the
 // game engine for you. You don't have to understand or change the code below.
 int main(int argc, char *argv[]) {
-    PlanetMap planet_map;
+    GameMap game_map;
     
     std::string current_line;
     std::string map_data;
@@ -97,18 +100,20 @@ int main(int argc, char *argv[]) {
         
         if (c == '\n') {
             if (current_line.length() >= 2 && current_line.substr(0, 2) == "go") {
-                //Initialize the new game state.
-                PlanetWars planet_wars(map_data);
-                map_data = "";
-                
-                //On the first turn, initialize the planetary map.
+                //On the first turn, initialize the game map.
+                //On later turns, just update it.
                 if (1 == turn) {
-                    planet_map.initialize(planet_wars.Planets());
+                    game_map.Initialize(map_data);
+                
+                } else {
+                    game_map.Update(map_data);
                 }
                 
+                map_data = "";
+                
                 //Make the moves.
-                DoTurn(planet_wars);
-                planet_wars.FinishTurn();
+                DoTurn(game_map);
+                game_map.FinishTurn();
             
             } else {
                 map_data += current_line;

@@ -75,22 +75,6 @@ private:
     int turns_remaining_;
 };
 
-// This helps to compute some planetary data.
-class PlanetMap {
-public:
-    // Initialize the distance calculator
-    PlanetMap();
-    void initialize(const std::vector<Planet>& planets);
-
-    //Find the distance between two planets
-    int GetDistance(const Planet& first_planet, const Planet& second_planet) const;
-
-private:
-    int num_planets_;
-    std::vector<int> planet_distances_;
-};
-
-
 // Stores information about one planet. There is one instance of this class
 // for each planet on the map.
 class Planet {
@@ -144,10 +128,14 @@ private:
     double x_, y_;
 };
 
-class PlanetWars {
+class GameMap {
 public:
     // Initializes the game state given a string containing game state data.
-    PlanetWars(const std::string& game_state);
+    GameMap();
+    
+    //Initialize/Update the game state after start of a new turn.
+    int Initialize(const std::string& game_state);
+    int Update(const std::string& game_state);
 
     // Returns the number of planets on the map. Planets are numbered starting
     // with 0.
@@ -199,7 +187,8 @@ public:
     // Returns the distance between two planets, rounded up to the next highest
     // integer. This is the number of discrete time steps it takes to get between
     // the two planets.
-    int Distance(int source_planet, int destination_planet) const;
+    int GetDistance(int source_planet, int destination_planet) const;
+    int GetDistance(const Planet& first_planet, const Planet& second_planet) const;
 
     // Sends an order to the game engine. The order is to send num_ships ships
     // from source_planet to destination_planet. The order must be valid, or
@@ -223,14 +212,12 @@ public:
     void FinishTurn() const;
 
 private:
-    // Parses a game state from a string. On success, returns 1. On failure,
-    // returns 0.
-    int ParseGameState(const std::string& s);
-
     // Store all the planets and fleets. OMG we wouldn't wanna lose all the
     // planets and fleets, would we!?
     std::vector<Planet> planets_;
     std::vector<Fleet> fleets_;
+    std::vector<int> planet_distances_;
+    int num_planets_;
 };
 
 #endif
