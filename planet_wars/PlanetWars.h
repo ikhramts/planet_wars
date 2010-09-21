@@ -14,7 +14,15 @@ class StringUtil;
 class Fleet;
 class Planet;
 class PlanetMap;
-class PlanetWars;
+class GameMap;
+class MoveOrder;
+
+static const int kNeutral = 0;
+static const int kMe = 1;
+static const int kEnemy = 2;
+
+typedef std::vector<Planet*> PlanetList;
+typedef std::vector<Fleet*> FleetList;
 
 // This is a utility class that parses strings.
 class StringUtil {
@@ -36,42 +44,38 @@ public:
 class Fleet {
 public:
     // Initializes a fleet.
+    Fleet();
+
     Fleet(int owner,
-          int num_ships,
-          int source_planet = -1,
-          int destination_planet = -1,
+          int num_ships = 0,
+          Planet* source_planet = NULL,
+          Planet* destination_planet = NULL,
           int total_trip_length = -1,
           int turns_remaining = -1);
+    
+    void SetOwner(int owner)                    {owner_ = owner;}
+    void SetNumShips(int num_ships)             {num_ships_ = num_ships;}
+    void SetSource(Planet* planet)              {source_ = source;}
+    void SetDestination(Planet* planet)         {destination_ = destination;}
+    void SetTripLength(int trip_length)         {trip_length_ = trip_length;}
+    void SetTurnsRemaining(int turns_remaining) {turns_remaining_ = turns_remaining;}
 
-    // Returns the playerID of the owner of the fleet. Your player ID is always
-    // 1. So if the owner is 1, you own the fleet. If the owner is 2 or some
-    // other number, then this fleet belongs to your enemy.
-    int Owner() const;
+    int Owner() const                           {return owner_;}
+    int NumShips() const                        {return num_ships_;}
+    Planet* Source() const                      {return source_;}
+    Planet* Destination() const                 {return destination_;}
+    int TripLength() const                      {return trip_length_;}
+    int TurnsRemaining() const                  {return turns_remaining;}
 
-    // Returns the number of ships that comprise this fleet.
-    int NumShips() const;
-
-    // Returns the ID of the planet where this fleet originated.
-    int SourcePlanet() const;
-
-    // Returns the ID of the planet where this fleet is headed.
-    int DestinationPlanet() const;
-
-    // Returns the total distance that is being traveled by this fleet. This
-    // is the distance between the source planet and the destination planet,
-    // rounded up to the nearest whole number.
-    int TotalTripLength() const;
-
-    // Returns the number of turns until this fleet reaches its destination. If
-    // this value is 1, then the fleet will hit the destination planet next turn.
-    int TurnsRemaining() const;
+    //Convert this fleet to a move order that can be accepted by the game engine.
+    std::string ToMoveOrder() const;
 
 private:
     int owner_;
     int num_ships_;
-    int source_planet_;
-    int destination_planet_;
-    int total_trip_length_;
+    Planet* source_;
+    Planet* destination_;
+    int trip_length_;
     int turns_remaining_;
 };
 
@@ -86,7 +90,7 @@ public:
            int growth_rate,
            double x,
            double y);
-
+    
     // Returns the ID of this planets. Planets are numbered starting at zero.
     int Id() const;
 
@@ -120,6 +124,13 @@ public:
     void AddShips(int amount);
     void RemoveShips(int amount);
 
+    //Calculate the number of ships a certain number of turns from now.
+    int NumShipsIn(int turns_from_now) const;
+
+    //Calculate the number of ships produced by the planet from 
+    //begining of from_turn to begining of to_turn.
+    int NumShipsOver(int from_step, int to_step) const;
+
 private:
     int planet_id_;
     int owner_;
@@ -143,7 +154,7 @@ public:
 
     // Returns the planet with the given planet_id. There are NumPlanets()
     // planets. They are numbered starting at 0.
-    const Planet& GetPlanet(int planet_id) const;
+    Planet* GetPlanet(int planet_id);
 
     // Returns the number of fleets.
     int NumFleets() const;
@@ -151,26 +162,25 @@ public:
     // Returns the fleet with the given fleet_id. Fleets are numbered starting
     // with 0. There are NumFleets() fleets. fleet_id's are not consistent from
     // one turn to the next.
-    const Fleet& GetFleet(int fleet_id) const;
+    Fleet* GetFleet(int fleet_id) const;
 
     // Returns a list of all the planets.
     // Get various lists of planets.
-    std::vector<Planet> Planets() const;
-    std::vector<Planet*> PlanetPointers();
-    std::vector<Planet> MyPlanets() const;
-    std::vector<Planet> NeutralPlanets() const;
-    std::vector<Planet> EnemyPlanets() const;
-    std::vector<Planet> NotMyPlanets() const;
+    PlanetList Planets() const;
+    PlanetList MyPlanets() const;
+    PlanetList NeutralPlanets() const;
+    PlanetList EnemyPlanets() const;
+    PlanetList NotMyPlanets() const;
     
     //Get planets sorted by distance from a certain planet.
-    std::vector<Planet*> PlanetsByDistance(const Planet& origin);
-    std::vector<Planet*> MyPlanetsByDistance(const Planet& origin);
-    std::vector<Planet*> NotMyPlanetsByDistance(const Planet& origin);
+    PlanetList PlanetsByDistance(const Planet& origin);
+    PlanetList MyPlanetsByDistance(const Planet& origin);
+    PlanetList NotMyPlanetsByDistance(const Planet& origin);
 
     // Get various lists of fleets.
-    std::vector<Fleet> Fleets() const;
-    std::vector<Fleet> MyFleets() const;
-    std::vector<Fleet> EnemyFleets() const;
+    FleetList Fleets() const;
+    FleetList MyFleets() const;
+    FleetList EnemyFleets() const;
 
     // Writes a string which represents the current game state. This string
     // conforms to the Point-in-Time format from the project Wiki.
@@ -180,7 +190,7 @@ public:
     // integer. This is the number of discrete time steps it takes to get between
     // the two planets.
     int GetDistance(int source_planet, int destination_planet) const;
-    int GetDistance(const Planet& first_planet, const Planet& second_planet) const;
+    int GetDistance(Planet* first_planet, Planet* second_planet) const;
 
     // Sends an order to the game engine. The order is to send num_ships ships
     // from source_planet to destination_planet. The order must be valid, or
@@ -203,14 +213,33 @@ public:
     // issuing orders for now.
     void FinishTurn() const;
 
+    //Find the list of fleets heading towards the planet.
+    //Sort them by time to arrival to the destination.
+    void FleetsArrivingAt(Planet* destination) const;
+
+    //Get current turn.
+    int Turn() const            {return turn_;}
+
 private:
     // Store all the planets and fleets. OMG we wouldn't wanna lose all the
     // planets and fleets, would we!?
-    std::vector<Planet> planets_;
-    std::vector<Fleet> fleets_;
+    PlanetList planets_;
+    FleetList fleets_;
+    
+    //Distances between individual planets.
+    //The distance between source and destination is stored
+    //in element (source_id * num_planets + destination_id).
+    //There are num_planets^2 entries.
     std::vector<int> planet_distances_;
     int num_planets_;
-    std::vector<Planet*> planets_by_distance_;
+    
+    //Lists of planets sorted by distance from each other.
+    //A list of planets sorted by distance from source_id starts at
+    //element (source_id * num_planets) and ends at ((source_id+1) * num_planets - 1).
+    PlanetList planets_by_distance_;
+
+    //Current turn.
+    int turn_;
 };
 
 #endif

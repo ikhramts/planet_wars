@@ -1,4 +1,5 @@
 #include "PlanetWars.h"
+#include <assert.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -32,42 +33,37 @@ std::vector<std::string> StringUtil::Tokenize(const std::string& s,
 /************************************************
                  Fleet class
 ************************************************/
+Fleet::Fleet() 
+: owner_(kMe),
+num_ships_(0),
+source_(NULL),
+destination_(NULL),
+trip_length_(-1),
+turns_remaining_(-1) {
+}
+
+
 Fleet::Fleet(int owner,
              int num_ships,
-             int source_planet,
-             int destination_planet,
+             Planet* source_planet = NULL,
+             Planet* destination_planet = NULL,,
              int total_trip_length,
              int turns_remaining) {
     owner_ = owner;
     num_ships_ = num_ships;
-    source_planet_ = source_planet;
-    destination_planet_ = destination_planet;
-    total_trip_length_ = total_trip_length;
+    source_ = source_planet;
+    destination_ = destination_planet;
+    trip_length_ = total_trip_length;
     turns_remaining_ = turns_remaining;
 }
 
-int Fleet::Owner() const {
-  return owner_;
-}
+std::string Fleet::toMoveOrder() const {
+    assert(NULL != source_);
+    assert(NULL != destination_);
 
-int Fleet::NumShips() const {
-    return num_ships_;
-}
-
-int Fleet::SourcePlanet() const {
-    return source_planet_;
-}
-
-int Fleet::DestinationPlanet() const {
-    return destination_planet_;
-}
-
-int Fleet::TotalTripLength() const {
-    return total_trip_length_;
-}
-
-int Fleet::TurnsRemaining() const {
-    return turns_remaining_;
+    std::stringstream moveOrder;
+    moveOrder << source_->Id() << " " << destination_->Id() << " " num_ships_;
+    return moveOrder.str();
 }
 
 /************************************************
@@ -137,6 +133,22 @@ void Planet::AddShips(int amount) {
 
 void Planet::RemoveShips(int amount) {
     num_ships_ -= amount;
+}
+
+void Planet::NumShipsIn(const int turns_from_now) {
+    if (kNeutral == owner_) {
+        return num_ships_;
+
+    } else {
+        const int num_ships = num_ships_ + turns_from_now * growth_rate_;
+        return num_ships;
+    }
+}
+
+void Planet::NumShipsOver(int from_step, int to_step) const {
+    const int num_steps = to_step - from_step;
+    const int produced = num_steps * growth_rate_;
+    return produced;
 }
 
 /************************************************
@@ -395,15 +407,21 @@ struct DistanceComparer {
         const int second_planet_id = second_planet->Id();
         const int first_distance = game_map_->GetDistance(origin_id, first_planet_id);
         const int second_distance = game_map_->GetDistance(origin_id, second_planet_id);
-        return (first_distance <= second_distance);
+        return (first_distance < second_distance);
     }
 };
 
 int GameMap::Initialize(const std::string& s) {
+    turn_ = 1;
+
+    //Parse the game data.
     planets_.clear();
     fleets_.clear();
     std::vector<std::string> lines = StringUtil::Tokenize(s, "\n");
     int planet_id = 0;
+
+    std::vector<int> fleet_source_ids;
+    std::vector<int> fleet_destination_ids;
 
     for (unsigned int i = 0; i < lines.size(); ++i) {
         std::string& line = lines[i];
@@ -421,9 +439,9 @@ int GameMap::Initialize(const std::string& s) {
             if (tokens.size() != 6) {
                 return 0;
             }
-        
-            Planet p(planet_id++,              // The ID of this planet
-	             atoi(tokens[3].c_str()),  // Owner
+            
+            Planet* p = new Planet(planet_id++,              // The ID of this planet
+	                 atoi(tokens[3].c_str()),  // Owner
                      atoi(tokens[4].c_str()),  // Num ships
                      atoi(tokens[5].c_str()),  // Growth rate
                      atof(tokens[1].c_str()),  // X
@@ -435,17 +453,27 @@ int GameMap::Initialize(const std::string& s) {
                 return 0;
             }
             
-            Fleet f(atoi(tokens[1].c_str()),  // Owner
-                    atoi(tokens[2].c_str()),  // Num ships
-                    atoi(tokens[3].c_str()),  // Source
-                    atoi(tokens[4].c_str()),  // Destination
-                    atoi(tokens[5].c_str()),  // Total trip length
-                    atoi(tokens[6].c_str())); // Turns remaining
-            fleets_.push_back(f);
+            Fleet* fleet = new Fleet();
+            fleet->SetOwner(atoi(tokens[1].c_str()));
+            fleet->SetNumShips(atoi(tokens[2].c_str()));
+            fleet_source_ids.push_back(atoi(tokens[3].c_str()));
+            fleet_destination_ids.push_back(atoi(tokens[4].c_str()));
+            fleet->SetTripLength(atoi(tokens[5].c_str()));
+            fleet->SetTurnsRemaining(atoi(tokens[6].c_str()));
+
+            fleets_.push_back(fleet);
         
         } else {
             return 0;
         }
+    }
+    
+    //Resolve planet references within the fleets.
+    for (unsigned int i = 0; i < fleets_.size(); ++i) {
+        Fleet* fleet = fleets_[i];
+        
+        fleet->SetSource(planets_[fleet_source_ids[i]]->Id());
+        fleet->SetDestination(planets_[fleet_destination_ids[i]]->Id());
     }
 
     //Pre-calculate the distances between the planets.
@@ -489,9 +517,15 @@ int GameMap::Initialize(const std::string& s) {
 }
 
 int GameMap::Update(const std::string& s) {
+    ++turn_;
+
+    //Update the planet data; repopulate the fleets.
     fleets_.clear();
     std::vector<std::string> lines = StringUtil::Tokenize(s, "\n");
     int planet_id = 0;
+
+    std::vector<int> fleet_source_ids;
+    std::vector<int> fleet_destination_ids;
 
     for (unsigned int i = 0; i < lines.size(); ++i) {
         std::string& line = lines[i];
@@ -512,7 +546,7 @@ int GameMap::Update(const std::string& s) {
             }
             
             //Update the planet state.
-            Planet* planet = &planets_[planet_id];
+            Planet* planet = planets_[planet_id];
             planet->Owner(atoi(tokens[3].c_str()));
             planet->NumShips(atoi(tokens[4].c_str()));
 
@@ -524,21 +558,38 @@ int GameMap::Update(const std::string& s) {
                 return 0;
             }
 
-            Fleet f(atoi(tokens[1].c_str()),  // Owner
-                    atoi(tokens[2].c_str()),  // Num ships
-                    atoi(tokens[3].c_str()),  // Source
-                    atoi(tokens[4].c_str()),  // Destination
-                    atoi(tokens[5].c_str()),  // Total trip length
-                    atoi(tokens[6].c_str())); // Turns remaining
-            fleets_.push_back(f);
+            Fleet* fleet = new Fleet();
+            fleet->SetOwner(atoi(tokens[1].c_str()));
+            fleet->SetNumShips(atoi(tokens[2].c_str()));
+            fleet_source_ids.push_back(atoi(tokens[3].c_str()));
+            fleet_destination_ids.push_back(atoi(tokens[4].c_str()));
+            fleet->SetTripLength(atoi(tokens[5].c_str()));
+            fleet->SetTurnsRemaining(atoi(tokens[6].c_str()));
+
+            fleets_.push_back(fleet);
+
         } else {
             return 0;
         }
     }
+
+    //Resolve planet references within the fleets.
+    for (unsigned int i = 0; i < fleets_.size(); ++i) {
+        Fleet* fleet = fleets_[i];
+        
+        fleet->SetSource(planets_[fleet_source_ids[i]]->Id());
+        fleet->SetDestination(planets_[fleet_destination_ids[i]]->Id());
+    }
+
     return 1;
 }
 
 void GameMap::FinishTurn() const {
     std::cout << "go" << std::endl;
     std::cout.flush();
+}
+
+void GameMap::FleetsArrivingAt(Planet *destination) const {
+    //TODO: implement.
+    //Remember: sort them by arrival time.
 }
