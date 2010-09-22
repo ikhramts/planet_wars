@@ -177,6 +177,10 @@
 				RelativePath=".\PlanetWars.cc"
 				>
 			</File>
+			<File
+				RelativePath=".\Utils.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

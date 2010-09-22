@@ -46,6 +46,9 @@ int main(int argc, char *argv[]) {
     
     int turn = 0;
 
+    //Crash!
+    forceCrash();
+
     while (true) {
         //Read the updated game state.
         int c = std::cin.get();

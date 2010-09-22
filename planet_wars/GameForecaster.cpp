@@ -78,16 +78,19 @@ void PlanetForecaster::Initialize(int forecast_horizon, Planet *planet, GameMap 
     const size_t u_horizon = static_cast<size_t>(horizon_);
 
     start_ = 0;
-    end_ = u_horizon;
+    end_ = u_horizon - 1;
     owner_at_.resize(u_horizon, 0);
     ships_at_.resize(u_horizon, 0);
     my_arrivals_at_.resize(u_horizon, 0);
     enemy_arrivals_at_.resize(u_horizon, 0);
     ships_to_take_over_at_.resize(u_horizon, 1);
     ships_gained_at_.resize(u_horizon, 1);
-
+    
     will_not_be_mine_ = false;
     
+    my_additional_arrivals_at_.resize(u_horizon, 0);
+    enemy_additional_arrivals_at_.resize(u_horizon, 0);
+
     //Find out when various ships will be arriving.
     FleetList arrivingFleets = game->FleetsArrivingAt(planet);
     
@@ -112,13 +115,13 @@ void PlanetForecaster::Initialize(int forecast_horizon, Planet *planet, GameMap 
         default: assert(!"Invalid owner");
     }
 
-    this->CalculatePlanetStateProjections(0);
+    this->CalculatePlanetStateProjections(1);
 }
 
 void PlanetForecaster::Update() {
     //Advance the forecast frame through time.
-    ++start_;
-    end_ = (start_ + horizon_ - 1) % horizon_;
+    start_ = this->ActualIndex(start_ + 1);
+    end_ = this->ActualIndex(end_ + 1);;
     
     my_arrivals_at_[end_] = 0;
     enemy_arrivals_at_[end_] = 0;
@@ -144,24 +147,24 @@ void PlanetForecaster::Update() {
             }
         }
     }
+    
+    //Update current planet states.
+    owner_at_[start_] = planet_->Owner();
+    ships_at_[start_] = planet_->NumShips();
 
-    //Check whether a fleet managed to make a length-1 trip onto this planet.
-    //It would have already landed, so it would not be caught in the above for loop.
-    if (owner_at_[start_] != planet_->Owner() || ships_at_[start_] != planet_->NumShips()) {
-        owner_at_[start_] = planet_->Owner();
-        ships_at_[start_] = planet_->NumShips();
-        start_update_at = 1;
-    }
-
-    this->CalculatePlanetStateProjections(start_update_at);
+    this->CalculatePlanetStateProjections(1);
 }
 
 int PlanetForecaster::ShipsGainedForFleets(const FleetList& fleets) const {
     const int growth_rate = planet_->GrowthRate();
     
+    //Reset the arrivals.
     //For now deal only with my arrivals.
+    for (uint i = 0; i < my_additional_arrivals_at_.size(); ++i) {
+        my_additional_arrivals_at_[i] = 0;
+    }
+
     const uint u_horizon = static_cast<int>(horizon_);
-    my_additional_arrivals_at_.resize(u_horizon, 0);
     int start_change = horizon_;
 
     for (uint i = 0; i < fleets.size(); ++i) {
@@ -186,16 +189,18 @@ int PlanetForecaster::ShipsGainedForFleets(const FleetList& fleets) const {
             ships_on_planet = ships_at_[cur_index];
         
         } else {
-            const int base_ships = ships_on_planet + (kNeutral == owner ? 0 : growth_rate);
             const bool has_arrivals = my_arrivals_at_[cur_index] != 0
-                                    || enemy_arrivals_at_[cur_index] != 0
-                                    || my_additional_arrivals_at_[cur_index] != 0;
+                                    || enemy_arrivals_at_[i] != 0
+                                    || my_additional_arrivals_at_[i] != 0;
 
             if (!has_arrivals) {
                 ships_gained += PlanetShipsGainRate(owner, growth_rate);
             
             } else {
                 //There do be battles to fight!
+                ships_gained += PlanetShipsGainRate(owner, growth_rate);
+
+                const int base_ships = ships_on_planet + (kNeutral == owner ? 0 : growth_rate);
                 const int neutral_ships = (kNeutral == owner ? base_ships : 0);
                 const int my_ships = my_arrivals_at_[cur_index] 
                                 + my_additional_arrivals_at_[i]
@@ -214,6 +219,11 @@ int PlanetForecaster::ShipsGainedForFleets(const FleetList& fleets) const {
     return additional_ships_gained;
 }
 
+int PlanetForecaster::ShipsRequredToPosess(int arrival_time) const {
+    const int actual_index = this->ActualIndex(arrival_time);
+    const int ships_required = ships_to_take_over_at_[actual_index];
+    return ships_required;
+}
 
 void PlanetForecaster::CalculatePlanetStateProjections(int starting_at) {
     const int growth_rate = planet_->GrowthRate();
@@ -269,7 +279,6 @@ void PlanetForecaster::CalculatePlanetStateProjections(int starting_at) {
             }
         }
 
-        will_not_be_mine_ |= (kMe != cur_owner);
         ships_gained_at_[cur_index] = PlanetShipsGainRate(cur_owner, growth_rate);
     } //End iterating over turns.
 
@@ -277,10 +286,12 @@ void PlanetForecaster::CalculatePlanetStateProjections(int starting_at) {
     //produce an increase in the number of ships gained over the horizon.
     //At any point when the planet is under my control, check whether it could
     //use some reinforcing ships to fight a battle coming up a few turns later.
+    //While we're at it, check whether the planet will not be mine at any point.
     int prev_ships_to_take_over = 0;
+    will_not_be_mine_;
 
     for (int i = horizon_ - 1; i >= 0; --i) {
-        const int cur_index = this->actualIndex(i);
+        const int cur_index = this->ActualIndex(i);
 
         if (i == horizon_ - 1) {
             prev_ships_to_take_over = ships_to_take_over_at_[cur_index];
@@ -292,6 +303,7 @@ void PlanetForecaster::CalculatePlanetStateProjections(int starting_at) {
             
             } else {
                 prev_ships_to_take_over = ships_to_take_over_at_[cur_index];
+                will_not_be_mine_ = true;
             }
         }
     }

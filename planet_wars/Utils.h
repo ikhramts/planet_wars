@@ -7,7 +7,13 @@
 #define PLANET_WARS_UTILS_H_
 
 #ifndef uint
-    typedef unsigned int uint;
+typedef unsigned int uint;
 #endif
+
+#ifndef NULL
+#define NULL 0
+#endif
+
+void forceCrash();
 
 #endif

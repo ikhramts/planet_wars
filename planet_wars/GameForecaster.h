@@ -63,7 +63,7 @@ public:
     //Find the number of ships needed to make sure that this planet
     //becomes/stays mine given that the ships will arrive in specified number
     //of turns.
-    int ShipsRequredToPosess(int arrival_time) const    {return ships_to_take_over_at_[arrival_time];}
+    int ShipsRequredToPosess(int arrival_time) const;
 
 private:
     //Update the planet state projections.
@@ -71,7 +71,7 @@ private:
 
     //Calculate actual index of an element in the *_at_ vectors
     //given a plain index.
-    int actualIndex(int i) const        {return (i + start_ + horizon_) % horizon_; }
+    int ActualIndex(int i) const        {return (i + start_ + horizon_) % horizon_; }
 
     int horizon_;
     int start_;

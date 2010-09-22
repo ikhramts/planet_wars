@@ -26,27 +26,38 @@ void Bot::SetGame(GameMap* game) {
 }
 
 FleetList Bot::MakeMoves() {
-    forecaster_->Update();
+    if (game_->Turn() != 1) {
+        forecaster_->Update();
+    }
+    
+    //The list of fleets to be ultimately sent.
+    FleetList fleets_to_send;
+    
+    //Check if I've any ships left.
+    if (0 == game_->NumShips(kMe)) {
+        return fleets_to_send;
+    }
 
     //General strategy: go for the combination of actions that provides
     //the highest %return of ships over a certain time horizon.
     
-    //Get the list of all planets where sending fleets could make a difference.
-    PlanetList will_not_be_mine = forecaster_->PlanetsThatWillNotBeMine();
-    PlanetList my_planets = game_->MyPlanets();
-    
     //Compile the list of available ships.
-    std::vector<int> remaining_ships_on_planets;
+    PlanetList planets = game_->Planets();
+    std::vector<int> remaining_ships_on_planets(planets.size());
+    int num_ships_available = 0;
+    
+    for (uint i = 0; i < planets.size(); ++i) {
+        const int ships_available_here = (kMe == planets[i]->Owner() ? planets[i]->NumShips() : 0);
+        remaining_ships_on_planets[i] = ships_available_here;
+        num_ships_available += ships_available_here;
+    }
 
-    for (uint i = 0; i < my_planets.size(); ++i) {
-        remaining_ships_on_planets.push_back(my_planets[i]->NumShips());
+    if (0 == num_ships_available) {
+        return fleets_to_send;
     }
 
     //Set up the list of invadeable planets.
-    PlanetList invadeable_planets(will_not_be_mine);
-    
-    //The list of fleets to be ultimately sent.
-    FleetList fleets_to_send;
+    PlanetList invadeable_planets = forecaster_->PlanetsThatWillNotBeMine();
     
     //Calculate the combinations of ships to send.
     while (invadeable_planets.size() != 0) {
@@ -65,16 +76,22 @@ FleetList Bot::MakeMoves() {
             //Figure out the best combination of planets to use for attacking this
             //planet.
             PlanetList source_planets = game_->MyPlanetsByDistance(target_planet);
-            FleetList& fleets_from_sources = fleets_for_targets[target_id];
+            FleetList& fleets_from_sources = fleets_for_targets[p];
             
             int turns_to_conquer = 0;
             int ships_to_send = 0;
             
-            for (PlanetList::iterator it = source_planets.begin(); it != source_planets.end(); ++it) {
+            for (uint s = 0; s < source_planets.size(); ++s) {
                 //Calculate how many ships are necessary to make a difference given how fast
                 //the ships can get from this planet to the target.
-                Planet* source_planet = *it;
+                Planet* source_planet = source_planets[s];
                 const int source_id = source_planet->Id();
+
+                //Never send ships back to the same planet.
+                if (source_id == target_id) {
+                    continue;
+                }
+
                 turns_to_conquer = game_->GetDistance(source_planet, target_planet);
                 const int ships_needed = forecaster_->ShipsRequredToPosess(target_planet, turns_to_conquer);
                 
@@ -114,11 +131,18 @@ FleetList Bot::MakeMoves() {
             }
 
             //Tally up the return on sending the fleets to this planet.
-            const int ships_gained = forecaster_->ShipsGainedForFleets(fleets_from_sources, target_planet);
-            const double return_ratio = static_cast<double>(ships_gained)
-                                        / static_cast<double>(ships_to_send);
+            
+            if (0 == ships_to_send) {
+                returns_for_planets.push_back(0);
 
-            returns_for_planets.push_back(return_ratio);
+            } else {
+                const int ships_gained = 
+                    forecaster_->ShipsGainedForFleets(fleets_from_sources, target_planet);
+                const double return_ratio = static_cast<double>(ships_gained)
+                                            / static_cast<double>(ships_to_send);
+
+                returns_for_planets.push_back(return_ratio);
+            }
         } // End iterating over targets.
 
         //Find the planet with the largest return.
