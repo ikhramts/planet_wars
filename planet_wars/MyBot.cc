@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     int turn = 0;
 
     //Crash!
-    forceCrash();
+    //forceCrash();
 
     while (true) {
         //Read the updated game state.

@@ -83,8 +83,8 @@ void PlanetForecaster::Initialize(int forecast_horizon, Planet *planet, GameMap 
     ships_at_.resize(u_horizon, 0);
     my_arrivals_at_.resize(u_horizon, 0);
     enemy_arrivals_at_.resize(u_horizon, 0);
-    ships_to_take_over_at_.resize(u_horizon, 1);
-    ships_gained_at_.resize(u_horizon, 1);
+    ships_to_take_over_at_.resize(u_horizon, 0);
+    ships_gained_at_.resize(u_horizon, 0);
     
     will_not_be_mine_ = false;
     
@@ -151,6 +151,7 @@ void PlanetForecaster::Update() {
     //Update current planet states.
     owner_at_[start_] = planet_->Owner();
     ships_at_[start_] = planet_->NumShips();
+    ships_to_take_over_at_[start_] = 0;
 
     this->CalculatePlanetStateProjections(1);
 }
@@ -288,7 +289,7 @@ void PlanetForecaster::CalculatePlanetStateProjections(int starting_at) {
     //use some reinforcing ships to fight a battle coming up a few turns later.
     //While we're at it, check whether the planet will not be mine at any point.
     int prev_ships_to_take_over = 0;
-    will_not_be_mine_;
+    will_not_be_mine_ = false;
 
     for (int i = horizon_ - 1; i >= 0; --i) {
         const int cur_index = this->ActualIndex(i);
