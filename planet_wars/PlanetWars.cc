@@ -45,8 +45,8 @@ turns_remaining_(-1) {
 
 Fleet::Fleet(int owner,
              int num_ships,
-             Planet* source_planet = NULL,
-             Planet* destination_planet = NULL,,
+             Planet* source_planet,
+             Planet* destination_planet,
              int total_trip_length,
              int turns_remaining) {
     owner_ = owner;
@@ -57,12 +57,12 @@ Fleet::Fleet(int owner,
     turns_remaining_ = turns_remaining;
 }
 
-std::string Fleet::toMoveOrder() const {
+std::string Fleet::ToMoveOrder() const {
     assert(NULL != source_);
     assert(NULL != destination_);
 
     std::stringstream moveOrder;
-    moveOrder << source_->Id() << " " << destination_->Id() << " " num_ships_;
+    moveOrder << source_->Id() << " " << destination_->Id() << " " << num_ships_;
     return moveOrder.str();
 }
 
@@ -92,15 +92,15 @@ int Planet::Owner() const {
 }
 
 bool Planet::IsEnemys() const {
-    return (2 == owner_);
+    return (kEnemy == owner_);
 }
 
 bool Planet::IsNeutral() const {
-    return (0 == owner_);
+    return (kNeutral == owner_);
 }
 
 bool Planet::IsMine() const {
-    return (1 == owner_);
+    return (kMe == owner_);
 }
 
 int Planet::NumShips() const {
@@ -135,22 +135,6 @@ void Planet::RemoveShips(int amount) {
     num_ships_ -= amount;
 }
 
-void Planet::NumShipsIn(const int turns_from_now) {
-    if (kNeutral == owner_) {
-        return num_ships_;
-
-    } else {
-        const int num_ships = num_ships_ + turns_from_now * growth_rate_;
-        return num_ships;
-    }
-}
-
-void Planet::NumShipsOver(int from_step, int to_step) const {
-    const int num_steps = to_step - from_step;
-    const int produced = num_steps * growth_rate_;
-    return produced;
-}
-
 /************************************************
                GameMap class
 ************************************************/
@@ -161,7 +145,7 @@ int GameMap::NumPlanets() const {
     return planets_.size();
 }
 
-const Planet& GameMap::GetPlanet(int planet_id) const {
+Planet* GameMap::GetPlanet(int planet_id) const {
     return planets_[planet_id];
 }
 
@@ -169,79 +153,63 @@ int GameMap::NumFleets() const {
     return fleets_.size();
 }
 
-const Fleet& GameMap::GetFleet(int fleet_id) const {
+Fleet* GameMap::GetFleet(int fleet_id) const {
     return fleets_[fleet_id];
 }
 
-std::vector<Planet> GameMap::Planets() const {
-    std::vector<Planet> r;
-    for (int i = 0; i < num_planets_; ++i) {
-        const Planet& p = planets_[i];
-        r.push_back(p);
-    }
-    return r;
+PlanetList GameMap::Planets() const {
+    return planets_;
 }
 
-std::vector<Planet*> GameMap::PlanetPointers() {
-    std::vector<Planet*> result;
-    result.reserve(planets_.size());
-
+PlanetList GameMap::MyPlanets() const {
+    PlanetList r;
     for (int i = 0; i < num_planets_; ++i) {
-        result.push_back(&planets_[i]);
-    }
-
-    return result;
-}
-
-std::vector<Planet> GameMap::MyPlanets() const {
-    std::vector<Planet> r;
-    for (int i = 0; i < num_planets_; ++i) {
-        const Planet& p = planets_[i];
-        if (p.Owner() == 1) {
+        Planet* p = planets_[i];
+        if (p->Owner() == kMe) {
             r.push_back(p);
         }
     }
     return r;
 }
 
-std::vector<Planet> GameMap::NeutralPlanets() const {
-    std::vector<Planet> r;
+PlanetList GameMap::NeutralPlanets() const {
+    PlanetList r;
     for (int i = 0; i < num_planets_; ++i) {
-        const Planet& p = planets_[i];
-        if (p.Owner() == 0) {
+        Planet* p = planets_[i];
+        if (p->Owner() == kNeutral) {
             r.push_back(p);
         }
     }
     return r;
 }
 
-std::vector<Planet> GameMap::EnemyPlanets() const {
-    std::vector<Planet> r;
+PlanetList GameMap::EnemyPlanets() const {
+    PlanetList r;
     for (int i = 0; i < num_planets_; ++i) {
-        const Planet& p = planets_[i];
-        if (p.Owner() > 1) {
+        Planet* p = planets_[i];
+        if (p->Owner() == kEnemy) {
             r.push_back(p);
         }
     }
     return r;
 }
 
-std::vector<Planet> GameMap::NotMyPlanets() const {
-    std::vector<Planet> r;
+PlanetList GameMap::NotMyPlanets() const {
+    PlanetList r;
     for (int i = 0; i < num_planets_; ++i) {
-        const Planet& p = planets_[i];
-        if (p.Owner() != 1) {
+        Planet* p = planets_[i];
+        if (p->Owner() != kMe) {
             r.push_back(p);
         }
     }
     return r;
 }
 
-std::vector<Planet*> GameMap::PlanetsByDistance(const Planet& origin) {
-    const int origin_id = origin.Id();
+PlanetList GameMap::PlanetsByDistance(Planet* origin) {
+    const int origin_id = origin->Id();
     const int offset = origin_id * num_planets_;
     
-    std::vector<Planet*> planets_by_distance;
+    PlanetList planets_by_distance;
     planets_by_distance.reserve(planets_.size());
 
     for (int i = 0; i < num_planets_; ++i) {
@@ -252,11 +220,11 @@ std::vector<Planet*> GameMap::PlanetsByDistance(const Planet& origin) {
     return planets_by_distance;
 }
 
-std::vector<Planet*> GameMap::MyPlanetsByDistance(const Planet& origin) {
-    const int origin_id = origin.Id();
+PlanetList GameMap::MyPlanetsByDistance(Planet* origin) {
+    const int origin_id = origin->Id();
     const int offset = origin_id * num_planets_;
     
-    std::vector<Planet*> planets_by_distance;
+    PlanetList planets_by_distance;
     planets_by_distance.reserve(planets_.size());
 
     for (int i = 0; i < num_planets_; ++i) {
@@ -270,11 +238,11 @@ std::vector<Planet*> GameMap::MyPlanetsByDistance(const Planet& origin) {
     return planets_by_distance;
 }
 
-std::vector<Planet*> GameMap::NotMyPlanetsByDistance(const Planet& origin) {
-    const int origin_id = origin.Id();
+PlanetList GameMap::NotMyPlanetsByDistance(Planet* origin) {
+    const int origin_id = origin->Id();
     const int offset = origin_id * num_planets_;
     
-    std::vector<Planet*> planets_by_distance;
+    PlanetList planets_by_distance;
     planets_by_distance.reserve(planets_.size());
 
     for (int i = 0; i < num_planets_; ++i) {
@@ -288,37 +256,30 @@ std::vector<Planet*> GameMap::NotMyPlanetsByDistance(const Planet& origin) {
     return planets_by_distance;
 }
 
-std::vector<Fleet> GameMap::Fleets() const {
-    std::vector<Fleet> r;
-    const int num_fleets = static_cast<int>(fleets_.size());
-    
-    for (int i = 0; i < num_fleets; ++i) {
-        const Fleet& f = fleets_[i];
-        r.push_back(f);
-    }
-    return r;
+FleetList GameMap::Fleets() const {
+    return fleets_;
 }
 
-std::vector<Fleet> GameMap::MyFleets() const {
-    std::vector<Fleet> r;
+FleetList GameMap::MyFleets() const {
+    FleetList r;
     const int num_fleets = static_cast<int>(fleets_.size());
     
     for (int i = 0; i < num_fleets; ++i) {
-        const Fleet& f = fleets_[i];
-        if (f.Owner() == 1) {
+        Fleet* f = fleets_[i];
+        if (f->Owner() == kMe) {
             r.push_back(f);
         }
     }
     return r;
 }
 
-std::vector<Fleet> GameMap::EnemyFleets() const {
-    std::vector<Fleet> r;
+FleetList GameMap::EnemyFleets() const {
+    FleetList r;
     const int num_fleets = static_cast<int>(fleets_.size());
     
     for (int i = 0; i < num_fleets; ++i) {
-        const Fleet& f = fleets_[i];
-        if (f.Owner() > 1) {
+        Fleet* f = fleets_[i];
+        if (f->Owner() == kEnemy) {
             r.push_back(f);
         }
     }
@@ -329,16 +290,16 @@ std::string GameMap::ToString() const {
     std::stringstream s;
 
     for (unsigned int i = 0; i < planets_.size(); ++i) {
-        const Planet& p = planets_[i];
-        s << "P " << p.X() << " " << p.Y() << " " << p.Owner()
-          << " " << p.NumShips() << " " << p.GrowthRate() << std::endl;
+        Planet* p = planets_[i];
+        s << "P " << p->X() << " " << p->Y() << " " << p->Owner()
+          << " " << p->NumShips() << " " << p->GrowthRate() << std::endl;
     }
 
     for (unsigned int i = 0; i < fleets_.size(); ++i) {
-        const Fleet& f = fleets_[i];
-        s << "F " << f.Owner() << " " << f.NumShips() << " "
-          << f.SourcePlanet() << " " << f.DestinationPlanet() << " "
-          << f.TotalTripLength() << " " << f.TurnsRemaining() << std::endl;
+        Fleet* f = fleets_[i];
+        s << "F " << f->Owner() << " " << f->NumShips() << " "
+          << f->Source()->Id() << " " << f->Destination()->Id() << " "
+          << f->TripLength() << " " << f->TurnsRemaining() << std::endl;
     }
 
     return s.str();
@@ -350,9 +311,9 @@ int GameMap::GetDistance(int source_planet_id, int destination_planet_id) const 
     return distance;
 }
 
-int GameMap::GetDistance(const Planet& first_planet, const Planet& second_planet) const {
-    const int first_planet_id = first_planet.Id();
-    const int second_planet_id = second_planet.Id();
+int GameMap::GetDistance(Planet* first_planet, Planet* second_planet) const {
+    const int first_planet_id = first_planet->Id();
+    const int second_planet_id = second_planet->Id();
     const int distance = this->GetDistance(first_planet_id, second_planet_id);
     return distance;
 }
@@ -368,12 +329,12 @@ void GameMap::IssueOrder(int source_planet,
 
 bool GameMap::IsAlive(int player_id) const {
     for (unsigned int i = 0; i < planets_.size(); ++i) {
-        if (planets_[i].Owner() == player_id) {
+        if (planets_[i]->Owner() == player_id) {
             return true;
         }
     }
     for (unsigned int i = 0; i < fleets_.size(); ++i) {
-        if (fleets_[i].Owner() == player_id) {
+        if (fleets_[i]->Owner() == player_id) {
             return true;
         }
     }
@@ -382,14 +343,15 @@ bool GameMap::IsAlive(int player_id) const {
 
 int GameMap::NumShips(int player_id) const {
     int num_ships = 0;
+
     for (unsigned int i = 0; i < planets_.size(); ++i) {
-        if (planets_[i].Owner() == player_id) {
-            num_ships += planets_[i].NumShips();
+        if (planets_[i]->Owner() == player_id) {
+            num_ships += planets_[i]->NumShips();
         }
     }
     for (unsigned int i = 0; i < fleets_.size(); ++i) {
-        if (fleets_[i].Owner() == player_id) {
-            num_ships += fleets_[i].NumShips();
+        if (fleets_[i]->Owner() == player_id) {
+            num_ships += fleets_[i]->NumShips();
         }
     }
     return num_ships;
@@ -467,25 +429,15 @@ int GameMap::Initialize(const std::string& s) {
             return 0;
         }
     }
-    
-    //Resolve planet references within the fleets.
-    for (unsigned int i = 0; i < fleets_.size(); ++i) {
-        Fleet* fleet = fleets_[i];
-        
-        fleet->SetSource(planets_[fleet_source_ids[i]]->Id());
-        fleet->SetDestination(planets_[fleet_destination_ids[i]]->Id());
-    }
 
     //Pre-calculate the distances between the planets.
     num_planets_ = static_cast<int>(planets_.size());
-
-    //Initialize the distances between the planets.
     planet_distances_.reserve(num_planets_ * num_planets_);
 
     for (int origin = 0; origin < num_planets_; ++origin) {
         for (int destination = 0; destination < num_planets_; ++destination) {
-            const double dx = planets_[origin].X() - planets_[destination].X();
-            const double dy = planets_[origin].Y() - planets_[destination].Y();
+            const double dx = planets_[origin]->X() - planets_[destination]->X();
+            const double dy = planets_[origin]->Y() - planets_[destination]->Y();
 
             const int distance = static_cast<int>(ceil(sqrt(dx * dx + dy * dy)));
 
@@ -493,6 +445,20 @@ int GameMap::Initialize(const std::string& s) {
         }
     }
     
+    //Resolve planet references within the fleets and assign fleets
+    //to their destinations.
+    fleets_by_destination_.resize(planets_.size());
+
+    for (unsigned int i = 0; i < fleets_.size(); ++i) {
+        Fleet* fleet = fleets_[i];
+        const int destination_id = fleet_destination_ids[i];
+
+        fleet->SetSource(planets_[fleet_source_ids[i]]);
+        fleet->SetDestination(planets_[destination_id]);
+        
+        fleets_by_destination_[destination_id].push_back(fleet);
+    }
+
     //Pre-sort planets by distance from each other.
     //Use a functor defined immediately before this function.
     DistanceComparer distance_comparer;
@@ -506,7 +472,7 @@ int GameMap::Initialize(const std::string& s) {
         //Sort the planets by distance from the origin planet and
         //append the result to the general vector of planets sorted
         //by distance.
-        std::vector<Planet*> planets_to_sort(this->PlanetPointers());
+        std::vector<Planet*> planets_to_sort(planets_);
         distance_comparer.origin_id = planet_id;
         std::sort(planets_to_sort.begin(), planets_to_sort.end(), distance_comparer);
         planets_by_distance_.insert(planets_by_distance_.end(),
@@ -572,13 +538,22 @@ int GameMap::Update(const std::string& s) {
             return 0;
         }
     }
+    
+    //Clear the fleets sorted by destination.
+    for (uint i = 0; i < fleets_by_destination_.size(); ++i) {
+        fleets_by_destination_[i].clear();
+    }
 
-    //Resolve planet references within the fleets.
+    //Resolve planet references within the fleets, and sort the fleets
+    //by their destination.
     for (unsigned int i = 0; i < fleets_.size(); ++i) {
         Fleet* fleet = fleets_[i];
+        const int destination_id = fleet_destination_ids[i];
+
+        fleet->SetSource(planets_[fleet_source_ids[i]]);
+        fleet->SetDestination(planets_[destination_id]);
         
-        fleet->SetSource(planets_[fleet_source_ids[i]]->Id());
-        fleet->SetDestination(planets_[fleet_destination_ids[i]]->Id());
+        fleets_by_destination_[destination_id].push_back(fleet);
     }
 
     return 1;
@@ -589,7 +564,62 @@ void GameMap::FinishTurn() const {
     std::cout.flush();
 }
 
-void GameMap::FleetsArrivingAt(Planet *destination) const {
-    //TODO: implement.
-    //Remember: sort them by arrival time.
+FleetList GameMap::FleetsArrivingAt(Planet *destination) const {
+    return fleets_by_destination_[destination->Id()];
+}
+/************************************************
+               General calculations
+************************************************/
+int PlanetShipsGainRate(int owner, int growth_rate) {
+    const int gain_multiplier = (owner + 1) % 3 - 1;
+    const int gain_rate = growth_rate * gain_multiplier;
+    return gain_rate;
+}
+
+/************************************************
+               Battle resolution.
+************************************************/
+BattleOutcome ResolveBattle(int starting_owner, int neutral_ships, int my_ships, int enemy_ships) {
+    BattleOutcome outcome;
+    
+    if (neutral_ships != 0) {
+        //Planet was neutral to begin with.
+        const int max_me_or_enemy = std::max(my_ships, enemy_ships);
+
+        if (neutral_ships > max_me_or_enemy) {
+            outcome.ships_remaining = neutral_ships - max_me_or_enemy;
+            outcome.owner = kNeutral;
+
+        } else {
+            if (my_ships > enemy_ships) {
+                outcome.ships_remaining = my_ships - std::max(neutral_ships, enemy_ships);
+                outcome.owner = kMe;
+
+            } else if (my_ships < enemy_ships) {
+                outcome.ships_remaining = enemy_ships - std::max(my_ships, enemy_ships);
+                outcome.owner = kEnemy;
+            
+            } else {
+                outcome.ships_remaining = 0;
+                outcome.owner = kNeutral;
+            }
+        }
+
+    } else {
+        //Planet was owned by someone.
+        if (my_ships > enemy_ships) {
+            outcome.ships_remaining = my_ships - enemy_ships;
+            outcome.owner = kMe;
+
+        } else if (my_ships < enemy_ships) {
+            outcome.ships_remaining = enemy_ships - my_ships;
+            outcome.owner = kEnemy;
+
+        } else {
+            outcome.ships_remaining = 0;
+            outcome.owner = starting_owner;
+        }
+    } //if (neutral_ships != 0)
+
+    return outcome;
 }

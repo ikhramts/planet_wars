@@ -3,7 +3,7 @@
 #include "Bot.h"
 #include "PlanetWars.h"
 
-Bot* gBot = NULL;
+Bot* g_bot = NULL;
 
 // The DoTurn function is where your code goes. The PlanetWars object contains
 // the state of the game, including information about all planets and fleets
@@ -15,13 +15,13 @@ Bot* gBot = NULL;
 // starting point, or you can throw it out entirely and replace it with your
 // own. Check out the tutorials and articles on the contest website at
 // http://www.ai-contest.com/resources.
-void DoTurn(const GameMap& game_map) {
-    if (game_map.Turn() == 1) {
-        gBot = new Bot();
-        gBot->SetGame(&game_map);
+void DoTurn(GameMap* game_map) {
+    if (game_map->Turn() == 1) {
+        g_bot = new Bot();
+        g_bot->SetGame(game_map);
     }
 
-    FleetList fleets_to_send = gBot->MakeMoves();
+    FleetList fleets_to_send = g_bot->MakeMoves();
     
     for (unsigned int i = 0; i < fleets_to_send.size(); ++i) {
         std::cout << fleets_to_send[i]->ToMoveOrder() << std::endl;
@@ -29,6 +29,11 @@ void DoTurn(const GameMap& game_map) {
 
     std::cout << "go" << std::endl;
     std::cout.flush();
+
+    //Clean up the fleets.
+    for (uint i = 0; i < fleets_to_send.size(); ++i) {
+        delete fleets_to_send[i];
+    }
 }
 
 // This is just the main game loop that takes care of communicating with the
@@ -62,7 +67,7 @@ int main(int argc, char *argv[]) {
                 map_data = "";
                 
                 //Make the moves.
-                DoTurn(game_map);
+                DoTurn(&game_map);
             
             } else {
                 map_data += current_line;

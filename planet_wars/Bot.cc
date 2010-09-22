@@ -18,7 +18,7 @@ Bot::~Bot() {
     delete forecaster_;
 }
 
-Bot::SetGame(GameMap* game) {
+void Bot::SetGame(GameMap* game) {
     game_ = game;
 
     forecaster_ = new GameForecaster();
@@ -30,55 +30,152 @@ FleetList Bot::MakeMoves() {
 
     //General strategy: go for the combination of actions that provides
     //the highest %return of ships over a certain time horizon.
-    const int time_horizon = 50;
-
-    //Get the list of all planets
-    PlanetList not_my_planets = game_map.NotMyPlanets();
-    PlanetList my_planets = game_map.MyPlanets();
-    const int num_not_my_planets = static_cast<int>(not_my_planets.size());
-    const int num_my_planets = static_cast<int>(my_planets.size());
+    
+    //Get the list of all planets where sending fleets could make a difference.
+    PlanetList will_not_be_mine = forecaster_->PlanetsThatWillNotBeMine();
+    PlanetList my_planets = game_->MyPlanets();
     
     //Compile the list of available ships.
     std::vector<int> remaining_ships_on_planets;
 
-    for (int i = 0; i < num_my_planets; ++i) {
-        remaining_ships_on_planets.push_back(my_planets[i].NumShips());
+    for (uint i = 0; i < my_planets.size(); ++i) {
+        remaining_ships_on_planets.push_back(my_planets[i]->NumShips());
     }
 
     //Set up the list of invadeable planets.
-    PlanetList invadeable_planets(not_my_planets);
+    PlanetList invadeable_planets(will_not_be_mine);
     
     //The list of fleets to be ultimately sent.
     FleetList fleets_to_send;
     
-    //Find out the base number of ships produced for each invadable planet.
-
     //Calculate the combinations of ships to send.
-    while (true) {
+    while (invadeable_planets.size() != 0) {
+        const uint num_invadeable_planets = invadeable_planets.size();
+
         //Find the planet with the highest % return on investment
         //over the time horizon.
         std::vector<double> returns_for_planets;
-        returns_for_planets.reserve(num_not_my_planets.size());
-        std::vector<FleetList> invading_fleet_combinations;
+        returns_for_planets.reserve(num_invadeable_planets);
+        std::vector<FleetList> fleets_for_targets(num_invadeable_planets);
 
-        for (int p = 0; p < num_not_my_planets; ++p) {
-            Planet target_planet = not_my_planets[p];
-            const int planet_base_strength = target_planet.NumShips();
-            const int planet_growth_rate = target_planet.GrowthRate();
-            const bool is_enemy_owned = target_planet.IsEnemys();
-            
+        for (uint p = 0; p < invadeable_planets.size(); ++p) {
+            Planet* target_planet = invadeable_planets[p];
+            const int target_id = target_planet->Id();
+
             //Figure out the best combination of planets to use for attacking this
             //planet.
-            PlanetList source_planets = game_map.NotMyPlanetsByDistance(target_planet);
+            PlanetList source_planets = game_->MyPlanetsByDistance(target_planet);
+            FleetList& fleets_from_sources = fleets_for_targets[target_id];
             
             int turns_to_conquer = 0;
             int ships_to_send = 0;
             
             for (PlanetList::iterator it = source_planets.begin(); it != source_planets.end(); ++it) {
+                //Calculate how many ships are necessary to make a difference given how fast
+                //the ships can get from this planet to the target.
                 Planet* source_planet = *it;
+                const int source_id = source_planet->Id();
+                turns_to_conquer = game_->GetDistance(source_planet, target_planet);
+                const int ships_needed = forecaster_->ShipsRequredToPosess(target_planet, turns_to_conquer);
+                
+                //Check whether this planet would already get enough ships.
+                //This is necessary because as turns_to_conquer increases, ships_needed may decrease.
+                //TODO: adjust previously calculated ships to send for possible decrease
+                //in ships needed.
+                if (ships_needed <= ships_to_send) {
+                    break;
+                }
+                
+                //Add ships from this planet.
+                const int available_ships = remaining_ships_on_planets[source_id];
+                if(0 == available_ships) {
+                    continue;
+                }
+                
+                const int remaining_ships_needed = ships_needed - ships_to_send;
+                const int ships_to_send_from_here = std::min(available_ships, remaining_ships_needed);
+                
+                Fleet* fleet = new Fleet();
+                fleet->SetOwner(kMe);
+                fleet->SetSource(source_planet);
+                fleet->SetDestination(target_planet);
+                fleet->SetTripLength(turns_to_conquer);
+                fleet->SetNumShips(ships_to_send_from_here);
 
-                turns_to_conquer = game_map.GetDistance(source_planet, target_planet);
-                ships_to_send = target_planet.NumShipsIn(turns_to_conquer);
+                fleets_from_sources.push_back(fleet);
 
+                ships_to_send += ships_to_send_from_here;
 
+                
+                //Check whether we have now enough ships to make a difference.
+                if (remaining_ships_needed <= available_ships) {
+                    break;
+                }
+            }
+
+            //Tally up the return on sending the fleets to this planet.
+            const int ships_gained = forecaster_->ShipsGainedForFleets(fleets_from_sources, target_planet);
+            const double return_ratio = static_cast<double>(ships_gained)
+                                        / static_cast<double>(ships_to_send);
+
+            returns_for_planets.push_back(return_ratio);
+        } // End iterating over targets.
+
+        //Find the planet with the largest return.
+        int best_target = 0;
+        double best_return = 0;
+
+        for (uint p = 0; p < returns_for_planets.size(); ++p) {
+            if (returns_for_planets[p] > best_return) {
+                best_target = p;
+                best_return = returns_for_planets[p];
+            }
+        }
+
+        if (0 == best_return) {
+            //Clean up all fleets.
+            for (uint target_id = 0; target_id < fleets_for_targets.size(); ++target_id) {
+                for (uint f = 0; f < fleets_for_targets[target_id].size(); ++f) {
+                    delete fleets_for_targets[target_id][f];
+                }
+            }
+
+            //There's no further thinking to do.
+            //Quit the main outer loop.
+            break;
+
+        } else {
+            //Add the target to the list of planets to invade.
+            //Clean up the other fleets while we're at it.
+            for (uint target_id = 0; target_id < fleets_for_targets.size(); ++target_id) {
+                if (target_id != best_target) {
+                    for (uint f = 0; f < fleets_for_targets[target_id].size(); ++f) {
+                        delete fleets_for_targets[target_id][f];
+                    }
+                
+                } else {
+                    for (uint f = 0; f < fleets_for_targets[target_id].size(); ++f) {
+                        Fleet* fleet = fleets_for_targets[target_id][f];
+                        fleets_to_send.push_back(fleet);
+                        remaining_ships_on_planets[fleet->Source()->Id()] -= fleet->NumShips();
+                    }
+                }
+            }
+
+            //Update the number of invadeable planets.
+            const uint new_num_planets = invadeable_planets.size() - 1;
+            const uint u_best_target = static_cast<uint>(best_target);
+
+            for (uint p = 0; p < new_num_planets; ++p) {
+                if (p >= u_best_target) {
+                    invadeable_planets[p] = invadeable_planets[p+1];
+                }
+            }
+
+            invadeable_planets.resize(new_num_planets);
+        } //if (0 == best_return)
+        
+    } //End iteration over best invadeable planets.
+    
+    return fleets_to_send;
 }

@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include "Utils.h"
 
 //Pre-define classes.
 class StringUtil;
@@ -55,9 +56,9 @@ public:
     
     void SetOwner(int owner)                    {owner_ = owner;}
     void SetNumShips(int num_ships)             {num_ships_ = num_ships;}
-    void SetSource(Planet* planet)              {source_ = source;}
-    void SetDestination(Planet* planet)         {destination_ = destination;}
-    void SetTripLength(int trip_length)         {trip_length_ = trip_length;}
+    void SetSource(Planet* planet)              {source_ = planet;}
+    void SetDestination(Planet* planet)         {destination_ = planet;}
+    void SetTripLength(int trip_length)         {trip_length_ = trip_length; turns_remaining_ = trip_length;}
     void SetTurnsRemaining(int turns_remaining) {turns_remaining_ = turns_remaining;}
 
     int Owner() const                           {return owner_;}
@@ -65,7 +66,7 @@ public:
     Planet* Source() const                      {return source_;}
     Planet* Destination() const                 {return destination_;}
     int TripLength() const                      {return trip_length_;}
-    int TurnsRemaining() const                  {return turns_remaining;}
+    int TurnsRemaining() const                  {return turns_remaining_;}
 
     //Convert this fleet to a move order that can be accepted by the game engine.
     std::string ToMoveOrder() const;
@@ -124,13 +125,6 @@ public:
     void AddShips(int amount);
     void RemoveShips(int amount);
 
-    //Calculate the number of ships a certain number of turns from now.
-    int NumShipsIn(int turns_from_now) const;
-
-    //Calculate the number of ships produced by the planet from 
-    //begining of from_turn to begining of to_turn.
-    int NumShipsOver(int from_step, int to_step) const;
-
 private:
     int planet_id_;
     int owner_;
@@ -154,7 +148,7 @@ public:
 
     // Returns the planet with the given planet_id. There are NumPlanets()
     // planets. They are numbered starting at 0.
-    Planet* GetPlanet(int planet_id);
+    Planet* GetPlanet(int planet_id) const;
 
     // Returns the number of fleets.
     int NumFleets() const;
@@ -173,9 +167,9 @@ public:
     PlanetList NotMyPlanets() const;
     
     //Get planets sorted by distance from a certain planet.
-    PlanetList PlanetsByDistance(const Planet& origin);
-    PlanetList MyPlanetsByDistance(const Planet& origin);
-    PlanetList NotMyPlanetsByDistance(const Planet& origin);
+    PlanetList PlanetsByDistance(Planet* origin);
+    PlanetList MyPlanetsByDistance(Planet* origin);
+    PlanetList NotMyPlanetsByDistance(Planet* origin);
 
     // Get various lists of fleets.
     FleetList Fleets() const;
@@ -215,7 +209,7 @@ public:
 
     //Find the list of fleets heading towards the planet.
     //Sort them by time to arrival to the destination.
-    void FleetsArrivingAt(Planet* destination) const;
+    FleetList FleetsArrivingAt(Planet* destination) const;
 
     //Get current turn.
     int Turn() const            {return turn_;}
@@ -238,8 +232,26 @@ private:
     //element (source_id * num_planets) and ends at ((source_id+1) * num_planets - 1).
     PlanetList planets_by_distance_;
 
+    //Fleets sorted by their destination.
+    std::vector<FleetList> fleets_by_destination_;
+
     //Current turn.
     int turn_;
 };
+
+/************************************************
+               General calculations
+************************************************/
+
+//Calculating the ships gained per turn.
+int PlanetShipsGainRate(int owner, int growth_rate);
+
+//Fight resolution.
+struct BattleOutcome {
+    int owner;
+    int ships_remaining;
+};
+
+BattleOutcome ResolveBattle(int starting_owner, int neutral_ships, int my_ships, int enemy_ships);
 
 #endif

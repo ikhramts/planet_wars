@@ -6,6 +6,7 @@
 
 #include <vector>
 #include "PlanetWars.h"
+#include "Utils.h"
 
 class PlanetForecaster;
 
@@ -17,26 +18,27 @@ public:
     static const int kTimeHorizon = 50;
 
     GameForecaster();
+    ~GameForecaster();
 
     void SetGameMap(GameMap* game);
 
     //Recalculate the forecasts given the state of the game map.
     void Update();
 
-    //Get the list of planets that will be not mine for at least
-    //one turn over the specified time horizon.
-    void PlanetsNotMineOverHorizon()        {return planets_not_mine_at_least_once_;}
-    
-    //Get the number of ships I will gain from the planet over the time horizon.
-    //Negative numbers indicate enemy gaining ships.
-    int ShipsGainedFrom(Planet* planet) const;
+    //Calculate how many additional ships will be gained by sending a set
+    //of fleets to a planet.
+    int ShipsGainedForFleets(const FleetList& fleets, Planet* planet) const;
+
+    //Get the list of planets that will not be mine at any point in time
+    //over the projected horizon.
+    PlanetList PlanetsThatWillNotBeMine() const;
+
+    //Find the number of ships needed to make sure that the specified planet
+    //becomes/stays mine given that the ships will arrive in specified number
+    //of turns.
+    int ShipsRequredToPosess(Planet* planet, int arrival_time) const;
 
 private:
-    //Update the forecast data for a single planet.
-    void UpdatePlanetForecast(Planet* planet);
-
-    PlanetList planets_not_mine_at_least_once_;
-    std::vector<int> ships_gained_from_planets_;
     GameMap* game_;
     PlanetForecasterList planet_forecasters_;
 };
@@ -50,9 +52,26 @@ public:
     
     void Update();
 
+    //Calculate how many additional ships would be gained if specified
+    //fleets would be sent to the planet.
+    int ShipsGainedForFleets(const FleetList& fleets) const;
+
+    bool WillNotBeMine() const              {return will_not_be_mine_;}
+    
+    Planet* GetPlanet() const               {return planet_;}
+
+    //Find the number of ships needed to make sure that this planet
+    //becomes/stays mine given that the ships will arrive in specified number
+    //of turns.
+    int ShipsRequredToPosess(int arrival_time) const    {return ships_to_take_over_at_[arrival_time];}
+
 private:
     //Update the planet state projections.
     void CalculatePlanetStateProjections(int starting_at);
+
+    //Calculate actual index of an element in the *_at_ vectors
+    //given a plain index.
+    int actualIndex(int i) const        {return (i + start_ + horizon_) % horizon_; }
 
     int horizon_;
     int start_;
@@ -62,9 +81,20 @@ private:
     std::vector<int> my_arrivals_at_;
     std::vector<int> enemy_arrivals_at_;
     std::vector<int> ships_to_take_over_at_;
+    std::vector<int> ships_gained_at_;
+
+    int ships_gained_;
+
+    //Indicates whether the planet will not be mine at any point
+    //in the evaluated time frame.
+    bool will_not_be_mine_;
 
     GameMap* game_;
     Planet* planet_;
+
+    //Temporary storage.
+    mutable std::vector<int> my_additional_arrivals_at_;
+    mutable std::vector<int> enemy_additional_arrivals_at_;
 
 };
 
