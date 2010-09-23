@@ -1,7 +1,7 @@
 //Available under GPLv3.
 //Author: Iouri Khramtsov.
 
-#include "utils.h"
+#include "Utils.h"
 
 //General-purpose utilities.
 void forceCrash() {
