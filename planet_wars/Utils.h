@@ -6,6 +6,18 @@
 #ifndef PLANET_WARS_UTILS_H_
 #define PLANET_WARS_UTILS_H_
 
+//Switch between test environment and contest environment.
+#define IS_SUBMISSION
+
+#ifndef IS_SUBMISSION
+#include <assert.h>
+
+#else
+#define assert(_Expression)     ((void)0)
+
+#endif //#ifndef IS_SUBMISSION
+
+//Useful definitions.
 #ifndef uint
 typedef unsigned int uint;
 #endif

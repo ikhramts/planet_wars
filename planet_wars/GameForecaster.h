@@ -15,7 +15,7 @@ typedef std::vector<PlanetForecaster*> PlanetForecasterList;
 //This class is responsible for forecasting the state of the game.
 class GameForecaster {
 public:
-    static const int kTimeHorizon = 50;
+    static const int kTimeHorizon = 36;
 
     GameForecaster();
     ~GameForecaster();

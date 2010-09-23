@@ -2,6 +2,7 @@
 #include <list>
 #include "Bot.h"
 #include "PlanetWars.h"
+#include "Utils.h"
 
 Bot* g_bot = NULL;
 

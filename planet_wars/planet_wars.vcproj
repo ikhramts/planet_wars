@@ -166,7 +166,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\GameForecaster.cpp"
+				RelativePath=".\GameForecaster.cc"
 				>
 			</File>
 			<File
@@ -178,7 +178,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Utils.cpp"
+				RelativePath=".\Utils.cc"
 				>
 			</File>
 		</Filter>

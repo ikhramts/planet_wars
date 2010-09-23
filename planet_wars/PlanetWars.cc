@@ -1,5 +1,4 @@
 #include "PlanetWars.h"
-#include <assert.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -7,6 +6,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "Utils.h"
 
 /************************************************
                  StringUtil class
