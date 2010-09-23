@@ -63,6 +63,12 @@ int GameForecaster::ShipsRequredToPosess(Planet* planet, int arrival_time) const
     return ships_needed;
 }
 
+int GameForecaster::ShipsRequiredToKeep(Planet* planet, int arrival_time) const {
+    PlanetForecaster* forecaster = planet_forecasters_[planet->Id()];
+    const int ships_needed = forecaster->ShipsRequiredToKeep(arrival_time);
+    return ships_needed;
+}
+
 /************************************************
                PlanetForecaster class
 ************************************************/
@@ -86,6 +92,7 @@ void PlanetForecaster::Initialize(int forecast_horizon, Planet *planet, GameMap 
     enemy_arrivals_at_.resize(u_horizon, 0);
     ships_to_take_over_at_.resize(u_horizon, 0);
     ships_gained_at_.resize(u_horizon, 0);
+    min_ships_to_keep_.resize(u_horizon, 0);
     
     will_not_be_mine_ = false;
     
@@ -227,6 +234,12 @@ int PlanetForecaster::ShipsRequredToPosess(int arrival_time) const {
     return ships_required;
 }
 
+int PlanetForecaster::ShipsRequiredToKeep(int arrival_time) const {
+    const int actual_index = this->ActualIndex(arrival_time);
+    const int ships_required = min_ships_to_keep_[actual_index];
+    return ships_required;
+}
+
 void PlanetForecaster::CalculatePlanetStateProjections(int starting_at) {
     const int growth_rate = planet_->GrowthRate();
     
@@ -315,5 +328,18 @@ void PlanetForecaster::CalculatePlanetStateProjections(int starting_at) {
 
     for (unsigned int i = 0; i < ships_gained_at_.size(); ++i) {
         ships_gained_ += ships_gained_at_[i];
+    }
+
+    //Calculate the minimum number of ships required to keep posession of the
+    //planet.  To do that, run backwards in time through all upcoming fleets.
+    int prev_ships_to_keep = 0;
+    for (int i = horizon_ - 1; i >= 0; --i) {
+        int cur_index = this->ActualIndex(i);
+        const int ships_for_next_turn = prev_ships_to_keep - growth_rate;
+        const int turn_arrival_balance = enemy_arrivals_at_[cur_index] - my_arrivals_at_[cur_index];
+        const int ships_to_keep = std::max(ships_for_next_turn + turn_arrival_balance, 0);
+
+        min_ships_to_keep_[cur_index] = ships_to_keep;
+        prev_ships_to_keep = ships_to_keep;
     }
 }

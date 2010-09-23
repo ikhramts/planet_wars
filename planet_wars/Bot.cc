@@ -43,13 +43,17 @@ FleetList Bot::MakeMoves() {
     
     //Compile the list of available ships.
     PlanetList planets = game_->Planets();
-    std::vector<int> remaining_ships_on_planets(planets.size());
+    std::vector<int> available_ships_on_planets(planets.size());
     int num_ships_available = 0;
     
     for (uint i = 0; i < planets.size(); ++i) {
-        const int ships_available_here = (kMe == planets[i]->Owner() ? planets[i]->NumShips() : 0);
-        remaining_ships_on_planets[i] = ships_available_here;
-        num_ships_available += ships_available_here;
+        Planet* planet = planets[i];
+        const int owner = planet->Owner();
+        const int ships_on_planet = (kMe == owner ? planet->NumShips() : 0);
+        const int ships_staying = (kMe == owner ? forecaster_->ShipsRequiredToKeep(planet, 0) : 0);
+        const int available_ships = std::max(ships_on_planet - ships_staying, 0);
+        available_ships_on_planets[i] = available_ships;
+        num_ships_available += available_ships;
     }
 
     if (0 == num_ships_available) {
@@ -104,7 +108,7 @@ FleetList Bot::MakeMoves() {
                 }
                 
                 //Add ships from this planet.
-                const int available_ships = remaining_ships_on_planets[source_id];
+                const int available_ships = available_ships_on_planets[source_id];
                 if(0 == available_ships) {
                     continue;
                 }
@@ -181,7 +185,7 @@ FleetList Bot::MakeMoves() {
                     for (uint f = 0; f < fleets_for_targets[target_id].size(); ++f) {
                         Fleet* fleet = fleets_for_targets[target_id][f];
                         fleets_to_send.push_back(fleet);
-                        remaining_ships_on_planets[fleet->Source()->Id()] -= fleet->NumShips();
+                        available_ships_on_planets[fleet->Source()->Id()] -= fleet->NumShips();
                     }
                 }
             }

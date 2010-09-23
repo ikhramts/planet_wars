@@ -36,6 +36,10 @@ public:
     //of turns.
     int ShipsRequredToPosess(Planet* planet, int arrival_time) const;
 
+    //Return the minimum number of ships required to stay on the planet to win any
+    //upcoming battles.
+    int ShipsRequiredToKeep(Planet* planet, int arrival_time) const;
+
 private:
     int horizon_;
     GameMap* game_;
@@ -64,6 +68,10 @@ public:
     //of turns.
     int ShipsRequredToPosess(int arrival_time) const;
 
+    //Return the minimum number of ships required to stay on the planet to win any
+    //upcoming battles.
+    int ShipsRequiredToKeep(int arrival_time) const;
+
 private:
     //Update the planet state projections.
     void CalculatePlanetStateProjections(int starting_at);
@@ -81,6 +89,7 @@ private:
     std::vector<int> enemy_arrivals_at_;
     std::vector<int> ships_to_take_over_at_;
     std::vector<int> ships_gained_at_;
+    std::vector<int> min_ships_to_keep_;        //Minimum ships required to keep the planet.
 
     int ships_gained_;
 
