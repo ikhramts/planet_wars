@@ -5,18 +5,19 @@
 #define PLANET_WARRS_GAME_FORECASTER_H_
 
 #include <vector>
+#include "Actions.h"
 #include "PlanetWars.h"
 #include "Utils.h"
 
-class PlanetForecaster;
+class PlanetTimeline;
 
-typedef std::vector<PlanetForecaster*> PlanetForecasterList;
+typedef std::vector<PlanetTimeline*> PlanetTimelineList;
 
 //This class is responsible for forecasting the state of the game.
-class GameForecaster {
+class GameTimeline {
 public:
-    GameForecaster();
-    ~GameForecaster();
+    GameTimeline();
+    ~GameTimeline();
 
     void SetGameMap(GameMap* game);
 
@@ -25,11 +26,13 @@ public:
 
     //Calculate how many additional ships will be gained by sending a set
     //of fleets to a planet.
-    int ShipsGainedForFleets(const FleetList& fleets, Planet* planet) const;
+    //int ShipsGainedForFleets(const FleetList& fleets, Planet* planet) const;
+    int ShipsGainedForActions(const ActionList& actions, Planet* planet) const;
 
     //Get the list of planets that will not be mine at any point in time
     //over the projected horizon.
     PlanetList PlanetsThatWillNotBeMine() const;
+    PlanetTimelineList ForecastersThatWillNotBeMine() const;
 
     //Find the number of ships needed to make sure that the specified planet
     //becomes/stays mine given that the ships will arrive in specified number
@@ -40,16 +43,22 @@ public:
     //upcoming battles.
     int ShipsRequiredToKeep(Planet* planet, int arrival_time) const;
 
+    PlanetTimelineList Forecasters() const            {return planet_timelines_;}
+    PlanetTimelineList ForecastersOwnedBy(int owner, int when = 0) const;
+    PlanetTimelineList ForecastersNotOwnedBy(int owner, int when = 0) const;
+
+    PlanetTimelineList OwnedForecastersByDistance(int owner, PlanetTimeline* source, int when = 0);
+
 private:
     int horizon_;
     GameMap* game_;
-    PlanetForecasterList planet_forecasters_;
+    PlanetTimelineList planet_timelines_;
 };
 
 //A class for forecasting the state of each planet.
-class PlanetForecaster {
+class PlanetTimeline {
 public:
-    PlanetForecaster();
+    PlanetTimeline();
     
     void Initialize(int forecast_horizon, Planet* planet, GameMap* game);
     
@@ -57,11 +66,13 @@ public:
 
     //Calculate how many additional ships would be gained if specified
     //fleets would be sent to the planet.
-    int ShipsGainedForFleets(const FleetList& fleets) const;
+    //int ShipsGainedForFleets(const FleetList& fleets) const;
+    int ShipsGainedForActions(const ActionList& actions) const;
 
     bool WillNotBeMine() const              {return will_not_be_mine_;}
     
     Planet* GetPlanet() const               {return planet_;}
+    int Id() const                          {return id_;}
 
     //Find the number of ships needed to make sure that this planet
     //becomes/stays mine given that the ships will arrive in specified number
@@ -72,6 +83,13 @@ public:
     //upcoming battles.
     int ShipsRequiredToKeep(int arrival_time) const;
 
+    //Check whether the planet is forecast to be owned by a player at a specified date.
+    bool IsOwnedBy(int owner, int when = 0) const;
+
+    //Apply action to the timeline.
+    void AddDeparture(Action* action);
+    void AddArrivals(const ActionList& actions);
+
 private:
     //Update the planet state projections.
     void CalculatePlanetStateProjections(int starting_at);
@@ -80,18 +98,21 @@ private:
     //given a plain index.
     int ActualIndex(int i) const        {return (i + start_ + horizon_) % horizon_; }
 
+    int id_;        //Should be same as planet_id.
     int horizon_;
     int start_;
     int end_;
-    std::vector<int> owner_at_;
-    std::vector<int> ships_at_;
-    std::vector<int> my_arrivals_at_;
-    std::vector<int> enemy_arrivals_at_;
-    std::vector<int> ships_to_take_over_at_;
-    std::vector<int> ships_gained_at_;
-    std::vector<int> min_ships_to_keep_;        //Minimum ships required to keep the planet.
+    std::vector<int> owner_;
+    std::vector<int> ships_;
+    std::vector<int> my_arrivals_;
+    std::vector<int> enemy_arrivals_;
+    std::vector<int> ships_to_take_over_;
+    std::vector<int> ships_gained_;
+    std::vector<int> ships_to_keep_;        //Minimum ships required to keep the planet.
+    std::vector<int> ships_reserved_;
+    std::vector<int> ships_free_;
 
-    int ships_gained_;
+    int total_ships_gained_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.

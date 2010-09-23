@@ -1,5 +1,6 @@
 #include <iostream>
 #include <list>
+#include "Actions.h"
 #include "Bot.h"
 #include "PlanetWars.h"
 #include "Utils.h"
@@ -22,18 +23,18 @@ void DoTurn(GameMap* game_map) {
         g_bot->SetGame(game_map);
     }
 
-    FleetList fleets_to_send = g_bot->MakeMoves();
+    ActionList final_actions = g_bot->MakeMoves();
     
-    for (unsigned int i = 0; i < fleets_to_send.size(); ++i) {
-        std::cout << fleets_to_send[i]->ToMoveOrder() << std::endl;
+    for (unsigned int i = 0; i < final_actions.size(); ++i) {
+        std::cout << final_actions[i]->ToMoveOrder() << std::endl;
     }
 
     std::cout << "go" << std::endl;
     std::cout.flush();
 
     //Clean up the fleets.
-    for (uint i = 0; i < fleets_to_send.size(); ++i) {
-        delete fleets_to_send[i];
+    for (uint i = 0; i < final_actions.size(); ++i) {
+        final_actions[i]->Free();
     }
 }
 

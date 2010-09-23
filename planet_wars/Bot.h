@@ -7,8 +7,9 @@
 #define PLANET_WARS_BOT_H_
 
 #include "PlanetWars.h"
+#include "Actions.h"
 
-class GameForecaster;
+class GameTimeline;
 
 class Bot {
 public:
@@ -19,11 +20,13 @@ public:
     void SetGame(GameMap* game);
 
     //Decide which fleets to send.  This is the main move logic function.
-    FleetList MakeMoves();
+    ActionList MakeMoves();
 
 private:
+    ActionList BestRemainingMove(PlanetTimelineList& invadeable_planets);
+
     GameMap* game_;
-    GameForecaster* forecaster_;
+    GameTimeline* timeline_;
 };
 
 

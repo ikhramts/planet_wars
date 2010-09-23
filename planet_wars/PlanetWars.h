@@ -78,6 +78,7 @@ private:
     Planet* destination_;
     int trip_length_;
     int turns_remaining_;
+    int activation_time;     //Time the fleet will become active.
 };
 
 // Stores information about one planet. There is one instance of this class
@@ -168,6 +169,7 @@ public:
     
     //Get planets sorted by distance from a certain planet.
     PlanetList PlanetsByDistance(Planet* origin);
+    PlanetList PlanetsByDistance(int planet_id);
     PlanetList MyPlanetsByDistance(Planet* origin);
     PlanetList NotMyPlanetsByDistance(Planet* origin);
 

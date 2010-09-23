@@ -59,8 +59,8 @@ Fleet::Fleet(int owner,
 }
 
 std::string Fleet::ToMoveOrder() const {
-    assert(NULL != source_);
-    assert(NULL != destination_);
+    pw_assert(NULL != source_);
+    pw_assert(NULL != destination_);
 
     std::stringstream moveOrder;
     moveOrder << source_->Id() << " " << destination_->Id() << " " << num_ships_;
@@ -219,6 +219,10 @@ PlanetList GameMap::PlanetsByDistance(Planet* origin) {
     }
 
     return planets_by_distance;
+}
+
+PlanetList GameMap::PlanetsByDistance(int planet_id) {
+    return this->PlanetsByDistance(planets_[planet_id]);
 }
 
 PlanetList GameMap::MyPlanetsByDistance(Planet* origin) {

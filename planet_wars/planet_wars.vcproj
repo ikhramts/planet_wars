@@ -162,11 +162,15 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\Actions.cc"
+				>
+			</File>
+			<File
 				RelativePath=".\Bot.cc"
 				>
 			</File>
 			<File
-				RelativePath=".\GameForecaster.cc"
+				RelativePath=".\GameTimeline.cc"
 				>
 			</File>
 			<File
@@ -188,11 +192,15 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
+				RelativePath=".\Actions.h"
+				>
+			</File>
+			<File
 				RelativePath=".\Bot.h"
 				>
 			</File>
 			<File
-				RelativePath=".\GameForecaster.h"
+				RelativePath=".\GameTimeline.h"
 				>
 			</File>
 			<File

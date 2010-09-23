@@ -7,16 +7,17 @@
 #define PLANET_WARS_UTILS_H_
 
 //Switch between test environment and contest environment.
-#define IS_SUBMISSION
+//#define IS_SUBMISSION
 
-#ifndef IS_SUBMISSION
-#include <assert.h>
+//Define assertions.
+#ifdef IS_SUBMISSION
+
+#define pw_assert(_expr) ((void)0)
 
 #else
 
-#ifndef assert
-#define assert(_Expression)     ((void)0)
-#endif //#ifndef assert
+#include <assert.h>
+#define pw_assert(_expr) assert(_expr)
 
 #endif //#ifndef IS_SUBMISSION
 
@@ -29,6 +30,7 @@ typedef unsigned int uint;
 #define NULL 0
 #endif
 
+//Useful functions
 void forceCrash();
 
 #endif
