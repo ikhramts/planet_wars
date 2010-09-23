@@ -13,7 +13,10 @@
 #include <assert.h>
 
 #else
+
+#ifndef assert
 #define assert(_Expression)     ((void)0)
+#endif //#ifndef assert
 
 #endif //#ifndef IS_SUBMISSION
 

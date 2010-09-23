@@ -1,4 +1,3 @@
-#include "PlanetWars.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -7,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "PlanetWars.h"
 #include "Utils.h"
 
 /************************************************
