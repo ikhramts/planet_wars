@@ -186,6 +186,9 @@ public:
     int GetDistance(int source_planet, int destination_planet) const;
     int GetDistance(Planet* first_planet, Planet* second_planet) const;
 
+    //Find the distance between two farthest planets.
+    int MapRadius() const;
+
     // Sends an order to the game engine. The order is to send num_ships ships
     // from source_planet to destination_planet. The order must be valid, or
     // else your bot will get kicked and lose the game. For example, you must own

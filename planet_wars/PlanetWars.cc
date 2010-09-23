@@ -319,6 +319,18 @@ int GameMap::GetDistance(Planet* first_planet, Planet* second_planet) const {
     return distance;
 }
 
+int GameMap::MapRadius() const {
+    int max_distance = 0;
+
+    for (uint i = 0; i < planet_distances_.size(); ++i) {
+        if (planet_distances_[i] > max_distance) {
+            max_distance = planet_distances_[i];
+        }
+    }
+
+    return max_distance;
+}
+
 void GameMap::IssueOrder(int source_planet,
                             int destination_planet,
                             int num_ships) const {

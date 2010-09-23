@@ -19,12 +19,13 @@ GameForecaster::~GameForecaster() {
 
 void GameForecaster::SetGameMap(GameMap* game) {
     game_ = game;
+    horizon_ = game->MapRadius() + 5;
 
     //Update the ships gained from planets vector.
     PlanetList planets = game->Planets();
     for (uint i = 0; i < planets.size(); ++i) {
         PlanetForecaster* forecaster = new PlanetForecaster();
-        forecaster->Initialize(kTimeHorizon, planets[i], game);
+        forecaster->Initialize(horizon_, planets[i], game);
         planet_forecasters_.push_back(forecaster);
     }
 }
