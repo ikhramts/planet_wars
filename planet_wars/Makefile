@@ -6,8 +6,8 @@ all: MyBot
 clean:
 	rm -rf *.o MyBot MyBot.exe
 
-MyBot: MyBot.o PlanetWars.o Utils.o Bot.o GameForecaster.o
-	$(CC) -O2 -o MyBot MyBot.o PlanetWars.o Utils.o Bot.o GameForecaster.o -lm
+MyBot: MyBot.o PlanetWars.o Utils.o Bot.o GameTimeline.o Actions.o
+	$(CC) -O2 -o MyBot MyBot.o PlanetWars.o Utils.o Bot.o GameTimeline.o -lm
 
 MyBot.o:
 	$(CC) -O3 -funroll-loops -c -o MyBot.o MyBot.cc
@@ -21,7 +21,10 @@ Utils.o:
 Bot.o:
 	$(CC) -O3 -funroll-loops -c -o Bot.o Bot.cc
 	
-GameForecaster.o:
-	$(CC) -O3 -funroll-loops -c -o GameForecaster.o GameForecaster.cc
+GameTimeline.o:
+	$(CC) -O3 -funroll-loops -c -o GameTimeline.o GameTimeline.cc
+
+Actions.o:
+	$(CC) -O3 -funroll-loops -c -o Actions.o Actions.cc
 	
 	
