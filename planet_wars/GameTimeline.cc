@@ -89,49 +89,85 @@ int GameTimeline::ShipsRequiredToKeep(Planet* planet, int arrival_time) const {
     return ships_needed;
 }
 
-PlanetTimelineList GameTimeline::ForecastersOwnedBy(int owner, int when) const {
-    PlanetTimelineList forecasters;
+PlanetTimelineList GameTimeline::TimelinesOwnedBy(int owner, int when) const {
+    PlanetTimelineList timelines;
 
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         PlanetTimeline* timeline = planet_timelines_[i];
 
         if (timeline->IsOwnedBy(owner, when)) {
-            forecasters.push_back(timeline);
+            timelines.push_back(timeline);
         }
     }
 
-    return forecasters;
+    return timelines;
 }
 
-PlanetTimelineList GameTimeline::ForecastersNotOwnedBy(int owner, int when) const {
-    PlanetTimelineList forecasters;
+PlanetTimelineList GameTimeline::TimelinesNotOwnedBy(int owner, int when) const {
+    PlanetTimelineList timelines;
 
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         PlanetTimeline* timeline = planet_timelines_[i];
 
         if (!timeline->IsOwnedBy(owner, when)) {
-            forecasters.push_back(timeline);
+            timelines.push_back(timeline);
         }
     }
 
-    return forecasters;
+    return timelines;
 }
 
-PlanetTimelineList GameTimeline::OwnedForecastersByDistance(int owner, 
+PlanetTimelineList GameTimeline::EverOwnedTimelinesByDistance(int owner, PlanetTimeline *source) {
+    PlanetList planets = game_->PlanetsByDistance(source->Id());
+    PlanetTimelineList timelines;
+    
+    for (uint i = 0; i < planets.size(); ++i) {
+        PlanetTimeline* timeline = planet_timelines_[planets[i]->Id()];
+
+        if (timeline->WillBeOwnedBy(owner)) {
+            timelines.push_back(timeline);
+        }
+    }
+    
+    return timelines;
+}
+}
+
+PlanetTimelineList GameTimeline::OwnedTimelinesByDistance(int owner, 
                                                                 PlanetTimeline* source, 
                                                                 int when) {
     PlanetList planets = game_->PlanetsByDistance(source->Id());
-    PlanetTimelineList forecasters;
+    PlanetTimelineList timelines;
     
     for (uint i = 0; i < planets.size(); ++i) {
         PlanetTimeline* timeline = planet_timelines_[planets[i]->Id()];
 
         if (timeline->IsOwnedBy(owner, when)) {
-            forecasters.push_back(timeline);
+            timelines.push_back(timeline);
         }
     }
     
-    return forecasters;
+    return timelines;
+}
+
+void GameTimeline::ApplyActions(const ActionList& actions) {
+	if (actions.empty()) {
+		return;
+	}
+	
+	//Assumption: actions are grouped by their target.
+	
+	//Apply the actions to their target.
+	PlanetTimeline* target = actions[0]->Target();
+	target->AddArrivals(actions);
+
+	//Apply the actions to their sources.
+	for (uint i = 0; i < actions.size(); ++i) {
+		pw_assert(target->Id() == actions[i]->Target()->Id() && "Applied actions must have same target");
+
+		PlanetTimeline* source = actions[i]->Source();
+		source->AddDeparture(action);
+	}
 }
 
 /************************************************
@@ -163,6 +199,8 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     ships_free_.resize(u_horizon, 0);
     
     will_not_be_mine_ = false;
+	will_be_mine_ = false;
+	will_be_enemys_ = false;
     
     my_additional_arrivals_at_.resize(u_horizon, 0);
     enemy_additional_arrivals_at_.resize(u_horizon, 0);
@@ -185,9 +223,22 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     ships_[0] = planet->NumShips();
     
     switch (owner_[0]) {
-        case kNeutral: ships_gained_[0] = 0; break;
-        case kMe: ships_gained_[0] = planet->GrowthRate(); break;
-        case kEnemy: ships_gained_[0] = planet->GrowthRate(); break;
+        case kNeutral: 
+			ships_gained_[0] = 0; 
+			will_not_be_mine_ = true;
+			break;
+
+        case kMe: 
+			ships_gained_[0] = planet->GrowthRate(); 
+			will_be_mine_ = true;
+			break;
+
+        case kEnemy: 
+			ships_gained_[0] = planet->GrowthRate(); 
+			will_not_be_mine_ = true;
+			will_be_enemys_ = true;
+			break;
+
         default: pw_assert(!"Invalid owner");
     }
 
@@ -233,9 +284,30 @@ void PlanetTimeline::Update() {
     }
     
     //Update current planet states.
-    owner_[start_] = planet_->Owner();
+	const int current_owner = planet_->Owner();
+	const int growth_rate = planet_->GrowthRate();
+    owner_[start_] = current_owner;
     ships_[start_] = planet_->NumShips();
     ships_to_take_over_[start_] = 0;
+
+    switch (owner_[start_]) {
+        case kNeutral: 
+			will_not_be_mine_ = true;
+			break;
+
+        case kMe: 
+			will_be_mine_ = true;
+			ships_gained_[start_] = growth_rate;
+			break;
+
+        case kEnemy: 
+			ships_gained_[start_] = -growth_rate;
+			will_not_be_mine_ = true;
+			will_be_enemys_ = true;
+			break;
+
+        default: pw_assert(!"Invalid owner");
+    }
 
     this->CalculatePlanetStateProjections(1);
 }
@@ -248,9 +320,11 @@ int PlanetTimeline::ShipsGainedForActions(const ActionList& actions) const {
 
     for (uint i = 0; i < actions.size(); ++i) {
         Action* action = actions[i];
-        const int turns_remaining = action->Distance();
-        my_additional_arrivals_at_[turns_remaining] += action->NumShips();
-        start_change = std::min(start_change, turns_remaining);
+        const int distance = action->Distance();
+		const int departure_time = action->DepartureTime();
+		const int arrival_time = departure_time + distance;
+        my_additional_arrivals_at_[arrival_time] += action->NumShips();
+        start_change = std::min(start_change, arrival_time);
     }
 
     //Replay the time forward to see how many ships will be gained.
@@ -310,10 +384,21 @@ int PlanetTimeline::ShipsRequiredToKeep(int arrival_time) const {
     return ships_required;
 }
 
+int PlanetTimeline::ShipsFree(int when) const {
+    const int actual_index = this->ActualIndex(arrival_time);
+    const int ships_free = ships_free_[actual_index];
+    return ships_free;
+}
+
 bool PlanetTimeline::IsOwnedBy(int owner, int when) const {
     const int actual_index = this->ActualIndex(when);
     const bool is_owned = (owner_[actual_index] == owner);
     return is_owned;
+}
+
+bool PlanetTimeline::WillBeOwnedBy(int owner) const {
+	const bool will_be_owned = (kMe == owner ? will_be_mine_ : will_be_enemys_);
+	return will_be_owned;
 }
 
 void PlanetTimeline::AddDeparture(Action *action) {
@@ -426,12 +511,16 @@ void PlanetTimeline::CalculatePlanetStateProjections(int starting_at) {
         const int cur_ships = ships_[cur_index];
 
         if (kMe == cur_owner) {
+			will_be_mine_ = true;
             ships_to_take_over_[cur_index] = 0;
 
         } else if (kNeutral == cur_owner) {
             ships_to_take_over_[cur_index] = prev_ships - my_arrivals_[cur_index] + 1;
 
         } else {
+			will_not_be_mine_ = true;
+			will_be_enemys_ = true;
+
             if (kNeutral == prev_owner) {
                 ships_to_take_over_[cur_index] = 
                     enemy_arrivals_[cur_index] - my_arrivals_[cur_index] + 1;
@@ -454,10 +543,7 @@ void PlanetTimeline::CalculatePlanetStateProjections(int starting_at) {
     //produce an increase in the number of ships gained over the horizon.
     //At any point when the planet is under my control, check whether it could
     //use some reinforcing ships to fight a battle coming up a few turns later.
-    //While we're at it, check whether the planet will not be mine at any point.
     int prev_ships_to_take_over = 0;
-    will_not_be_mine_ = false;
-
     for (int i = horizon_ - 1; i >= 0; --i) {
         const int cur_index = this->ActualIndex(i);
 
@@ -471,7 +557,6 @@ void PlanetTimeline::CalculatePlanetStateProjections(int starting_at) {
             
             } else {
                 prev_ships_to_take_over = ships_to_take_over_[cur_index];
-                will_not_be_mine_ = true;
             }
         }
     }

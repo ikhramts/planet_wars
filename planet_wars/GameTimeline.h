@@ -21,6 +21,8 @@ public:
 
     void SetGameMap(GameMap* game);
 
+	int Horizon() const						{return horizon_;}
+
     //Recalculate the forecasts given the state of the game map.
     void Update();
 
@@ -43,11 +45,15 @@ public:
     //upcoming battles.
     int ShipsRequiredToKeep(Planet* planet, int arrival_time) const;
 
-    PlanetTimelineList Forecasters() const            {return planet_timelines_;}
-    PlanetTimelineList ForecastersOwnedBy(int owner, int when = 0) const;
-    PlanetTimelineList ForecastersNotOwnedBy(int owner, int when = 0) const;
+    PlanetTimelineList Timelines() const            {return planet_timelines_;}
+    PlanetTimelineList TimelinesOwnedBy(int owner, int when = 0) const;
+    PlanetTimelineList TimelinesNotOwnedBy(int owner, int when = 0) const;
 
-    PlanetTimelineList OwnedForecastersByDistance(int owner, PlanetTimeline* source, int when = 0);
+	PlanetTimelineList EverOwnedTimelinesByDistance(int owner, PlanetTimeline* source);
+    PlanetTimelineList OwnedTimelinesByDistance(int owner, PlanetTimeline* source, int when = 0);
+	
+	//Apply actions to the timeline, changing the forecasts.
+	void ApplyActions(const ActionList& actions);
 
 private:
     int horizon_;
@@ -69,7 +75,6 @@ public:
     //int ShipsGainedForFleets(const FleetList& fleets) const;
     int ShipsGainedForActions(const ActionList& actions) const;
 
-    bool WillNotBeMine() const              {return will_not_be_mine_;}
     
     Planet* GetPlanet() const               {return planet_;}
     int Id() const                          {return id_;}
@@ -83,8 +88,15 @@ public:
     //upcoming battles.
     int ShipsRequiredToKeep(int arrival_time) const;
 
+	//Find the number of ships available to be sent from this planet.
+	int ShipsFree(int when) const;
+
     //Check whether the planet is forecast to be owned by a player at a specified date.
     bool IsOwnedBy(int owner, int when = 0) const;
+    bool WillNotBeMine() const              {return will_not_be_mine_;}
+	bool WillBeMine() const					{return will_be_mine_;}
+	bool WillBeEnemys() const				{return will_be_enemys_;}
+	bool WillBeOwnedBy(int owner) const;
 
     //Apply action to the timeline.
     void AddDeparture(Action* action);
@@ -117,6 +129,8 @@ private:
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
     bool will_not_be_mine_;
+	bool will_be_enemys_;
+	bool will_be_mine_;
 
     GameMap* game_;
     Planet* planet_;

@@ -230,3 +230,167 @@ ActionList Bot::MakeMoves() {
     
     return final_actions;
 }
+
+ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
+	ActionList best_actions;
+	
+	//Stop right here if there are no more ships to invade with.
+	int current_free_ships = 0;
+	PlanetTimelineList my_planets = timeline_->TimelinesOwnedBy(kMe);
+
+	for (uint i = 0; i < my_planets.size(); ++i) {
+		current_free_ships += my_planets[i]->ShipsFree(0);
+	}
+
+	if (0 == current_free_ships) {
+		return best_actions;
+	}
+	
+	//Proceed finding the best planet to invade.
+	std::vector<std::vector<double> > plan_returns(invadeable_planets.size());
+	std::vector<std::vector<ActionList>> plan_actions(invadeable_planets.size());
+
+	const int horizon = timeline_->horizon_();
+	const uint u_horizon = static_cast<uint>(horizon);
+	
+	for (uint i = 0; i < invadeable_planets.size(); ++i) {
+		PlanetTimeline* target = invadeable_planets[i];
+		const int target_id = target->Id();
+		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(kMe, target);
+		std::vector<int> distances_to_sources(sources.size());
+
+		for (uint i = 0; i < sources.size(); ++i) {
+			distances_to_sources[i] = game_->GetDistance(sources[i]->Id(), target->Id());
+		}
+
+		const uint first_source = sources[1]->Id() == target_id ? 1 : 0;
+
+		//Don't proceed if the only source is the target itself.
+		if (first_source == 1 && sources.size() == 1) {
+			continue;
+		}
+		
+		std::vector<double>& returns_for_target = plan_returns[i];
+		returns_for_target.resize(u_horizon, 0);
+		std::vector<ActionList>& actions_for_target;
+		actions_for_target.resize(u_horizon);
+
+		//Find earliest time the fleet can reach the target.
+		const int earliest_arrival = distances_to_sources[first_source];
+
+		for (int t = earliest_arrival; t < horizon; ++t) {
+			//Find a possible invasion fleet, calculate the return on sending it.
+			const int ships_needed = target->ShipsRequredToPosess(t);
+			int ships_to_send = 0;
+
+            for (uint s = first_source; s < sources.size(); ++s) {
+                //Calculate how many ships are necessary to make a difference given how fast
+                //the ships can get from this planet to the target.
+                PlanetTimeline* source = sources[s];
+                const int source_id = source->Id();
+
+                //Never send ships back to the same planet.
+                pw_assert(source_id != target_id);
+
+				//Check whether the target is reacheable from the source.  If not, then it
+				//won't be reacheable from any of the remaining sources.
+                const int turns_to_conquer = distances_to_sources[s];
+				
+				if (turns_to_conquer > t) {
+					break;
+				}
+				
+                //Add ships from this planet.
+                const int available_ships = source->ShipsFree(t - turns_to_conquer);
+                if(0 == available_ships) {
+                    continue;
+                }
+                
+                const int remaining_ships_needed = ships_needed - ships_to_send;
+                const int ships_to_send_from_here = std::min(available_ships, remaining_ships_needed);
+                
+                Action* action = Action::Get();
+                action->SetOwner(kMe);
+                action->SetSource(source_planet);
+                action->SetDestination(target_planet);
+                action->SetDistance(turns_to_conquer);
+                action->SetNumShips(ships_to_send_from_here);
+
+                actions_for_target[t].push_back(action);
+
+                ships_to_send += ships_to_send_from_here;
+
+				//Check whether this planet would already get enough ships.
+                if (ships_needed <= ships_to_send) {
+                    break;
+                }
+            } //End iterating over sources
+
+            //Tally up the return on sending the fleets to this planet.
+            if (0 == ships_to_send) {
+                returns_for_target[t].push_back(0);
+
+            } else {
+                const int ships_gained = 
+					target->ShipsGainedForActions(actions_from_sources);
+                const double return_ratio = static_cast<double>(ships_gained)
+                                            / static_cast<double>(ships_to_send);
+
+                returns_for_target[t].push_back(return_ratio);
+            }
+		} //End iterating over arrival times.
+	}//End iterating over targets.
+
+	//Figure out which invasion plan is best.
+	uint best_target = 0;
+	int best_arrival_time = 0;
+	double best_return = 0;
+
+	for (uint i = 0; i < invadeable_planets.size(); ++i) {
+		for (int t = horizon - 1; t >= 0; --t) {
+			if (plan_returns[i][t] > best_return) {
+				best_return = plan_returns[i][t];
+				best_target = i;
+				best_arrival_time = t;
+			}
+		}
+	}
+
+	//Save the best invasion plan.  Kill the rest.
+	if (0 == best_return) {
+		return best_actions;
+	
+	} else {
+		for (uint i = 0; i < plan_actions.size(); ++i) {
+			for (int t = 0; t < horizon; --t) {
+				ActionList& selected_actions = plan_actions[i][t];
+				
+				if (t == best_arrival_time && i == best_target) {
+					for (uint a = 0; a < selected_actions.size(); ++a) {
+						best_actions.push_back(selected_actions[a]);
+					}
+				
+				} else {
+					for (uint a = 0; a < selected_actions.size(); ++a) {
+						selected_actions[a]->Free();
+					}
+				}
+			}
+		}
+
+		//Remove the invaded planet from the list.
+        const uint new_num_planets = invadeable_planets.size() - 1;
+	    
+		for (uint p = 0; p < new_num_planets; ++p) {
+            if (p >= best_target) {
+                invadeable_planets[p] = invadeable_planets[p+1];
+            }
+        }
+
+        invadeable_planets.resize(new_num_planets);
+
+	}
+
+	return best_actions;
+}
+
