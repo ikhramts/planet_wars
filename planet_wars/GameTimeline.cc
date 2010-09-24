@@ -63,7 +63,7 @@ PlanetList GameTimeline::PlanetsThatWillNotBeMine() const {
     return will_not_be_mine;
 }
 
-PlanetTimelineList GameTimeline::ForecastersThatWillNotBeMine() const {
+PlanetTimelineList GameTimeline::TimelinesThatWillNotBeMine() const {
     PlanetTimelineList will_not_be_mine;
 
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
@@ -131,7 +131,6 @@ PlanetTimelineList GameTimeline::EverOwnedTimelinesByDistance(int owner, PlanetT
     
     return timelines;
 }
-}
 
 PlanetTimelineList GameTimeline::OwnedTimelinesByDistance(int owner, 
                                                                 PlanetTimeline* source, 
@@ -166,7 +165,7 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 		pw_assert(target->Id() == actions[i]->Target()->Id() && "Applied actions must have same target");
 
 		PlanetTimeline* source = actions[i]->Source();
-		source->AddDeparture(action);
+		source->AddDeparture(actions[i]);
 	}
 }
 
@@ -385,7 +384,7 @@ int PlanetTimeline::ShipsRequiredToKeep(int arrival_time) const {
 }
 
 int PlanetTimeline::ShipsFree(int when) const {
-    const int actual_index = this->ActualIndex(arrival_time);
+    const int actual_index = this->ActualIndex(when);
     const int ships_free = ships_free_[actual_index];
     return ships_free;
 }

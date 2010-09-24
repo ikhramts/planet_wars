@@ -7,6 +7,7 @@
 #define PLANET_WARS_BOT_H_
 
 #include "PlanetWars.h"
+#include "GameTimeline.h"
 #include "Actions.h"
 
 class GameTimeline;

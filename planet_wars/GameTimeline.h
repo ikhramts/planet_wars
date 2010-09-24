@@ -34,7 +34,7 @@ public:
     //Get the list of planets that will not be mine at any point in time
     //over the projected horizon.
     PlanetList PlanetsThatWillNotBeMine() const;
-    PlanetTimelineList ForecastersThatWillNotBeMine() const;
+    PlanetTimelineList TimelinesThatWillNotBeMine() const;
 
     //Find the number of ships needed to make sure that the specified planet
     //becomes/stays mine given that the ships will arrive in specified number

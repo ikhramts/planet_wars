@@ -14,6 +14,8 @@
 /************************************************
                Action class
 ************************************************/
+ActionPool* Action::s_pool_ = NULL;
+
 Action::Action() {
 }
 
@@ -51,6 +53,10 @@ ActionPool::ActionPool() {
 
     //Initialize a few actions.
     free_actions_.resize(5000);
+
+	for (uint i = 0; i < free_actions_.size(); ++i) {
+		free_actions_[i] = new Action();
+	}
 }
 
 ActionPool::~ActionPool() {
