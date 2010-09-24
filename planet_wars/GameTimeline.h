@@ -124,6 +124,8 @@ private:
     std::vector<int> ships_reserved_;
     std::vector<int> ships_free_;
 
+    std::vector<int> my_departures_;
+
     int total_ships_gained_;
 
     //Indicates whether the planet will not be mine at any point

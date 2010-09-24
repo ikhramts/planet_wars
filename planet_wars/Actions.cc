@@ -39,7 +39,7 @@ std::string Action::ToMoveOrder() const {
 
     if (0 == departure_time_) {
         move_order << source_->Id() << " " 
-            << target_->Id() << " " << num_ships_;
+            << target_->Id() << " " << num_ships_ << std::endl;
     }
 
     return move_order.str();

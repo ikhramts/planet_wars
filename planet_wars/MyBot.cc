@@ -26,7 +26,7 @@ void DoTurn(GameMap* game_map) {
     ActionList final_actions = g_bot->MakeMoves();
     
     for (unsigned int i = 0; i < final_actions.size(); ++i) {
-        std::cout << final_actions[i]->ToMoveOrder() << std::endl;
+        std::cout << final_actions[i]->ToMoveOrder();
     }
 
     std::cout << "go" << std::endl;
