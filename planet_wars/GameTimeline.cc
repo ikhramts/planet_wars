@@ -229,8 +229,11 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     }
     
     const int starting_owner = planet->Owner();
+	const int num_ships = planet_->NumShips();
     owner_[0] = starting_owner;
-    ships_[0] = planet->NumShips();
+    ships_[0] = num_ships;
+	ships_free_[0] = (starting_owner == kMe ? num_ships : 0);
+	enemy_ships_free_[0] = (starting_owner == kEnemy ? num_ships : 0);
     
     ships_gained_[0] = growth_rate * OwnerMultiplier(starting_owner);
     will_not_be_mine_ = (kMe != starting_owner);
@@ -260,6 +263,8 @@ void PlanetTimeline::Update() {
         my_departures_[i] = 0;
         available_growth_[i] = 0;
         enemy_available_growth_[i] = 0;
+		my_arrivals_[i] = 0;
+		enemy_arrivals_[i] = 0;
     }
 
     //Update the fleet arrivals.
@@ -271,24 +276,27 @@ void PlanetTimeline::Update() {
         const int arrival_index = this->ActualIndex(turns_remaining);
         
         //Add only fleets that have just departed.
-        if ((turns_remaining + 1) == fleet->TripLength()) {
-            start_update_at = std::min(turns_remaining, start_update_at);
+        //if ((turns_remaining + 1) == fleet->TripLength()) {
+        start_update_at = std::min(turns_remaining, start_update_at);
 
-            if (fleet->Owner() == kMe) {
-                my_arrivals_[arrival_index] += fleet->NumShips();
+        if (fleet->Owner() == kMe) {
+            my_arrivals_[arrival_index] += fleet->NumShips();
 
-            } else {
-                enemy_arrivals_[arrival_index] += fleet->NumShips();
-            }
+        } else {
+            enemy_arrivals_[arrival_index] += fleet->NumShips();
         }
+        //}
     }
     
     //Update current planet states.
 	const int current_owner = planet_->Owner();
 	const int growth_rate = planet_->GrowthRate();
+	const int num_ships = planet_->NumShips();
     owner_[start_] = current_owner;
-    ships_[start_] = planet_->NumShips();
+    ships_[start_] = num_ships;
     ships_to_take_over_[start_] = 0;
+	ships_free_[start_] = (current_owner == kMe ? num_ships : 0);
+	enemy_ships_free_[start_] = (current_owner == kEnemy ? num_ships : 0);
 
     ships_gained_[start_] = planet_->GrowthRate() * OwnerMultiplier(current_owner);
     will_not_be_mine_ = (kMe != current_owner);

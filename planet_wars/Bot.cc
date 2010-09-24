@@ -229,7 +229,7 @@ ActionList Bot::MakeMoves() {
 
 ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
 	ActionList best_actions;
-	
+	//forceCrash();
 	//Stop right here if there are no more ships to invade with.
 	int current_free_ships = 0;
 	PlanetTimelineList my_planets = timeline_->TimelinesOwnedBy(kMe);
@@ -387,7 +387,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
         invadeable_planets.resize(new_num_planets);
 
 	}
-
+	
+	//forceCrash();
 	return best_actions;
 }
 
