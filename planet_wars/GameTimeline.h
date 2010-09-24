@@ -39,11 +39,11 @@ public:
     //Find the number of ships needed to make sure that the specified planet
     //becomes/stays mine given that the ships will arrive in specified number
     //of turns.
-    int ShipsRequredToPosess(Planet* planet, int arrival_time) const;
+    int ShipsRequredToPosess(Planet* planet, int arrival_time, int by_whom) const;
 
     //Return the minimum number of ships required to stay on the planet to win any
     //upcoming battles.
-    int ShipsRequiredToKeep(Planet* planet, int arrival_time) const;
+//    int ShipsRequiredToKeep(Planet* planet, int arrival_time, int by_whom) const;
 
     PlanetTimelineList Timelines() const            {return planet_timelines_;}
     PlanetTimelineList TimelinesOwnedBy(int owner, int when = 0) const;
@@ -82,20 +82,21 @@ public:
     //Find the number of ships needed to make sure that this planet
     //becomes/stays mine given that the ships will arrive in specified number
     //of turns.
-    int ShipsRequredToPosess(int arrival_time) const;
+    int ShipsRequredToPosess(int arrival_time, int by_whom) const;
 
     //Return the minimum number of ships required to stay on the planet to win any
     //upcoming battles.
-    int ShipsRequiredToKeep(int arrival_time) const;
+//    int ShipsRequiredToKeep(int arrival_time, int by_whom) const;
 
 	//Find the number of ships available to be sent from this planet.
-	int ShipsFree(int when) const;
+	int ShipsFree(int when, int owner) const;
 
     //Check whether the planet is forecast to be owned by a player at a specified date.
     bool IsOwnedBy(int owner, int when = 0) const;
     bool WillNotBeMine() const              {return will_not_be_mine_;}
-	bool WillBeMine() const					{return will_be_mine_;}
-	bool WillBeEnemys() const				{return will_be_enemys_;}
+	bool WillBeMine() const	                {return will_be_mine_;}
+	bool WillBeEnemys() const               {return will_be_enemys_;}
+    bool WillNotBeEnemys() const            {return will_not_be_enemys_;}
 	bool WillBeOwnedBy(int owner) const;
 
     //Apply action to the timeline.
@@ -110,6 +111,9 @@ private:
     //given a plain index.
     int ActualIndex(int i) const        {return (i + start_ + horizon_) % horizon_; }
 
+    //Reserve ships for a departure or defense.
+    void ReserveShips(int owner, int key_time, int num_ships);
+
     int id_;        //Should be same as planet_id.
     int horizon_;
     int start_;
@@ -120,16 +124,26 @@ private:
     std::vector<int> enemy_arrivals_;
     std::vector<int> ships_to_take_over_;
     std::vector<int> ships_gained_;
+    std::vector<int> available_growth_;
     std::vector<int> ships_to_keep_;        //Minimum ships required to keep the planet.
     std::vector<int> ships_reserved_;
     std::vector<int> ships_free_;
 
+    std::vector<int> enemy_ships_to_take_over_;
+//    std::vector<int> enemy_ships_to_keep_;
+    std::vector<int> enemy_ships_reserved_;
+    std::vector<int> enemy_ships_free_;
+    std::vector<int> enemy_available_growth_;
+    
+
     std::vector<int> my_departures_;
+    std::vector<int> enemy_departures_;
 
     int total_ships_gained_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
+    bool will_not_be_enemys_;
     bool will_not_be_mine_;
 	bool will_be_enemys_;
 	bool will_be_mine_;
@@ -138,9 +152,7 @@ private:
     Planet* planet_;
 
     //Temporary storage.
-    mutable std::vector<int> my_additional_arrivals_at_;
-    mutable std::vector<int> enemy_additional_arrivals_at_;
-
+    mutable std::vector<int> additional_arrivals_;
 };
 
 #endif

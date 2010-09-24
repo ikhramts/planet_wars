@@ -251,6 +251,11 @@ private:
 //Calculating the ships gained per turn.
 int PlanetShipsGainRate(int owner, int growth_rate);
 
+//Converting owner to a multiplier.
+inline int OwnerMultiplier(int owner) {
+    return (owner + 1) % 3 - 1;
+}
+
 //Fight resolution.
 struct BattleOutcome {
     int owner;

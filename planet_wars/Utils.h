@@ -7,7 +7,7 @@
 #define PLANET_WARS_UTILS_H_
 
 //Switch between test environment and contest environment.
-#define IS_SUBMISSION
+//#define IS_SUBMISSION
 
 //Define assertions.
 #ifdef IS_SUBMISSION

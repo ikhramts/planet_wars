@@ -46,17 +46,13 @@ ActionList Bot::MakeMoves() {
     
     //Compile the list of available ships.
     PlanetList planets = game_->Planets();
-    std::vector<int> available_ships_on_planets(planets.size());
     int num_ships_available = 0;
     
     for (uint i = 0; i < planets.size(); ++i) {
         Planet* planet = planets[i];
         const int owner = planet->Owner();
         const int ships_on_planet = (kMe == owner ? planet->NumShips() : 0);
-        const int ships_staying = (kMe == owner ? timeline_->ShipsRequiredToKeep(planet, 0) : 0);
-        const int available_ships = std::max(ships_on_planet - ships_staying, 0);
-        available_ships_on_planets[i] = available_ships;
-        num_ships_available += available_ships;
+        num_ships_available += ships_on_planet;
     }
 
     if (0 == num_ships_available) {
@@ -239,7 +235,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
 	PlanetTimelineList my_planets = timeline_->TimelinesOwnedBy(kMe);
 
 	for (uint i = 0; i < my_planets.size(); ++i) {
-		current_free_ships += my_planets[i]->ShipsFree(0);
+		current_free_ships += my_planets[i]->ShipsFree(0, kMe);
 	}
 
 	if (0 == current_free_ships) {
@@ -280,7 +276,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
 
 		for (int t = earliest_arrival; t < horizon; ++t) {
 			//Find a possible invasion fleet, calculate the return on sending it.
-			const int ships_needed = target->ShipsRequredToPosess(t);
+			const int ships_needed = target->ShipsRequredToPosess(t, kMe);
 			int ships_to_send = 0;
 
             for (uint s = first_source; s < sources.size(); ++s) {
@@ -301,7 +297,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
 				}
 				
                 //Add ships from this planet.
-                const int available_ships = source->ShipsFree(t - turns_to_conquer);
+                const int available_ships = source->ShipsFree(t - turns_to_conquer, kMe);
                 if(0 == available_ships) {
                     continue;
                 }
