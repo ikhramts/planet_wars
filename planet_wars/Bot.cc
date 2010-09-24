@@ -248,7 +248,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
 	
 	//Proceed finding the best planet to invade.
 	std::vector<std::vector<double> > plan_returns(invadeable_planets.size());
-	std::vector<std::vector<ActionList>> plan_actions(invadeable_planets.size());
+	std::vector<std::vector<ActionList> > plan_actions(invadeable_planets.size());
 
 	const int horizon = timeline_->Horizon();
 	const uint u_horizon = static_cast<uint>(horizon);
