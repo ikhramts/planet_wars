@@ -63,7 +63,7 @@ ActionList Bot::MakeMoves() {
     PlanetTimelineList invadeable_planets = timeline_->TimelinesThatWillNotBeMine();
     
     while (invadeable_planets.size() != 0) {
-        ActionList best_actions = this->BestRemainingMove(invadeable_planets);
+        ActionList best_actions = this->BestRemainingMove(invadeable_planets, kMe);
 
         if (best_actions.empty()) {
             break;
@@ -227,15 +227,15 @@ ActionList Bot::MakeMoves() {
     //return final_actions;
 }
 
-ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
+ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const int player) {
 	ActionList best_actions;
 	//forceCrash();
 	//Stop right here if there are no more ships to invade with.
 	int current_free_ships = 0;
-	PlanetTimelineList my_planets = timeline_->TimelinesOwnedBy(kMe);
+	PlanetTimelineList player_planets = timeline_->TimelinesOwnedBy(player);
 
-	for (uint i = 0; i < my_planets.size(); ++i) {
-		current_free_ships += my_planets[i]->ShipsFree(0, kMe);
+	for (uint i = 0; i < player_planets.size(); ++i) {
+		current_free_ships += player_planets[i]->ShipsFree(0, player);
 	}
 
 	if (0 == current_free_ships) {
@@ -252,7 +252,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
 	for (uint i = 0; i < invadeable_planets.size(); ++i) {
 		PlanetTimeline* target = invadeable_planets[i];
 		const int target_id = target->Id();
-		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(kMe, target);
+		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
 		std::vector<int> distances_to_sources(sources.size());
 
 		for (uint s = 0; s < sources.size(); ++s) {
@@ -276,7 +276,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
 
 		for (int t = earliest_arrival; t < horizon; ++t) {
 			//Find a possible invasion fleet, calculate the return on sending it.
-			const int ships_needed = target->ShipsRequredToPosess(t, kMe);
+			const int ships_needed = target->ShipsRequredToPosess(t, player);
 			int ships_to_send = 0;
 
             for (uint s = first_source; s < sources.size(); ++s) {
@@ -297,7 +297,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
 				}
 				
                 //Add ships from this planet.
-                const int available_ships = source->ShipsFree(t - turns_to_conquer, kMe);
+                const int available_ships = source->ShipsFree(t - turns_to_conquer, player);
                 if(0 == available_ships) {
                     continue;
                 }
@@ -306,7 +306,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets) {
                 const int ships_to_send_from_here = std::min(available_ships, remaining_ships_needed);
                 
                 Action* action = Action::Get();
-                action->SetOwner(kMe);
+                action->SetOwner(player);
                 action->SetSource(source);
                 action->SetTarget(target);
                 action->SetDistance(turns_to_conquer);

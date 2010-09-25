@@ -55,6 +55,9 @@ public:
 	//Apply actions to the timeline, changing the forecasts.
 	void ApplyActions(const ActionList& actions);
 
+	//Remove actions from the timeline, changing the forecasts.
+	void UnapplyActions(const ActionList& actions);
+
 private:
     int horizon_;
     GameMap* game_;
@@ -99,14 +102,23 @@ public:
     bool WillNotBeEnemys() const            {return will_not_be_enemys_;}
 	bool WillBeOwnedBy(int owner) const;
 
-    //Apply action to the timeline.
+    //Apply actions to the timeline.
     void AddDeparture(Action* action);
     void AddArrivals(const ActionList& actions);
+	
+	//Remove actions from the timeline.  Unlike the Add*() above, these do 
+	//not cause recalculations in planets' timelines.  RecalculateTimeline()
+	//should be called to update the planet timelines.
+	void RemoveDeparture(Action* action);
+	void RemoveArrival(Action* action);
+    
+    //Reset various data before starting full timeline recalculation.
+    void ResetStartingData();
+
+    //Update the planet state projections.
+    void RecalculateTimeline(int starting_at);
 
 private:
-    //Update the planet state projections.
-    void CalculatePlanetStateProjections(int starting_at);
-
     //Calculate actual index of an element in the *_at_ vectors
     //given a plain index.
     int ActualIndex(int i) const        {return (i + start_ + horizon_) % horizon_; }
