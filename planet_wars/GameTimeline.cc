@@ -37,12 +37,6 @@ void GameTimeline::Update() {
     }
 }
 
-//int GameTimeline::ShipsGainedForFleets(const FleetList &fleets, Planet *planet) const {
-//    PlanetTimeline* timeline = planet_timelines_[planet->Id()];
-//    const int ships_gained = timeline->ShipsGainedForFleets(fleets);
-//    return ships_gained;
-//}
-
 int GameTimeline::ShipsGainedForActions(const ActionList& actions, Planet *planet) const {
     PlanetTimeline* timeline = planet_timelines_[planet->Id()];
     const int ships_gained = timeline->ShipsGainedForActions(actions);
@@ -82,12 +76,6 @@ int GameTimeline::ShipsRequredToPosess(Planet* planet, int arrival_time, int by_
     const int ships_needed = timeline->ShipsRequredToPosess(arrival_time, by_whom);
     return ships_needed;
 }
-
-//int GameTimeline::ShipsRequiredToKeep(Planet* planet, int arrival_time, int by_whom) const {
-//    PlanetTimeline* timeline = planet_timelines_[planet->Id()];
-//    const int ships_needed = timeline->ShipsRequiredToKeep(arrival_time, by_whom);
-//    return ships_needed;
-//}
 
 PlanetTimelineList GameTimeline::TimelinesOwnedBy(int owner, int when) const {
     PlanetTimelineList timelines;
@@ -418,19 +406,6 @@ int PlanetTimeline::ShipsRequredToPosess(int arrival_time, int by_whom) const {
     return ships_required;
 }
 
-//int PlanetTimeline::ShipsRequiredToKeep(int arrival_time, int by_whom) const {
-//    const int actual_index = this->ActualIndex(arrival_time);
-//    int ships_required = 0;
-//
-//    if (kMe == by_whom) {
-//        ships_required = ships_to_keep_[actual_index];
-//    } else {
-//        ships_required = enemy_ships_to_keep_[actual_index];
-//    }
-//    
-//    return ships_required;
-//}
-
 int PlanetTimeline::ShipsFree(int when, int owner) const {
     const int actual_index = this->ActualIndex(when);
     int ships_free = 0;
@@ -735,68 +710,6 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
         total_ships_gained_ += ships_gained_[i];
     }
 
-    //Calculate the minimum number of ships required to keep posession of the
-    //planet.  To do that, run backwards in time through all upcoming fleets.
-    //int prev_ships_to_keep = 0;
-    //int prev_enemy_ships_to_keep = 0;
-
-//    for (int i = horizon_ - 1; i >= 0; --i) {
-//        int cur_index = this->ActualIndex(i);
-//        const int turn_arrival_balance = enemy_arrivals_[cur_index] - my_arrivals_[cur_index];
-//        
-//        //Update the minimum number of ships required to keep a planet
-//        const int ships_for_next_turn = prev_ships_to_keep - growth_rate;
-//        const int ships_to_keep = std::max(ships_for_next_turn, 0);
-//
-//        ships_to_keep_[cur_index] = ships_to_keep;
-//        prev_ships_to_keep = ships_to_keep + turn_arrival_balance;
-//
-//        //Update the number of reserved ships.
-//        const int my_ships = (kMe == owner_[cur_index] ? ships_[cur_index] : 0);
-//        const int ships_unavailable = ships_to_keep + ships_reserved_[cur_index];
-//        //const int ships_unavailable = std::max(ships_to_keep, ships_reserved_[cur_index]);
-//        const int ships_free = std::max(my_ships - ships_unavailable, 0);
-//        ships_free_[cur_index] = ships_free;
-//
-//        const int enemy_ships_for_next_turn = prev_enemy_ships_to_keep - growth_rate;
-//        const int enemy_ships_to_keep = std::max(enemy_ships_for_next_turn, 0);
-//
-//        enemy_ships_to_keep_[cur_index] = ships_to_keep;
-//        prev_enemy_ships_to_keep = enemy_ships_to_keep + turn_arrival_balance;
-//
-//        //Update the number of reserved ships.
-//        const int enemy_ships = (kEnemy == owner_[cur_index] ? ships_[cur_index] : 0);
-//        const int enemy_ships_unavailable = enemy_ships_to_keep + enemy_ships_reserved_[cur_index];
-//        //const int ships_unavailable = std::max(ships_to_keep, ships_reserved_[cur_index]);
-//        const int enemy_ships_free = std::max(enemy_ships - enemy_ships_unavailable, 0);
-//        enemy_ships_free_[cur_index] = enemy_ships_free;
-//
-//
-//#ifndef IS_SUBMISSION
-//        const int prev_index = this->ActualIndex(i - 1);
-//        const int next_index = this->ActualIndex(i + 1);
-//
-//        //Check that the number of free ships is non-decreasing.
-//        if (i < horizon_ - 1) {
-//            pw_assert(ships_free_[next_index] >= ships_free_[cur_index]);
-//        }
-//
-//        if (i < horizon_ - 1) {
-//            pw_assert(enemy_ships_free_[next_index] >= enemy_ships_free_[cur_index]);
-//        }
-//        
-//        //Make sure that only growth rate affects change in # of ships when there are
-//        //no arrivals or departures.
-//        if (0 == my_arrivals_[cur_index] && 0 == enemy_arrivals_[cur_index] && i != 0) {
-//            if (kNeutral != owner_[cur_index]) {
-//                pw_assert(ships_[cur_index] == ships_[prev_index] + growth_rate);
-//
-//            } else {
-//                pw_assert(ships_[cur_index] == ships_[prev_index]);
-//            }
-//        }
-//#endif
-    //}
 }
 
 void PlanetTimeline::ReserveShips(const int owner, const int key_time, const int num_ships) {
@@ -843,18 +756,5 @@ void PlanetTimeline::ReserveShips(const int owner, const int key_time, const int
 
         }
     }
-//#ifndef IS_SUBMISSION
-//    for (int i = 1; i < horizon_; ++i) {
-//        const int cur_index = this->ActualIndex(i);
-//        const int prev_index = this->ActualIndex(i - 1);
-//
-//        //Check that the number of free ships is non-decreasing.
-//        if (i > 0) {
-//            pw_assert(ships_free[cur_index] >= ships_free[prev_index]);
-//        }
-//    }
-//#endif
- 
-
 }
 

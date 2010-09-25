@@ -28,7 +28,6 @@ public:
 
     //Calculate how many additional ships will be gained by sending a set
     //of fleets to a planet.
-    //int ShipsGainedForFleets(const FleetList& fleets, Planet* planet) const;
     int ShipsGainedForActions(const ActionList& actions, Planet* planet) const;
 
     //Get the list of planets that will not be mine at any point in time
@@ -40,10 +39,6 @@ public:
     //becomes/stays mine given that the ships will arrive in specified number
     //of turns.
     int ShipsRequredToPosess(Planet* planet, int arrival_time, int by_whom) const;
-
-    //Return the minimum number of ships required to stay on the planet to win any
-    //upcoming battles.
-//    int ShipsRequiredToKeep(Planet* planet, int arrival_time, int by_whom) const;
 
     PlanetTimelineList Timelines() const            {return planet_timelines_;}
     PlanetTimelineList TimelinesOwnedBy(int owner, int when = 0) const;
@@ -75,7 +70,6 @@ public:
 
     //Calculate how many additional ships would be gained if specified
     //fleets would be sent to the planet.
-    //int ShipsGainedForFleets(const FleetList& fleets) const;
     int ShipsGainedForActions(const ActionList& actions) const;
 
     
@@ -86,10 +80,6 @@ public:
     //becomes/stays mine given that the ships will arrive in specified number
     //of turns.
     int ShipsRequredToPosess(int arrival_time, int by_whom) const;
-
-    //Return the minimum number of ships required to stay on the planet to win any
-    //upcoming battles.
-//    int ShipsRequiredToKeep(int arrival_time, int by_whom) const;
 
 	//Find the number of ships available to be sent from this planet.
 	int ShipsFree(int when, int owner) const;
