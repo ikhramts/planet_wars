@@ -57,18 +57,18 @@ PlanetList GameTimeline::PlanetsThatWillNotBeMine() const {
     return will_not_be_mine;
 }
 
-PlanetTimelineList GameTimeline::TimelinesThatWillNotBeMine() const {
-    PlanetTimelineList will_not_be_mine;
-
+PlanetTimelineList GameTimeline::TimelinesEverNotOwnedBy(const int player) const {
+    PlanetTimelineList will_not_be_owned;
+    
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         PlanetTimeline* timeline = planet_timelines_[i];
-
-        if (timeline->WillNotBeMine()) {
-            will_not_be_mine.push_back(timeline);
+        
+        if (timeline->WillNotBeOwnedBy(player)) {
+            will_not_be_owned.push_back(timeline);
         }
     }
 
-    return will_not_be_mine;
+    return will_not_be_owned;
 }
 
 int GameTimeline::ShipsRequredToPosess(Planet* planet, int arrival_time, int by_whom) const {
@@ -158,6 +158,10 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 }
 
 void GameTimeline::UnapplyActions(const ActionList &actions) {
+    if (actions.empty()) {
+        return;
+    }
+
     std::vector<bool> is_timeline_affected;
     is_timeline_affected.resize(planet_timelines_.size(), false);
     
@@ -334,6 +338,11 @@ int PlanetTimeline::ShipsGainedForActions(const ActionList& actions) const {
     const int enemy_multiplier = (kEnemy == action_owner ? 1 : 0);
     const int growth_rate = planet_->GrowthRate();
     
+    //Reset additional arrivals.
+    for (int i = 0; i < horizon_; ++i) {
+        additional_arrivals_[i] = 0;
+    }
+
     //Add the new arrivals to the timeline.
     const uint u_horizon = static_cast<int>(horizon_);
     int start_change = horizon_;
@@ -377,7 +386,7 @@ int PlanetTimeline::ShipsGainedForActions(const ActionList& actions) const {
                 const int my_ships = my_arrivals_[cur_index] 
                                 + additional_arrivals_[i] * my_multiplier
                                 + (kMe == owner ? base_ships : 0);
-                const int enemy_ships = my_arrivals_[cur_index] 
+                const int enemy_ships = enemy_arrivals_[cur_index] 
                                     + additional_arrivals_[i] * enemy_multiplier
                                     + (kEnemy == owner ? base_ships : 0);
                 
@@ -428,6 +437,11 @@ bool PlanetTimeline::IsOwnedBy(int owner, int when) const {
 bool PlanetTimeline::WillBeOwnedBy(int owner) const {
 	const bool will_be_owned = (kMe == owner ? will_be_mine_ : will_be_enemys_);
 	return will_be_owned;
+}
+
+bool PlanetTimeline::WillNotBeOwnedBy(int owner) const {
+	const bool will_not_be_owned = (kMe == owner ? will_not_be_mine_ : will_not_be_enemys_);
+	return will_not_be_owned;
 }
 
 void PlanetTimeline::AddDeparture(Action *action) {

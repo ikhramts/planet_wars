@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
                 
                 //On the first turn, initialize the game map.
                 //On later turns, just update it.
+
                 if (1 == turn) {
                     game_map.Initialize(map_data);
                 

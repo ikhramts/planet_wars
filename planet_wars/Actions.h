@@ -28,6 +28,8 @@ public:
     
     //This function should be used to release the action.
     void Free();
+
+    static void FreeActions(const ActionList& actions);
     
     int Owner() const                       {return owner_;}
     PlanetTimeline* Source() const        {return source_;}

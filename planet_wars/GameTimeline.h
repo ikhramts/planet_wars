@@ -33,7 +33,7 @@ public:
     //Get the list of planets that will not be mine at any point in time
     //over the projected horizon.
     PlanetList PlanetsThatWillNotBeMine() const;
-    PlanetTimelineList TimelinesThatWillNotBeMine() const;
+    PlanetTimelineList TimelinesEverNotOwnedBy(int player) const;
 
     //Find the number of ships needed to make sure that the specified planet
     //becomes/stays mine given that the ships will arrive in specified number
@@ -91,6 +91,7 @@ public:
 	bool WillBeEnemys() const               {return will_be_enemys_;}
     bool WillNotBeEnemys() const            {return will_not_be_enemys_;}
 	bool WillBeOwnedBy(int owner) const;
+    bool WillNotBeOwnedBy(int player) const;
 
     //Apply actions to the timeline.
     void AddDeparture(Action* action);

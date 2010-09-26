@@ -28,6 +28,12 @@ void Action::Free() {
     s_pool_->FreeAction(this);
 }
 
+void Action::FreeActions(const ActionList& actions) {
+    for (uint i = 0; i < actions.size(); ++i) {
+        actions[i]->Free();
+    }
+}
+
 Action::~Action() {
 }
 

@@ -32,13 +32,25 @@ ActionList Bot::MakeMoves() {
     } else {
         ActionPool* actionPool = new ActionPool();
     }
+    
+    //Find my best response to enemy's best response to my best moves.
+ //   ActionList my_actions = this->FindActionsFor(kMe);
+    ActionList enemy_actions = this->FindActionsFor(kEnemy);
+//    timeline_->UnapplyActions(my_actions);
+//    Action::FreeActions(my_actions);
 
+    ActionList my_best_actions = this->FindActionsFor(kMe);
+
+    return my_best_actions;
+}
+
+ActionList Bot::FindActionsFor(const int player) {
     //The list of fleets to be ultimately sent.
-    ActionList final_actions;
+    ActionList player_actions;
     
     //Check if I've any ships left.
-    if (0 == game_->NumShips(kMe)) {
-        return final_actions;
+    if (0 == game_->NumShips(player)) {
+        return player_actions;
     }
 
     //General strategy: go for the combination of actions that provides
@@ -56,14 +68,16 @@ ActionList Bot::MakeMoves() {
     }
 
     if (0 == num_ships_available) {
-        return final_actions;
+        return player_actions;
     }
 
     //Set up the list of invadeable planets.
-    PlanetTimelineList invadeable_planets = timeline_->TimelinesThatWillNotBeMine();
+    PlanetTimelineList invadeable_planets = timeline_->TimelinesEverNotOwnedBy(player);
     
+    //forceCrash();
+
     while (invadeable_planets.size() != 0) {
-        ActionList best_actions = this->BestRemainingMove(invadeable_planets, kMe);
+        ActionList best_actions = this->BestRemainingMove(invadeable_planets, player);
 
         if (best_actions.empty()) {
             break;
@@ -71,13 +85,13 @@ ActionList Bot::MakeMoves() {
 
         //Add these actions to the list of other actions.
         for (uint i = 0; i < best_actions.size(); ++i) {
-            final_actions.push_back(best_actions[i]);
+            player_actions.push_back(best_actions[i]);
         }
         
         timeline_->ApplyActions(best_actions);
     }
 
-    return final_actions;
+    return player_actions;
 }
 
 ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const int player) {
@@ -127,6 +141,10 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
 		for (int t = earliest_arrival; t < horizon; ++t) {
 			//Find a possible invasion fleet, calculate the return on sending it.
 			const int ships_needed = target->ShipsRequredToPosess(t, player);
+            if (0 == ships_needed) {
+                continue;
+            }
+
 			int ships_to_send = 0;
 
             for (uint s = first_source; s < sources.size(); ++s) {
@@ -176,6 +194,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
             //Tally up the return on sending the fleets to this planet.
             //Update the best invasion plan, if necessary.
             if (0 == ships_to_send || ships_needed > ships_to_send) {
+                Action::FreeActions(invasion_plan);
+                invasion_plan.clear();
                 continue;
 
             } else {
@@ -187,12 +207,10 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
                 if (best_return < return_ratio) {
                     best_return = return_ratio;
                     best_actions = invasion_plan;
+                    invasion_plan.clear();
                 
                 } else {
-                    for (uint i = 0; i < invasion_plan.size(); ++i) {
-                        invasion_plan[i]->Free();
-                    }
-
+                    Action::FreeActions(invasion_plan);
                     invasion_plan.clear();
                 }
             }
