@@ -613,7 +613,7 @@ BattleOutcome ResolveBattle(int starting_owner, int neutral_ships, int my_ships,
                 outcome.owner = kMe;
 
             } else if (my_ships < enemy_ships) {
-                outcome.ships_remaining = enemy_ships - std::max(my_ships, enemy_ships);
+                outcome.ships_remaining = enemy_ships - std::max(my_ships, neutral_ships);
                 outcome.owner = kEnemy;
             
             } else {

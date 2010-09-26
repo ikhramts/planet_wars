@@ -589,7 +589,7 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
     const int growth_rate = planet_->GrowthRate();
     
 #ifndef IS_SUBMISSION
-    if (9 == id_) {
+    if (20 == id_) {
         int hj = 2;
     }
 #endif
