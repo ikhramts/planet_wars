@@ -134,10 +134,13 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
 
 	const int horizon = timeline_->Horizon();
 	const uint u_horizon = static_cast<uint>(horizon);
+    const int opponent = OtherPlayer(player);
 	
 	for (uint i = 0; i < invadeable_planets.size(); ++i) {
 		PlanetTimeline* target = invadeable_planets[i];
 		const int target_id = target->Id();
+
+        //Planets that might be participating in the invasion, sorted by distance from target.
 		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
 		std::vector<int> distances_to_sources(sources.size());
 
@@ -152,17 +155,29 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
 			continue;
 		}
 		
+        //Planets that might be helping defend the invasion, sorted by distance from target.
+        PlanetTimelineList reinforcers = timeline_->EverOwnedTimelinesByDistance(opponent, target);
+		std::vector<int> distances_to_reinforcers(reinforcers.size());
+
+		for (uint s = 0; s < reinforcers.size(); ++s) {
+			distances_to_reinforcers[s] = game_->GetDistance(reinforcers[s]->Id(), target_id);
+		}
+
+		const uint first_reinforcer = (reinforcers.empty() || reinforcers[0]->Id() != target_id) ? 0 : 1;
+
 		//Find earliest time the fleet can reach the target.
 		const int earliest_arrival = distances_to_sources[first_source];
 
 		for (int t = earliest_arrival; t < horizon; ++t) {
 			//Find a possible invasion fleet, calculate the return on sending it.
-			const int ships_needed = target->ShipsRequredToPosess(t, player);
+			int ships_needed = target->ShipsRequredToPosess(t, player);
             if (0 == ships_needed) {
                 continue;
             }
 
 			int ships_to_send = 0;
+            int earliest_departure = t - earliest_arrival;
+            uint next_reinforcer = first_reinforcer;
 
             for (uint s = first_source; s < sources.size(); ++s) {
                 //Calculate how many ships are necessary to make a difference given how fast
@@ -176,11 +191,29 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
 				//Check whether the target is reacheable from the source.  If not, then it
 				//won't be reacheable from any of the remaining sources.
                 const int turns_to_conquer = distances_to_sources[s];
-				
+                const int departure_time = t - turns_to_conquer;
+
 				if (turns_to_conquer > t) {
 					break;
 				}
 
+                //Add to the opponent's forces the reinforcing ships that the opponent
+                //can send by this time from other planets.
+                while (next_reinforcer < reinforcers.size()) {
+                    const int distance_to_reinforcer = distances_to_reinforcers[next_reinforcer];
+                    
+                    if (distance_to_reinforcer > turns_to_conquer) {
+                        break;
+                    
+                    } else {
+                        PlanetTimeline* reinforcer = reinforcers[next_reinforcer];
+                        const int reinforcement_departure = t - distance_to_reinforcer;
+                        const int reinforcements = reinforcer->ShipsFree(reinforcement_departure, opponent);
+                        ships_needed += reinforcements;
+                        ++next_reinforcer;
+                    }
+                }
+				
                 //Add ships from this planet.
                 const int available_ships = source->ShipsFree(t - turns_to_conquer, player);
                 if(0 == available_ships) {

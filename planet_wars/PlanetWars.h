@@ -256,6 +256,11 @@ inline int OwnerMultiplier(int owner) {
     return (owner + 1) % 3 - 1;
 }
 
+//Get the opposing player given a starting player.
+inline int OtherPlayer(int player) {
+    return (3 - player);
+}
+
 //Fight resolution.
 struct BattleOutcome {
     int owner;
