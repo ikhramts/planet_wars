@@ -427,7 +427,13 @@ int PlanetTimeline::ShipsFree(int when, int owner) const {
     } else {
         ships_free = enemy_ships_free_[actual_index];
     }
-    
+
+#ifndef IS_SUBMISSION
+    if (ships_free > 0) {
+        pw_assert(owner == owner_[actual_index]);
+    }
+#endif
+
     return ships_free;
 }
 
@@ -526,8 +532,9 @@ void PlanetTimeline::AddArrivals(const ActionList& actions) {
             earliest_arrival = arrival_time;
         }
     }
-
-    this->RecalculateTimeline(earliest_arrival);
+    
+    this->ResetStartingData();
+    this->RecalculateTimeline(1);
 }
 
 void PlanetTimeline::RemoveArrival(Action *action) {
@@ -563,20 +570,6 @@ void PlanetTimeline::ResetStartingData() {
         enemy_available_growth_[i] = growth_rate;
     }
 
-    //Reset the ships on surface at start.
-    const int ships = planet_->NumShips();
-    const int departing_ships = my_departures_[start_] + enemy_departures_[start_];
-    const int ships_on_surface = ships - departing_ships;
-    ships_[start_] = ships_on_surface;
-    ships_to_take_over_[start_] = 0;
-
-    if (kMe == owner_[start_]) {
-        ships_free_[start_] = ships_on_surface;
-
-    } else {
-        enemy_ships_free_[start_] = ships_on_surface;
-    }
-    
     //Reset ownership data.
 	const int current_owner = planet_->Owner();
     owner_[start_] = current_owner;
@@ -586,6 +579,17 @@ void PlanetTimeline::ResetStartingData() {
     will_be_mine_ = (kMe == current_owner);
     will_not_be_enemys_ = (kEnemy != current_owner);
     will_be_enemys_ = (kEnemy == current_owner);
+
+    //Reset the ships on surface at start.
+    const int ships = planet_->NumShips();
+    const int departing_ships = my_departures_[start_] + enemy_departures_[start_];
+    const int ships_on_surface = ships - departing_ships;
+    ships_[start_] = ships_on_surface;
+    ships_to_take_over_[start_] = 0;
+    
+    ships_free_[start_] = (kMe == current_owner ? ships_on_surface : 0);
+    enemy_ships_free_[start_] = (kEnemy == current_owner ? ships_on_surface : 0);
+
 }
 
 void PlanetTimeline::RecalculateTimeline(int starting_at) {
@@ -659,6 +663,7 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
 
         } else if (kNeutral == cur_owner) {
             ships_to_take_over_[cur_index] = prev_ships - my_arrivals_[cur_index] + 1;
+            enemy_ships_to_take_over_[cur_index] = prev_ships - enemy_arrivals_[cur_index] + 1;
 
         } else {
 			will_not_be_mine_ = true;

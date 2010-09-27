@@ -35,7 +35,7 @@ ActionList Bot::MakeMoves() {
     
     //Find my best response to enemy's best response to my best moves.
  //   ActionList my_actions = this->FindActionsFor(kMe);
-    ActionList enemy_actions = this->FindActionsFor(kEnemy);
+//    ActionList enemy_actions = this->FindActionsFor(kEnemy);
 //    timeline_->UnapplyActions(my_actions);
 //    Action::FreeActions(my_actions);
 
@@ -81,7 +81,24 @@ ActionList Bot::FindActionsFor(const int player) {
 
         if (best_actions.empty()) {
             break;
-        }
+        
+        } 
+        //else {
+        //    //Remove the planet being invaded.
+        //    const int target_id = best_actions[0]->Target()->Id();
+        //    bool found_target = false;
+        //    const uint planets_left = invadeable_planets.size() - 1;
+
+        //    for (uint i = 0; i < planets_left; ++i) {
+        //        found_target |= (invadeable_planets[i]->Id() == target_id);
+
+        //        if (found_target) {
+        //            invadeable_planets[i] = invadeable_planets[i + 1];
+        //        }
+        //    }
+
+        //    invadeable_planets.resize(planets_left);
+        //}
 
         //Add these actions to the list of other actions.
         for (uint i = 0; i < best_actions.size(); ++i) {
