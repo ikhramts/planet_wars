@@ -32,6 +32,13 @@ ActionList Bot::MakeMoves() {
     } else {
         ActionPool* actionPool = new ActionPool();
     }
+
+    ActionList my_best_actions;
+
+    //Skip the first turn.
+    if (game_->Turn() == 1) {
+        return my_best_actions;
+    }
     
     //Find my best response to enemy's best response to my best moves.
  //   ActionList my_actions = this->FindActionsFor(kMe);
@@ -39,7 +46,7 @@ ActionList Bot::MakeMoves() {
 //    timeline_->UnapplyActions(my_actions);
 //    Action::FreeActions(my_actions);
 
-    ActionList my_best_actions = this->FindActionsFor(kMe);
+    my_best_actions = this->FindActionsFor(kMe);
 
     return my_best_actions;
 }
