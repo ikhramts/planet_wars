@@ -278,8 +278,11 @@ void PlanetTimeline::Update() {
     for (uint i = 0; i < additional_arrivals_.size(); ++i) {
         additional_arrivals_[i] = 0;
         ships_reserved_[i] = 0;
+        enemy_ships_reserved_[i] = 0;
         ships_free_[i] = 0;
+        enemy_ships_free_[i] = 0;
         my_departures_[i] = 0;
+        enemy_departures_[i] = 0;
         available_growth_[i] = 0;
         enemy_available_growth_[i] = 0;
 		my_arrivals_[i] = 0;
@@ -422,7 +425,7 @@ int PlanetTimeline::ShipsFree(int when, int owner) const {
     if (kMe == owner) {
         ships_free = ships_free_[actual_index];
     } else {
-        ships_free = ships_free_[actual_index];
+        ships_free = enemy_ships_free_[actual_index];
     }
     
     return ships_free;
@@ -483,7 +486,7 @@ void PlanetTimeline::AddDeparture(Action *action) {
 
         } else {
             ships_[cur_index] = ships_remaining;
-            pw_assert(ships_free_[cur_index] >= num_ships && "Must not take more ships than there are free ships");
+            pw_assert(ships_free[cur_index] >= num_ships && "Must not take more ships than there are free ships");
             ships_free[cur_index] -= num_ships;
         }
 
@@ -636,7 +639,9 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
 			will_be_mine_ = true;
             will_not_be_enemys_ = true;
             ships_to_take_over_[cur_index] = 0;
-            ships_free_[cur_index] = ships_[cur_index];
+
+            enemy_ships_free_[cur_index] = 0;
+            ships_free_[cur_index] = std::max(ships_[cur_index] - ships_reserved_[cur_index], 0);
 
             if (kNeutral == prev_owner) {
                 enemy_ships_to_take_over_[cur_index] = 
@@ -659,7 +664,9 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
 			will_not_be_mine_ = true;
 			will_be_enemys_ = true;
             enemy_ships_to_take_over_[cur_index] = 0;
-            enemy_ships_free_[cur_index] = ships_[cur_index];
+
+            ships_free_[cur_index] = 0;
+            enemy_ships_free_[cur_index] = std::max(ships_[cur_index] - enemy_ships_reserved_[cur_index], 0);
 
             if (kNeutral == prev_owner) {
                 ships_to_take_over_[cur_index] = 
@@ -679,6 +686,13 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
         ships_gained_[cur_index] = PlanetShipsGainRate(cur_owner, growth_rate);
 
 #ifndef IS_SUBMISSION
+        if (ships_free_[cur_index] > 0) {
+            pw_assert(cur_owner == kMe);
+        } 
+        if (enemy_ships_free_[cur_index]) {
+            pw_assert(cur_owner == kEnemy);
+        }
+
         if (0 == my_arrivals_[cur_index] && 0 == enemy_arrivals_[cur_index]) {
             if (kNeutral != owner_[cur_index]) {
                 pw_assert(ships_[cur_index] == ships_[prev_index] + growth_rate);

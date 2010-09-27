@@ -163,11 +163,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
 				if (turns_to_conquer > t) {
 					break;
 				}
-				
+
                 //Add ships from this planet.
                 const int available_ships = source->ShipsFree(t - turns_to_conquer, player);
                 if(0 == available_ships) {
                     continue;
+                
+                } else {
+                    pw_assert(source->IsOwnedBy(player, t - turns_to_conquer));
                 }
                 
                 const int remaining_ships_needed = ships_needed - ships_to_send;
