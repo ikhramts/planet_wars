@@ -163,43 +163,37 @@ PlanetList GameMap::Planets() const {
 }
 
 PlanetList GameMap::MyPlanets() const {
-    PlanetList r;
-    for (int i = 0; i < num_planets_; ++i) {
-        Planet* p = planets_[i];
-        if (p->Owner() == kMe) {
-            r.push_back(p);
-        }
-    }
-    return r;
+    return this->PlanetsOwnedBy(kMe);
 }
 
 PlanetList GameMap::NeutralPlanets() const {
-    PlanetList r;
-    for (int i = 0; i < num_planets_; ++i) {
-        Planet* p = planets_[i];
-        if (p->Owner() == kNeutral) {
-            r.push_back(p);
-        }
-    }
-    return r;
+    return this->PlanetsOwnedBy(kNeutral);
 }
 
 PlanetList GameMap::EnemyPlanets() const {
+    return this->PlanetsOwnedBy(kEnemy);
+}
+
+PlanetList GameMap::NotMyPlanets() const {
+    return this->PlanetsNotOwnedBy(kMe);
+}
+
+PlanetList GameMap::PlanetsOwnedBy(const int player) const {
     PlanetList r;
     for (int i = 0; i < num_planets_; ++i) {
         Planet* p = planets_[i];
-        if (p->Owner() == kEnemy) {
+        if (p->Owner() == player) {
             r.push_back(p);
         }
     }
     return r;
 }
 
-PlanetList GameMap::NotMyPlanets() const {
+PlanetList GameMap::PlanetsNotOwnedBy(const int player) const {
     PlanetList r;
     for (int i = 0; i < num_planets_; ++i) {
         Planet* p = planets_[i];
-        if (p->Owner() != kMe) {
+        if (p->Owner() != player) {
             r.push_back(p);
         }
     }
@@ -225,7 +219,7 @@ PlanetList GameMap::PlanetsByDistance(int planet_id) {
     return this->PlanetsByDistance(planets_[planet_id]);
 }
 
-PlanetList GameMap::MyPlanetsByDistance(Planet* origin) {
+PlanetList GameMap::PlayerPlanetsByDistance(const int player, Planet* origin) {
     const int origin_id = origin->Id();
     const int offset = origin_id * num_planets_;
     
@@ -235,7 +229,7 @@ PlanetList GameMap::MyPlanetsByDistance(Planet* origin) {
     for (int i = 0; i < num_planets_; ++i) {
         const int planet_index = offset + i;
 
-        if (planets_by_distance_[planet_index]->IsMine()) {
+        if (planets_by_distance_[planet_index]->Owner() == player) {
             planets_by_distance.push_back(planets_by_distance_[planet_index]);
         }
     }
@@ -243,7 +237,7 @@ PlanetList GameMap::MyPlanetsByDistance(Planet* origin) {
     return planets_by_distance;
 }
 
-PlanetList GameMap::NotMyPlanetsByDistance(Planet* origin) {
+PlanetList GameMap::NotPlayerPlanetsByDistance(const int player, Planet *origin) {
     const int origin_id = origin->Id();
     const int offset = origin_id * num_planets_;
     
@@ -253,12 +247,20 @@ PlanetList GameMap::NotMyPlanetsByDistance(Planet* origin) {
     for (int i = 0; i < num_planets_; ++i) {
         const int planet_index = offset + i;
 
-        if (!planets_by_distance_[planet_index]->IsMine()) {
+        if (planets_by_distance_[planet_index]->Owner() != player) {
             planets_by_distance.push_back(planets_by_distance_[planet_index]);
         }
     }
 
     return planets_by_distance;
+}
+
+PlanetList GameMap::MyPlanetsByDistance(Planet* origin) {
+    return this->PlayerPlanetsByDistance(kMe, origin);
+}
+
+PlanetList GameMap::NotMyPlanetsByDistance(Planet* origin) {
+    return this->NotPlayerPlanetsByDistance(kMe, origin);
 }
 
 FleetList GameMap::Fleets() const {

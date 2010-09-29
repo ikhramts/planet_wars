@@ -192,7 +192,7 @@ void GameTimeline::UnapplyActions(const ActionList &actions) {
                PlanetTimeline class
 ************************************************/
 PlanetTimeline::PlanetTimeline()
-:game_(NULL), planet_(NULL) {
+:game_(NULL), planet_(NULL), is_reinforcer_(false) {
 }
 
 void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *game) {
@@ -272,6 +272,8 @@ void PlanetTimeline::Update() {
     enemy_arrivals_[end_] = 0;
     
     int start_update_at = horizon_ - 1;
+
+    is_reinforcer_ = false;
 
     //Reset the various arrays.
     //For now deal only with my arrivals.
@@ -419,6 +421,10 @@ int PlanetTimeline::ShipsRequredToPosess(int arrival_time, int by_whom) const {
 }
 
 int PlanetTimeline::ShipsFree(int when, int owner) const {
+    if (is_reinforcer_) {
+        return 0;
+    }
+
     const int actual_index = this->ActualIndex(when);
     int ships_free = 0;
 

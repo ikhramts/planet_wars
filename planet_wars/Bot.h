@@ -26,6 +26,7 @@ public:
 private:
     ActionList FindActionsFor(int player);
     ActionList BestRemainingMove(PlanetTimelineList& invadeable_planets, int player);
+    ActionList SendFleetsToFront(int player);
 
     GameMap* game_;
     GameTimeline* timeline_;

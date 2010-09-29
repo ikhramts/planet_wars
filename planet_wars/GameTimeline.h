@@ -109,6 +109,10 @@ public:
     //Update the planet state projections.
     void RecalculateTimeline(int starting_at);
 
+    //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
+    void SetReinforcer(bool is_reinforcer)  {is_reinforcer_ = is_reinforcer;}
+    bool IsReinforcer() const               {return is_reinforcer_;}
+
 private:
     //Calculate actual index of an element in the *_at_ vectors
     //given a plain index.
@@ -156,6 +160,8 @@ private:
 
     //Temporary storage.
     mutable std::vector<int> additional_arrivals_;
+
+    bool is_reinforcer_;
 };
 
 #endif

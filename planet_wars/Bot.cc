@@ -34,19 +34,22 @@ ActionList Bot::MakeMoves() {
     }
 
     ActionList my_best_actions;
+    
+    my_best_actions = this->SendFleetsToFront(kMe);
 
     //Skip the first turn.
-    if (game_->Turn() == 1) {
-        return my_best_actions;
-    }
+    //if (game_->Turn() == 1) {
+    //    return my_best_actions;
+    //}
     
     //Find my best response to enemy's best response to my best moves.
  //   ActionList my_actions = this->FindActionsFor(kMe);
 //    ActionList enemy_actions = this->FindActionsFor(kEnemy);
 //    timeline_->UnapplyActions(my_actions);
 //    Action::FreeActions(my_actions);
-
-    my_best_actions = this->FindActionsFor(kMe);
+    
+    ActionList found_actions = this->FindActionsFor(kMe); 
+    my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
 
     return my_best_actions;
 }
@@ -282,5 +285,90 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
 	}//End iterating over targets.
 
 	return best_actions;
+}
+
+ActionList Bot::SendFleetsToFront(const int player) {
+    ActionList reinforcing_fleets;
+    ActionList temp_action_list;
+    temp_action_list.push_back(NULL);
+
+    const int distance_threshold = 1;
+    const int opponent = OtherPlayer(player);
+    
+    if (game_->PlanetsOwnedBy(opponent).empty()) {
+        return reinforcing_fleets;
+    }
+
+    PlanetList player_planets = game_->PlanetsOwnedBy(player);
+    PlanetTimelineList timelines = timeline_->Timelines();
+
+    for (uint i = 0; i < player_planets.size(); ++i) {
+        Planet* planet = player_planets[i];
+        PlanetTimeline* planet_timeline = timelines[planet->Id()];
+        const int free_ships = planet_timeline->ShipsFree(0, player);
+
+        if (0 == free_ships) {
+            continue;
+        }
+
+        //Check whether the player owns any planets closer to enemy
+        //planets than this one.
+        PlanetList player_planets_by_distance = game_->PlayerPlanetsByDistance(player, planet);
+        PlanetList targets_by_distance = game_->PlayerPlanetsByDistance(opponent, planet);
+        //PlanetList targets_by_distance = game_->NotPlayerPlanetsByDistance(player, planet);
+
+        pw_assert(!targets_by_distance.empty());
+
+        //Find the closest non-zero growth planet not owned by the player.
+        Planet* closest_target = NULL;
+        for (uint j = 0; j < targets_by_distance.size(); ++j) {
+            if (targets_by_distance[j]->GrowthRate() > 0) {
+                closest_target = targets_by_distance[j];
+                break;
+            }
+        }
+
+        if (NULL == closest_target) {
+            break;
+        }
+
+        const int distance_to_target = game_->GetDistance(planet, closest_target);
+
+        //Find the best allied planet to reinforce.
+        int send_ships_to = -1;
+        int shortest_distance_to_target = distance_to_target;
+        int distance_to_ally_planet = 0;
+
+        for (uint p = 1; p < player_planets_by_distance.size(); ++p) {
+            Planet* player_planet = player_planets_by_distance[p];
+            const int planet_distance_to_target = game_->GetDistance(player_planet, closest_target);
+            const int planet_distance_to_source = game_->GetDistance(player_planet, planet);
+
+            if (planet_distance_to_target < shortest_distance_to_target
+              && (distance_to_target - distance_threshold) > planet_distance_to_source) {
+                shortest_distance_to_target = planet_distance_to_target;
+                send_ships_to = player_planet->Id();
+                distance_to_ally_planet = planet_distance_to_source;
+            }
+        }
+
+        if (-1 != send_ships_to) {
+            Action* action = Action::Get();
+            action->SetOwner(player);
+            action->SetSource(planet_timeline);
+            action->SetTarget(timelines[send_ships_to]);
+            action->SetDepartureTime(0);
+            action->SetDistance(distance_to_ally_planet);
+            action->SetNumShips(free_ships);
+            temp_action_list[0] = action;
+
+            timeline_->ApplyActions(temp_action_list);
+            reinforcing_fleets.push_back(action);
+
+            planet_timeline->SetReinforcer(true);
+        }
+    }
+
+    return reinforcing_fleets;
 }
 

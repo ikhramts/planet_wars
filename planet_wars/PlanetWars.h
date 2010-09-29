@@ -166,10 +166,14 @@ public:
     PlanetList NeutralPlanets() const;
     PlanetList EnemyPlanets() const;
     PlanetList NotMyPlanets() const;
+    PlanetList PlanetsOwnedBy(int player) const;
+    PlanetList PlanetsNotOwnedBy(int player) const;
     
     //Get planets sorted by distance from a certain planet.
     PlanetList PlanetsByDistance(Planet* origin);
     PlanetList PlanetsByDistance(int planet_id);
+    PlanetList PlayerPlanetsByDistance(int player, Planet* origin);
+    PlanetList NotPlayerPlanetsByDistance(int player, Planet* origin);
     PlanetList MyPlanetsByDistance(Planet* origin);
     PlanetList NotMyPlanetsByDistance(Planet* origin);
 
