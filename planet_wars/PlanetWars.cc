@@ -605,7 +605,7 @@ BattleOutcome ResolveBattle(int starting_owner, int neutral_ships, int my_ships,
         //Planet was neutral to begin with.
         const int max_me_or_enemy = std::max(my_ships, enemy_ships);
 
-        if (neutral_ships > max_me_or_enemy) {
+        if (neutral_ships >= max_me_or_enemy) {
             outcome.ships_remaining = neutral_ships - max_me_or_enemy;
             outcome.owner = kNeutral;
 
