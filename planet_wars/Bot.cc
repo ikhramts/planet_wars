@@ -307,10 +307,6 @@ ActionList Bot::SendFleetsToFront(const int player) {
         PlanetTimeline* planet_timeline = timelines[planet->Id()];
         const int free_ships = planet_timeline->ShipsFree(0, player);
 
-        if (0 == free_ships) {
-            continue;
-        }
-
         //Check whether the player owns any planets closer to enemy
         //planets than this one.
         PlanetList player_planets_by_distance = game_->PlayerPlanetsByDistance(player, planet);
@@ -353,17 +349,19 @@ ActionList Bot::SendFleetsToFront(const int player) {
         }
 
         if (-1 != send_ships_to) {
-            Action* action = Action::Get();
-            action->SetOwner(player);
-            action->SetSource(planet_timeline);
-            action->SetTarget(timelines[send_ships_to]);
-            action->SetDepartureTime(0);
-            action->SetDistance(distance_to_ally_planet);
-            action->SetNumShips(free_ships);
-            temp_action_list[0] = action;
+            if (0 != free_ships) {
+                Action* action = Action::Get();
+                action->SetOwner(player);
+                action->SetSource(planet_timeline);
+                action->SetTarget(timelines[send_ships_to]);
+                action->SetDepartureTime(0);
+                action->SetDistance(distance_to_ally_planet);
+                action->SetNumShips(free_ships);
+                temp_action_list[0] = action;
 
-            timeline_->ApplyActions(temp_action_list);
-            reinforcing_fleets.push_back(action);
+                timeline_->ApplyActions(temp_action_list);
+                reinforcing_fleets.push_back(action);
+            }
 
             planet_timeline->SetReinforcer(true);
         }
