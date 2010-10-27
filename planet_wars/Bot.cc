@@ -209,24 +209,24 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
 
                 //Add to the opponent's forces the reinforcing ships that the opponent
                 //can send by this time from other planets.
-                double d_reinforecements = 0;
-                while (next_reinforcer < reinforcers.size()) {
-                    const int distance_to_reinforcer = distances_to_reinforcers[next_reinforcer];
-                    
-                    if (distance_to_reinforcer > turns_to_conquer) {
-                        break;
-                    
-                    } else {
-                        PlanetTimeline* reinforcer = reinforcers[next_reinforcer];
-                        const int reinforcement_departure = t - distance_to_reinforcer;
-                        const int reinforcements = reinforcer->ShipsFree(reinforcement_departure, opponent);
-                        d_reinforecements += static_cast<double>(reinforcements) / 2;
-                        //ships_needed += reinforcements;
-                        ++next_reinforcer;
-                    }
-                }
+                //double d_reinforecements = 0;
+                //while (next_reinforcer < reinforcers.size()) {
+                //    const int distance_to_reinforcer = distances_to_reinforcers[next_reinforcer];
+                //    
+                //    if (distance_to_reinforcer > turns_to_conquer) {
+                //        break;
+                //    
+                //    } else {
+                //        PlanetTimeline* reinforcer = reinforcers[next_reinforcer];
+                //        const int reinforcement_departure = t - distance_to_reinforcer;
+                //        const int reinforcements = reinforcer->ShipsFree(reinforcement_departure, opponent);
+                //        d_reinforecements += static_cast<double>(reinforcements) / 2;
+                //        //ships_needed += reinforcements;
+                //        ++next_reinforcer;
+                //    }
+                //}
 
-                ships_needed += static_cast<int>(d_reinforecements);
+                //ships_needed += static_cast<int>(d_reinforecements);
 				
                 //Add ships from this planet.
                 const int available_ships = source->ShipsFree(t - turns_to_conquer, player);
