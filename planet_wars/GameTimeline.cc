@@ -28,18 +28,41 @@ void GameTimeline::SetGameMap(GameMap* game) {
         timeline->Initialize(horizon_, planets[i], game);
         planet_timelines_.push_back(timeline);
     }
+
+    //Initialize the base planet timelines.
+    for (uint i = 0; i < planets.size(); ++i) {
+        PlanetTimeline* base_timeline = new PlanetTimeline();
+        base_timeline->Copy(planet_timelines_[i]);
+        base_planet_timelines_.push_back(base_timeline);
+    }
+
+    //Initialize indicators showing whether the base timeline is different
+    //from the working timeline.
+    are_working_timelines_different_.resize(planet_timelines_.size(), false);
 }
 
 void GameTimeline::Update() {
     //Update the planet data.
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         planet_timelines_[i]->Update();
+        base_planet_timelines_[i]->CopyTimeline(planet_timelines_[i]);
+        are_working_timelines_different_[i] = false;
     }
 }
 
 int GameTimeline::ShipsGainedForActions(const ActionList& actions, Planet *planet) const {
     PlanetTimeline* timeline = planet_timelines_[planet->Id()];
     const int ships_gained = timeline->ShipsGainedForActions(actions);
+    return ships_gained;
+}
+
+int GameTimeline::ShipsGainedFromBase() const {
+    int ships_gained = 0;
+
+    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        ships_gained += (planet_timelines_[i]->ShipsGained() - base_planet_timelines_[i]->ShipsGained());
+    }
+
     return ships_gained;
 }
 
@@ -141,12 +164,28 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 	if (actions.empty()) {
 		return;
 	}
+
+    this->ApplyTempActions(actions);
+    
+    for (uint i = 0; i < are_working_timelines_different_.size(); ++i) {
+        if (are_working_timelines_different_[i]) {
+            base_planet_timelines_[i]->CopyTimeline(planet_timelines_[i]);
+            are_working_timelines_different_[i] = false;
+        }
+    }
+}
+
+void GameTimeline::ApplyTempActions(const ActionList& actions) {
+	if (actions.empty()) {
+		return;
+	}
 	
 	//Assumption: actions are grouped by their target.
 	
 	//Apply the actions to their target.
 	PlanetTimeline* target = actions[0]->Target();
 	target->AddArrivals(actions);
+    are_working_timelines_different_[target->Id()] = true;
 
 	//Apply the actions to their sources.
 	for (uint i = 0; i < actions.size(); ++i) {
@@ -154,6 +193,7 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 
 		PlanetTimeline* source = actions[i]->Source();
 		source->AddDeparture(actions[i]);
+        are_working_timelines_different_[source->Id()] = true;
 	}
 }
 
@@ -184,6 +224,15 @@ void GameTimeline::UnapplyActions(const ActionList &actions) {
             PlanetTimeline* timeline = planet_timelines_[i];
             timeline->ResetStartingData();
             timeline->RecalculateTimeline(1);
+        }
+    }
+}
+
+void GameTimeline::ResetTimelinesToBase() {
+    for (uint i = 0; i < are_working_timelines_different_.size(); ++i) {
+        if (are_working_timelines_different_[i]) {
+            planet_timelines_[i]->CopyTimeline(base_planet_timelines_[i]);
+            are_working_timelines_different_[i] = false;
         }
     }
 }
@@ -257,6 +306,45 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     will_be_enemys_ = (kEnemy == starting_owner);
 
     this->RecalculateTimeline(1);
+}
+
+void PlanetTimeline::Copy(PlanetTimeline* other) {
+    id_ = other->id_;
+    horizon_ = other->horizon_;
+
+    game_ = other->game_;
+    planet_ = other->planet_;
+    
+    this->CopyTimeline(other);
+}
+
+void PlanetTimeline::CopyTimeline(PlanetTimeline* other) {
+    owner_ = other->owner_;
+    ships_ = other->ships_;
+    my_arrivals_ = other->my_arrivals_;
+    enemy_arrivals_ = other->enemy_arrivals_;
+    ships_to_take_over_ = other->ships_to_take_over_;
+    ships_gained_ = other->ships_gained_;
+    available_growth_ = other->available_growth_;
+    ships_reserved_ = other->ships_reserved_;
+    ships_free_ = other->ships_free_;
+
+    enemy_ships_to_take_over_ = other->enemy_ships_to_take_over_;
+    enemy_ships_reserved_ = other->enemy_ships_reserved_;
+    enemy_ships_free_ = other->enemy_ships_free_;
+    enemy_available_growth_ = other->enemy_available_growth_;
+    
+    my_departures_ = other->my_departures_;
+    enemy_departures_ = other->enemy_departures_;
+
+    total_ships_gained_ = other->total_ships_gained_;
+
+    will_not_be_enemys_ = other->will_not_be_enemys_;
+    will_not_be_mine_ = other->will_not_be_mine_;
+	will_be_enemys_ = other->will_be_enemys_;
+	will_be_mine_ = other->will_be_mine_;
+
+    is_reinforcer_ = other->is_reinforcer_;
 }
 
 void PlanetTimeline::Update() {

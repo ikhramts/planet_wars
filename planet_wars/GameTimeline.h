@@ -30,6 +30,8 @@ public:
     //of fleets to a planet.
     int ShipsGainedForActions(const ActionList& actions, Planet* planet) const;
 
+    int ShipsGainedFromBase() const;
+
     //Get the list of planets that will not be mine at any point in time
     //over the projected horizon.
     PlanetList PlanetsThatWillNotBeMine() const;
@@ -49,14 +51,19 @@ public:
 	
 	//Apply actions to the timeline, changing the forecasts.
 	void ApplyActions(const ActionList& actions);
+    void ApplyTempActions(const ActionList& actions);
 
 	//Remove actions from the timeline, changing the forecasts.
 	void UnapplyActions(const ActionList& actions);
+
+    void ResetTimelinesToBase();
 
 private:
     int horizon_;
     GameMap* game_;
     PlanetTimelineList planet_timelines_;
+    PlanetTimelineList base_planet_timelines_;
+    std::vector<bool> are_working_timelines_different_;
 };
 
 //A class for forecasting the state of each planet.
@@ -66,11 +73,16 @@ public:
     
     void Initialize(int forecast_horizon, Planet* planet, GameMap* game);
     
+    void Copy(PlanetTimeline* other);
+    void CopyTimeline(PlanetTimeline* other);
+
     void Update();
 
     //Calculate how many additional ships would be gained if specified
     //fleets would be sent to the planet.
     int ShipsGainedForActions(const ActionList& actions) const;
+
+    int ShipsGained() const                 {return total_ships_gained_;}
 
     
     Planet* GetPlanet() const               {return planet_;}

@@ -277,9 +277,12 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
                 continue;
 
             } else {
-                const int ships_gained = target->ShipsGainedForActions(invasion_plan);
+                timeline_->ApplyTempActions(invasion_plan);
+                const int ships_gained = timeline_->ShipsGainedFromBase();
+                //const int ships_gained = target->ShipsGainedForActions(invasion_plan);
                 const double return_ratio = static_cast<double>(ships_gained)
                                             / static_cast<double>(ships_to_send);
+                timeline_->ResetTimelinesToBase();
 
                 //returns_for_target[t] = return_ratio;
                 if (best_return < return_ratio) {
