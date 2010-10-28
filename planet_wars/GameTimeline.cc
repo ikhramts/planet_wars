@@ -214,12 +214,10 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     ships_to_take_over_.resize(u_horizon, 0);
     ships_gained_.resize(u_horizon, 0);
     available_growth_.resize(u_horizon, growth_rate);
-//    ships_to_keep_.resize(u_horizon, 0);
     ships_reserved_.resize(u_horizon, 0);
     ships_free_.resize(u_horizon, 0);
 
     enemy_ships_to_take_over_.resize(u_horizon, 0);
-//    enemy_ships_to_keep_.resize(u_horizon, 0);
     enemy_ships_reserved_.resize(u_horizon, 0);
     enemy_ships_free_.resize(u_horizon, 0);
     enemy_available_growth_.resize(u_horizon, growth_rate);
@@ -788,7 +786,6 @@ void PlanetTimeline::ReserveShips(const int owner, const int key_time, const int
 
         } else {
             ships_reserved[cur_index] += ships_to_reserve;
-            //const int ships_unavailable = std::max(ships_reserved_[cur_index], ships_to_keep_[cur_index]);
             const int ships_unavailable = ships_reserved[cur_index];
             const int owned_ships_on_planet = (owner == owner_[cur_index] ? ships_[cur_index] : 0);
             ships_free[cur_index] = std::max(owned_ships_on_planet - ships_unavailable, 0);

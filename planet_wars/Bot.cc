@@ -35,7 +35,8 @@ ActionList Bot::MakeMoves() {
 
     ActionList my_best_actions;
     
-    my_best_actions = this->SendFleetsToFront(kMe);
+    ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
+    my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
 
     //Skip the first turn.
     //if (game_->Turn() == 1) {
@@ -92,23 +93,22 @@ ActionList Bot::FindActionsFor(const int player) {
         if (best_actions.empty()) {
             break;
         
-        } 
-        //else {
-        //    //Remove the planet being invaded.
-        //    const int target_id = best_actions[0]->Target()->Id();
-        //    bool found_target = false;
-        //    const uint planets_left = invadeable_planets.size() - 1;
+        } else {
+            //Remove the planet being invaded.
+            const int target_id = best_actions[0]->Target()->Id();
+            bool found_target = false;
+            const uint planets_left = invadeable_planets.size() - 1;
 
-        //    for (uint i = 0; i < planets_left; ++i) {
-        //        found_target |= (invadeable_planets[i]->Id() == target_id);
+            for (uint i = 0; i < planets_left; ++i) {
+                found_target |= (invadeable_planets[i]->Id() == target_id);
 
-        //        if (found_target) {
-        //            invadeable_planets[i] = invadeable_planets[i + 1];
-        //        }
-        //    }
+                if (found_target) {
+                    invadeable_planets[i] = invadeable_planets[i + 1];
+                }
+            }
 
-        //    invadeable_planets.resize(planets_left);
-        //}
+            invadeable_planets.resize(planets_left);
+        }
 
         //Add these actions to the list of other actions.
         for (uint i = 0; i < best_actions.size(); ++i) {

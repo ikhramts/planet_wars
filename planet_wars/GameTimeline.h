@@ -132,12 +132,10 @@ private:
     std::vector<int> ships_to_take_over_;
     std::vector<int> ships_gained_;
     std::vector<int> available_growth_;
-    std::vector<int> ships_to_keep_;        //Minimum ships required to keep the planet.
     std::vector<int> ships_reserved_;
     std::vector<int> ships_free_;
 
     std::vector<int> enemy_ships_to_take_over_;
-//    std::vector<int> enemy_ships_to_keep_;
     std::vector<int> enemy_ships_reserved_;
     std::vector<int> enemy_ships_free_;
     std::vector<int> enemy_available_growth_;
