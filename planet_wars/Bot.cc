@@ -151,7 +151,18 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList &invadeable_planets, const 
 		const int target_id = target->Id();
 
         //Planets that might be participating in the invasion, sorted by distance from target.
-		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
+		PlanetTimelineList unfiltered_sources = timeline_->EverOwnedTimelinesByDistance(player, target);
+        
+        //Remove the feeder planets from the sources.
+        PlanetTimelineList sources;
+        
+        for (uint i = 0; i < unfiltered_sources.size(); ++i) {
+            if (!unfiltered_sources[i]->IsReinforcer()) {
+                sources.push_back(unfiltered_sources[i]);
+            }
+        }
+        
+        //Pre-calculate distances to the sources.
 		std::vector<int> distances_to_sources(sources.size());
 
 		for (uint s = 0; s < sources.size(); ++s) {
