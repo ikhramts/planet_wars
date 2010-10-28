@@ -114,17 +114,11 @@ public:
     bool IsReinforcer() const               {return is_reinforcer_;}
 
 private:
-    //Calculate actual index of an element in the *_at_ vectors
-    //given a plain index.
-    int ActualIndex(int i) const        {return (i + start_ + horizon_) % horizon_; }
-
     //Reserve ships for a departure or defense.
     void ReserveShips(int owner, int key_time, int num_ships);
 
     int id_;        //Should be same as planet_id.
     int horizon_;
-    int start_;
-    int end_;
     std::vector<int> owner_;
     std::vector<int> ships_;
     std::vector<int> my_arrivals_;
