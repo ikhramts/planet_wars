@@ -45,7 +45,9 @@ public:
     PlanetTimelineList Timelines() const            {return planet_timelines_;}
     PlanetTimelineList TimelinesOwnedBy(int owner, int when = 0) const;
     PlanetTimelineList TimelinesNotOwnedBy(int owner, int when = 0) const;
-
+    
+    PlanetTimelineList EverNotOwnedTimelines(int owner);
+    PlanetTimelineList EverNotOwnedNonReinforcerTimelines(int owner);
 	PlanetTimelineList EverOwnedTimelinesByDistance(int owner, PlanetTimeline* source);
     PlanetTimelineList OwnedTimelinesByDistance(int owner, PlanetTimeline* source, int when = 0);
 	
@@ -57,6 +59,7 @@ public:
 	void UnapplyActions(const ActionList& actions);
 
     void ResetTimelinesToBase();
+    void SaveTimelinesToBase();
 
 private:
     int horizon_;
