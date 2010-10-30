@@ -693,7 +693,7 @@ void PlanetTimeline::ResetStartingData() {
     const int ships = planet_->NumShips();
     const int departing_ships = my_departures_[0] + enemy_departures_[0];
     const int ships_on_surface = ships - departing_ships;
-    ships_[0] = ships_on_surface;
+    ships_[0] = ships_on_surface - my_departures_[0] - enemy_departures_[0];
     ships_to_take_over_[0] = 0;
     
     ships_free_[0] = (kMe == current_owner ? ships_on_surface : 0);
@@ -726,7 +726,7 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
         if (0 == my_arrivals_[i] && 0 == enemy_arrivals_[i]) {
             //Ships don't arrive.
             owner_[i] = prev_owner;
-            ships_[i] = base_ships;
+            ships_[i] = base_ships - my_departures_[i] - enemy_departures_[i];
 
         } else {
             //A fleet has arrived.  Resolve the battle.
@@ -778,7 +778,7 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
 
         if (0 == my_arrivals_[i] && 0 == enemy_arrivals_[i]) {
             if (kNeutral != owner_[i]) {
-                pw_assert(ships_[i] == ships_[prev_index] + growth_rate);
+                pw_assert(ships_[i] == ships_[prev_index] + growth_rate - my_departures_[i] - enemy_departures_[i]);
 
             } else {
                 pw_assert(ships_[i] == ships_[prev_index]);
