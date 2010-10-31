@@ -6,7 +6,7 @@
 
 # A Half Cautious Reinforcer that considers opponent's best counter-move to
 # any given move.
-cmd = "tcp.exe 72.44.46.68 995 iouri.16 -p victory preventer.exe"
+cmd = "tcp.exe 72.44.46.68 995 iouri.17 -p victory preventer.exe"
 
 import os
 import sys

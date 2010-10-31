@@ -36,6 +36,8 @@ private:
     GameMap* game_;
     GameTimeline* timeline_;
     int counter_horizon_;
+    int turn_;
+    int picking_round_;
 };
 
 

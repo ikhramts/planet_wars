@@ -61,6 +61,8 @@ public:
     void ResetTimelinesToBase();
     void SaveTimelinesToBase();
 
+    void MarkTimelineAsModified(int timeline_id);
+
 private:
     int horizon_;
     GameMap* game_;
@@ -74,7 +76,7 @@ class PlanetTimeline {
 public:
     PlanetTimeline();
     
-    void Initialize(int forecast_horizon, Planet* planet, GameMap* game);
+    void Initialize(int forecast_horizon, Planet* planet, GameMap* game, GameTimeline* game_timeline);
     
     void Copy(PlanetTimeline* other);
     void CopyTimeline(PlanetTimeline* other);
@@ -117,6 +119,9 @@ public:
 	//should be called to update the planet timelines.
 	void RemoveDeparture(Action* action);
 	void RemoveArrival(Action* action);
+
+    int MyArrivalsAt(int when) const        {return my_arrivals_[when];}
+    int EnemyArrivalsAt(int when) const     {return enemy_arrivals_[when];}
     
     //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
@@ -131,6 +136,12 @@ public:
 private:
     //Reserve ships for a departure or defense.
     void ReserveShips(int owner, int key_time, int num_ships);
+    //void UnreserveShips(int owner, int key_time, int num_ships);
+
+    //Remove a departing action.
+    void RemoveDepartingAction(uint departure_index);
+    void RemoveDepartingActions(int turn, int player);
+    void MarkAsChanged();
 
     int id_;        //Should be same as planet_id.
     int horizon_;
@@ -149,11 +160,16 @@ private:
     std::vector<int> enemy_ships_free_;
     std::vector<int> enemy_available_growth_;
     
-
     std::vector<int> my_departures_;
     std::vector<int> enemy_departures_;
 
+    std::vector<int> my_unreserved_arrivals_;   //Arrivals on enemy planets that should not reserve enemy ships.
+    std::vector<int> my_contingent_departures_;     //Departures that reserve ships but don't subtract shps.
+    std::vector<int> enemy_contingent_departures_;
+
     int total_ships_gained_;
+
+    ActionList departing_actions_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
@@ -164,11 +180,13 @@ private:
 
     GameMap* game_;
     Planet* planet_;
+    GameTimeline* game_timeline_;
 
     //Temporary storage.
     mutable std::vector<int> additional_arrivals_;
 
     bool is_reinforcer_;
+    bool is_recalculating_;
 };
 
 #endif
