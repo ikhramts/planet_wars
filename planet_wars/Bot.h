@@ -11,6 +11,7 @@
 #include "Actions.h"
 
 class GameTimeline;
+class CounterActionResult;
 
 class Bot {
 public:
@@ -25,19 +26,33 @@ public:
 
 private:
     ActionList FindActionsFor(int player);
+
     ActionList BestRemainingMove(PlanetTimelineList& invadeable_planets, 
                                  int player,
                                  int earliest_departure,
                                  const std::vector<int>& earliest_arrivals,
                                  const std::vector<int>& latest_arrivals,
                                  int depth = 0);
-    ActionList SendFleetsToFront(int player);
 
+    CounterActionResult ShipsGainedForAfterMove(const ActionList& invasion_plan, 
+                                         PlanetTimelineList& counter_targets,
+                                         const int attack_arrival_time);
+
+    ActionList SendFleetsToFront(int player);
+    
     GameMap* game_;
     GameTimeline* timeline_;
     int counter_horizon_;
     int turn_;
     int picking_round_;
+
+    ActionList committed_actions_;
+};
+
+class CounterActionResult {
+public:
+    int ships_gained;
+    ActionList defense_plan;
 };
 
 

@@ -37,6 +37,7 @@ public:
     int Distance() const                    {return distance_;}
     int DepartureTime() const               {return departure_time_;}
     int NumShips() const                    {return num_ships_;}
+    bool IsContingent() const               {return is_contingent_;}
 
     void SetOwner(int owner)                {owner_ = owner;}
     void SetSource(PlanetTimeline* s)     {source_ = s;}
@@ -44,6 +45,7 @@ public:
     void SetDistance(int d)                 {distance_ = d;}
     void SetDepartureTime(int t)            {departure_time_ = t;}
     void SetNumShips(int n)                 {num_ships_ = n;}
+    void SetContingent(bool contingent)     {is_contingent_ = contingent;}
 
     //Convert an action to a move order understandable by the game engine.
     std::string ToMoveOrder() const;
@@ -62,6 +64,7 @@ private:
     int distance_;
     int num_ships_;
     int departure_time_;        //in turns from now.
+    bool is_contingent_;
 };
 
 //This class manages the pool of actions.

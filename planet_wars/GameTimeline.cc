@@ -641,63 +641,65 @@ void PlanetTimeline::AddDeparture(Action *action) {
     }
 #endif
 
-    //If there are more ships departing than there are ships on the planet, then this must be
-    //a contingent departure, i.e. ships are reserved, but aren't scheduled to depart.
-    if (num_ships > ships_[departure_time]) {
+    //In case of contingent departures (i.e. departures that only happen in response to certain
+    //opponent actions), reserve ships but don't subtract them from the planet.
+    if (action->IsContingent()) {
         contingent_departures[departure_time] += num_ships;
         this->ReserveShips(action_owner, departure_time, num_ships);
         return;
     }
     
     //Make sure that the right number of ships exists on the planet.
-    //pw_assert(num_ships <= ships_[departure_time]);
+    pw_assert(num_ships <= ships_[departure_time]);
 
     //Record the departure.
     departures[departure_time] += num_ships;
+    this->ResetStartingData();
+    this->RecalculateTimeline(1);
 
     //Calculate effects on the timeline due to the departure.
-    this->ReserveShips(action_owner, departure_time, num_ships);
-
-    for (int i = departure_time; i < horizon_; ++i) {
-        const int ships_remaining = ships_[i] - num_ships;
-        
-        if (ships_remaining < 0) {
-            //Cannot do simple recaltulations.
-            //Recalculate the whole thing.
-            this->ResetStartingData();
-            this->RecalculateTimeline(1);
-            break;
-        }
-
-        pw_assert(0 <= ships_remaining && "A departure caused ownership change in PlanetTimeline::AddDeparture.");
-        
-        ships_[i] = ships_remaining;
-        //pw_assert(ships_free[i] >= num_ships && "Must not take more ships than there are free ships");
-        ships_free[i] = std::max(0, ships_free[i] - num_ships);
-
-        //Update the takeover numbers.
-        const int cur_owner = owner_[i];
-        const int owner_multiplier = OwnerMultiplier(cur_owner);
-        const int my_multiplier = (kMe == cur_owner ? 1 : 0);
-        const int enemy_multiplier = (kEnemy == cur_owner ? 1 : 0);
-
-        const int neutral_ships = (kNeutral == cur_owner ? ships_remaining : 0);
-        const int my_ships = my_arrivals_[i] - my_departures_[i] + my_multiplier * ships_remaining;
-        const int enemy_ships = enemy_arrivals_[i] - enemy_departures_[i] + enemy_multiplier * ships_remaining;
-
-        ships_to_take_over_[i] = std::max(enemy_ships - my_ships, std::max(neutral_ships - my_ships, 0))
-                                + 1 - my_multiplier;
-        enemy_ships_to_take_over_[i] = 
-            std::max(my_ships - enemy_ships, std::max(neutral_ships - enemy_ships, 0)) + 1 - enemy_multiplier;
-
-#ifndef IS_SUBMISSION
-        //Check that the number of free ships is non-decreasing.
-        //if (i > 0) {
-        //    pw_assert(ships_free[i] >= ships_free[i-1]);
-        //}
-        
-#endif
-    }
+//    this->ReserveShips(action_owner, departure_time, num_ships);
+//
+//    for (int i = departure_time; i < horizon_; ++i) {
+//        const int ships_remaining = ships_[i] - num_ships;
+//        
+//        if (ships_remaining < 0) {
+//            //Cannot do simple recaltulations.
+//            //Recalculate the whole thing.
+//            this->ResetStartingData();
+//            this->RecalculateTimeline(1);
+//            break;
+//        }
+//
+//        pw_assert(0 <= ships_remaining && "A departure caused ownership change in PlanetTimeline::AddDeparture.");
+//        
+//        ships_[i] = ships_remaining;
+//        //pw_assert(ships_free[i] >= num_ships && "Must not take more ships than there are free ships");
+//        ships_free[i] = std::max(0, ships_free[i] - num_ships);
+//
+//        //Update the takeover numbers.
+//        const int cur_owner = owner_[i];
+//        const int owner_multiplier = OwnerMultiplier(cur_owner);
+//        const int my_multiplier = (kMe == cur_owner ? 1 : 0);
+//        const int enemy_multiplier = (kEnemy == cur_owner ? 1 : 0);
+//
+//        const int neutral_ships = (kNeutral == cur_owner ? ships_remaining : 0);
+//        const int my_ships = my_arrivals_[i] - my_departures_[i] + my_multiplier * ships_remaining;
+//        const int enemy_ships = enemy_arrivals_[i] - enemy_departures_[i] + enemy_multiplier * ships_remaining;
+//
+//        ships_to_take_over_[i] = std::max(enemy_ships - my_ships, std::max(neutral_ships - my_ships, 0))
+//                                + 1 - my_multiplier;
+//        enemy_ships_to_take_over_[i] = 
+//            std::max(my_ships - enemy_ships, std::max(neutral_ships - enemy_ships, 0)) + 1 - enemy_multiplier;
+//
+//#ifndef IS_SUBMISSION
+//        //Check that the number of free ships is non-decreasing.
+//        //if (i > 0) {
+//        //    pw_assert(ships_free[i] >= ships_free[i-1]);
+//        //}
+//        
+//#endif
+//    }
 }
 
 void PlanetTimeline::AddArrivals(const ActionList& actions) {
@@ -921,29 +923,29 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
     //produce an increase in the number of ships gained over the horizon.
     //At any point when the planet is under my control, check whether it could
     //use some reinforcing ships to fight a battle coming up a few turns later.
-    //int prev_ships_to_take_over = 0;
-    //int prev_enemy_ships_to_take_over = 0;
-    //for (int i = horizon_ - 1; i >= 0; --i) {
-    //    if (i == horizon_ - 1) {
-    //        prev_ships_to_take_over = ships_to_take_over_[i];
-    //        prev_enemy_ships_to_take_over = enemy_ships_to_take_over_[i];
-    //        //No changes need to be made the the ships gained.
+    int prev_ships_to_take_over = 0;
+    int prev_enemy_ships_to_take_over = 0;
+    for (int i = horizon_ - 1; i >= 0; --i) {
+        if (i == horizon_ - 1) {
+            prev_ships_to_take_over = ships_to_take_over_[i];
+            prev_enemy_ships_to_take_over = enemy_ships_to_take_over_[i];
+            //No changes need to be made the the ships gained.
 
-    //    } else {
-    //        if (0 == ships_to_take_over_[i]) {
-    //            ships_to_take_over_[i] = prev_ships_to_take_over;
-    //        
-    //        } else {
-    //            prev_ships_to_take_over = ships_to_take_over_[i];
-    //        }
+        } else {
+            if (0 == ships_to_take_over_[i]) {
+                ships_to_take_over_[i] = prev_ships_to_take_over;
+            
+            } else {
+                prev_ships_to_take_over = ships_to_take_over_[i];
+            }
 
-    //        if (0 == enemy_ships_to_take_over_[i]) {
-    //            enemy_ships_to_take_over_[i] = prev_enemy_ships_to_take_over;
-    //        } else {
-    //            prev_enemy_ships_to_take_over = enemy_ships_to_take_over_[i];
-    //        }
-    //    }
-    //}
+            if (0 == enemy_ships_to_take_over_[i]) {
+                enemy_ships_to_take_over_[i] = prev_enemy_ships_to_take_over;
+            } else {
+                prev_enemy_ships_to_take_over = enemy_ships_to_take_over_[i];
+            }
+        }
+    }
 
     //Tally up the total number of ships gained over the forecast horizon.
     total_ships_gained_ = 0;
@@ -1013,7 +1015,7 @@ void PlanetTimeline::RemoveDepartingActions(const int turn, const int player) {
     while (i < departing_actions_.size()) {
         Action* action = departing_actions_[i];
 
-        if (action->DepartureTime() == turn && action->Owner() == player) {
+        if (action->DepartureTime() == turn && action->Owner() == player && !action->IsContingent()) {
             this->RemoveDepartingAction(i);
 
         } else {

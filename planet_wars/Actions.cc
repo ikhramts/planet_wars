@@ -16,7 +16,8 @@
 ************************************************/
 ActionPool* Action::s_pool_ = NULL;
 
-Action::Action() {
+Action::Action()
+:is_contingent_(false) {
 }
 
 Action* Action::Get() {
@@ -72,6 +73,7 @@ ActionPool::~ActionPool() {
 }
 
 void ActionPool::FreeAction(Action *action) {
+    action->SetContingent(false);
     free_actions_.push_back(action);
 }
 
