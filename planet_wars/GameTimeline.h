@@ -172,6 +172,9 @@ private:
     int total_ships_gained_;
 
     ActionList departing_actions_;
+    
+    //Strategic balances.
+    std::vector<int> balances_
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.

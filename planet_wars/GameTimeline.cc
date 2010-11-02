@@ -348,6 +348,8 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
 
     my_contingent_departures_.resize(u_horizon, 0);
     enemy_contingent_departures_.resize(u_horizon, 0);
+
+    balances_.resize(u_horizon, 0);
     
     will_not_be_mine_ = false;
 	will_be_mine_ = false;
@@ -426,6 +428,8 @@ void PlanetTimeline::CopyTimeline(PlanetTimeline* other) {
 
     departing_actions_ = other->departing_actions_;
 
+    balances_ = other->balances_;
+
     will_not_be_enemys_ = other->will_not_be_enemys_;
     will_not_be_mine_ = other->will_not_be_mine_;
 	will_be_enemys_ = other->will_be_enemys_;
@@ -455,6 +459,7 @@ void PlanetTimeline::Update() {
         my_unreserved_arrivals_[i] = 0;
         my_contingent_departures_[i] = 0;
         enemy_contingent_departures_[i] = 0;
+        balances_[i] = 0;
     }
 
     //Update the fleet arrivals.
@@ -844,16 +849,16 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
             owner_[i] = new_owner;
 
             //Figure out how many ships were necessary to keep the planet.
-            if (kMe == prev_owner && enemy_ships > 0) {
-                this->ReserveShips(kMe, i, enemy_ships);
-            
-            } else if (kEnemy == prev_owner && my_ships > 0) {
-                const int ships_to_reserve = my_ships - my_unreserved_arrivals_[i];
+            //if (kMe == prev_owner && enemy_ships > 0) {
+            //    this->ReserveShips(kMe, i, enemy_ships);
+            //
+            //} else if (kEnemy == prev_owner && my_ships > 0) {
+            //    const int ships_to_reserve = my_ships - my_unreserved_arrivals_[i];
 
-                if (0 < ships_to_reserve) {
-                    this->ReserveShips(kEnemy, i, ships_to_reserve);
-                }
-            }
+            //    if (0 < ships_to_reserve) {
+            //        this->ReserveShips(kEnemy, i, ships_to_reserve);
+            //    }
+            //}
         }
         
         //Account for departures.
