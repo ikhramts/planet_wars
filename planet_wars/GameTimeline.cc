@@ -872,7 +872,15 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
             this->RemoveDepartingActions(i, kEnemy);
 
         } else{
-            ships_[i] = ships_before_departures - my_departures_[i] - enemy_departures_[i];
+            if (my_departures_[i] > 0) {
+                this->ReserveShips(kMe, i, my_departures_[i]);
+                ships_[i] = ships_before_departures - my_departures_[i];
+                pw_assert(0 == enemy_departures_[i] && "Enemy cannot depart my planet");
+
+            } else if (enemy_departures_[i] > 0) {
+                this->ReserveShips(kEnemy, i, enemy_departures_[i]);
+                ships_[i] = ships_before_departures - enemy_departures_[i];
+            }
         }
 
         //Update the ownership summaries, additional ship data.
