@@ -26,12 +26,6 @@ public:
     //Recalculate the forecasts given the state of the game map.
     void Update();
 
-    //Calculate how many additional ships will be gained by sending a set
-    //of fleets to a planet.
-    int ShipsGainedForActions(const ActionList& actions, Planet* planet) const;
-
-    int ShipsGainedFromBase() const;
-
     //Get the list of planets that will not be mine at any point in time
     //over the projected horizon.
     PlanetList PlanetsThatWillNotBeMine() const;
@@ -85,13 +79,6 @@ public:
 
     void Update();
 
-    //Calculate how many additional ships would be gained if specified
-    //fleets would be sent to the planet.
-    int ShipsGainedForActions(const ActionList& actions) const;
-
-    int ShipsGained() const                 {return total_ships_gained_;}
-
-    
     Planet* GetPlanet() const               {return planet_;}
     int Id() const                          {return id_;}
 
@@ -151,13 +138,10 @@ private:
     std::vector<int> ships_;
     std::vector<int> my_arrivals_;
     std::vector<int> enemy_arrivals_;
-    std::vector<int> ships_to_take_over_;
-    std::vector<int> ships_gained_;
     std::vector<int> available_growth_;
     std::vector<int> ships_reserved_;
     std::vector<int> ships_free_;
 
-    std::vector<int> enemy_ships_to_take_over_;
     std::vector<int> enemy_ships_reserved_;
     std::vector<int> enemy_ships_free_;
     std::vector<int> enemy_available_growth_;
@@ -169,12 +153,10 @@ private:
     std::vector<int> my_contingent_departures_;     //Departures that reserve ships but don't subtract shps.
     std::vector<int> enemy_contingent_departures_;
 
-    int total_ships_gained_;
-
     ActionList departing_actions_;
     
     //Strategic balances.
-    std::vector<int> balances_
+    std::vector<int> balances_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
