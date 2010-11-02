@@ -74,6 +74,8 @@ private:
 //A class for forecasting the state of each planet.
 class PlanetTimeline {
 public:
+    static const int kAdditionalGrowthTurns = 50;
+
     PlanetTimeline();
     
     void Initialize(int forecast_horizon, Planet* planet, GameMap* game, GameTimeline* game_timeline);

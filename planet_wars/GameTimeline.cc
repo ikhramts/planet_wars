@@ -562,9 +562,12 @@ int PlanetTimeline::ShipsGainedForActions(const ActionList& actions) const {
             }
         }
     }
+
+    ships_gained += growth_rate * kAdditionalGrowthTurns * OwnerMultiplier(owner);
     
     const int additional_ships_gained = ships_gained - total_ships_gained_;
     const int ships_gained_by_action_owner = additional_ships_gained * action_owner_multiplier;
+
     return ships_gained_by_action_owner;
 }
 
@@ -953,6 +956,8 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
     for (unsigned int i = 0; i < ships_gained_.size(); ++i) {
         total_ships_gained_ += ships_gained_[i];
     }
+
+    total_ships_gained_ += growth_rate * kAdditionalGrowthTurns * OwnerMultiplier(owner_[horizon_ - 1]);
 
     is_recalculating_ = false;
 }
