@@ -49,6 +49,8 @@ void GameTimeline::Update() {
         base_planet_timelines_[i]->CopyTimeline(planet_timelines_[i]);
         are_working_timelines_different_[i] = false;
     }
+
+    this->UpdateBalances();
 }
 
 PlanetList GameTimeline::PlanetsThatWillNotBeMine() const {
@@ -173,6 +175,18 @@ PlanetTimelineList GameTimeline::OwnedTimelinesByDistance(int owner,
     return timelines;
 }
 
+PlanetTimelineList GameTimeline::TimelinesByDistance(PlanetTimeline* source) {
+    PlanetList planets = game_->PlanetsByDistance(source->Id());
+    PlanetTimelineList timelines;
+    
+    for (uint i = 0; i < planets.size(); ++i) {
+        PlanetTimeline* timeline = planet_timelines_[planets[i]->Id()];
+        timelines.push_back(timeline);
+    }
+    
+    return timelines;
+}
+
 void GameTimeline::ApplyActions(const ActionList& actions) {
 	if (actions.empty()) {
 		return;
@@ -233,38 +247,40 @@ void GameTimeline::ApplyTempActions(const ActionList& actions) {
 		source->AddDeparture(actions[i]);
         are_working_timelines_different_[source->Id()] = true;
 	}
+
+    this->UpdateBalances();
 }
 
-void GameTimeline::UnapplyActions(const ActionList &actions) {
-    if (actions.empty()) {
-        return;
-    }
-
-    std::vector<bool> is_timeline_affected;
-    is_timeline_affected.resize(planet_timelines_.size(), false);
-    
-    //Remove arrivals and departures associated with the actions from the affected timelines.
-    for (uint i = 0; i < actions.size(); ++i) {
-        Action* action = actions[i];
-        PlanetTimeline* source = action->Source();
-        PlanetTimeline* target = action->Target();
-
-        source->RemoveDeparture(action);
-        target->RemoveArrival(action);
-
-        is_timeline_affected[source->Id()] = true;
-        is_timeline_affected[target->Id()] = true;
-    }
-
-    //Recalculate the affected timelines.
-    for (uint i = 0; i < planet_timelines_.size(); ++i) {
-        if (is_timeline_affected[i]) {
-            PlanetTimeline* timeline = planet_timelines_[i];
-            timeline->ResetStartingData();
-            timeline->RecalculateTimeline(1);
-        }
-    }
-}
+//void GameTimeline::UnapplyActions(const ActionList &actions) {
+//    if (actions.empty()) {
+//        return;
+//    }
+//
+//    std::vector<bool> is_timeline_affected;
+//    is_timeline_affected.resize(planet_timelines_.size(), false);
+//    
+//    //Remove arrivals and departures associated with the actions from the affected timelines.
+//    for (uint i = 0; i < actions.size(); ++i) {
+//        Action* action = actions[i];
+//        PlanetTimeline* source = action->Source();
+//        PlanetTimeline* target = action->Target();
+//
+//        source->RemoveDeparture(action);
+//        target->RemoveArrival(action);
+//
+//        is_timeline_affected[source->Id()] = true;
+//        is_timeline_affected[target->Id()] = true;
+//    }
+//
+//    //Recalculate the affected timelines.
+//    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+//        if (is_timeline_affected[i]) {
+//            PlanetTimeline* timeline = planet_timelines_[i];
+//            timeline->ResetStartingData();
+//            timeline->RecalculateTimeline(1);
+//        }
+//    }
+//}
 
 void GameTimeline::ResetTimelinesToBase() {
     for (uint i = 0; i < are_working_timelines_different_.size(); ++i) {
@@ -286,6 +302,89 @@ void GameTimeline::SaveTimelinesToBase() {
 
 void GameTimeline::MarkTimelineAsModified(int timeline_id) {
     are_working_timelines_different_[timeline_id] = true;
+}
+
+int GameTimeline::NegativeBalanceImprovement() {
+    int total_improvement = 0;
+    
+    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        const int base_negative_balance = base_planet_timelines_[i]->TotalNegativeBalance();
+        const int working_negative_balance = planet_timelines_[i]->TotalNegativeBalance();
+        const int improvement = base_negative_balance - working_negative_balance;
+        total_improvement += improvement;
+    }
+
+    return total_improvement;
+}
+
+bool GameTimeline::HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines) {
+    for (uint i = 0; i < timelines.size(); ++i) {
+        PlanetTimeline* timeline = timelines[i];
+
+        if (timeline->TotalNegativeBalance() > timelines[i]->TotalNegativeBalance()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void GameTimeline::UpdateBalances() {
+    //Calculate the strategic balances at each turn for each planet.
+    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        PlanetTimeline* planet = planet_timelines_[i];
+        PlanetTimelineList planets_by_distance = this->TimelinesByDistance(planet);
+        int first_negative_balance = horizon_;
+        int first_positive_balance = horizon_;
+        int total_negative_balance = 0;
+
+        for (int t = 0; t < horizon_; ++t) {
+            int balance = planet->ShipsAt(t) * (planet->OwnerAt(t) == kMe ? 1 : -1);
+
+            for (uint s = 0; s < planets_by_distance.size(); ++s) {
+                PlanetTimeline* source = planets_by_distance[s];
+                const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
+
+                if (distance_to_source > (t - 1)) {
+                    break;
+                }
+
+                const int owner = source->OwnerAt(t - distance_to_source);
+                const int ships = source->ShipsAt(t - distance_to_source);
+
+                int additional_ships = 0;
+
+                if (kMe == owner && (distance_to_source == (t - 1))) {
+                    additional_ships = 0;
+
+                } else {
+                    additional_ships = OwnerMultiplier(owner) * ships;
+                }
+
+                balance += additional_ships;
+
+                //Update summary data.
+                if (balance < 0 && first_negative_balance == horizon_) {
+                    first_negative_balance = t;
+
+                } else if (balance > 0 && first_positive_balance == horizon_) {
+                    first_positive_balance = t;
+
+                }
+
+                if (balance < 0) {
+                    total_negative_balance += balance;
+                }
+
+            }
+
+            planet->SetBalanceAt(t, balance);
+        }
+
+        planet->SetFirstNegativeBalanceTurn(first_negative_balance);
+        planet->SetFirstPositiveBalanceTurn(first_positive_balance);
+        planet->SetTotalNegativeBalance(-total_negative_balance);
+    }
 }
 
 /************************************************
@@ -400,6 +499,8 @@ void PlanetTimeline::CopyTimeline(PlanetTimeline* other) {
     departing_actions_ = other->departing_actions_;
 
     balances_ = other->balances_;
+    first_negative_balance_turn_ = other->first_negative_balance_turn_;
+    first_positive_balance_turn_ = other->first_positive_balance_turn_;
 
     will_not_be_enemys_ = other->will_not_be_enemys_;
     will_not_be_mine_ = other->will_not_be_mine_;

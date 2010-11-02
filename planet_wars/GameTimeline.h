@@ -44,20 +44,28 @@ public:
     PlanetTimelineList EverNotOwnedNonReinforcerTimelines(int owner);
 	PlanetTimelineList EverOwnedTimelinesByDistance(int owner, PlanetTimeline* source);
     PlanetTimelineList OwnedTimelinesByDistance(int owner, PlanetTimeline* source, int when = 0);
+    PlanetTimelineList TimelinesByDistance(PlanetTimeline* source);
 	
 	//Apply actions to the timeline, changing the forecasts.
 	void ApplyActions(const ActionList& actions);
     void ApplyTempActions(const ActionList& actions);
 
 	//Remove actions from the timeline, changing the forecasts.
-	void UnapplyActions(const ActionList& actions);
+	//void UnapplyActions(const ActionList& actions);
 
     void ResetTimelinesToBase();
     void SaveTimelinesToBase();
 
     void MarkTimelineAsModified(int timeline_id);
 
+    //Get the difference between negative strategic balances in the 
+    //base timelines and working timelines.  Positive numbers are better.
+    int NegativeBalanceImprovement();
+    bool HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines);
+
 private:
+    void UpdateBalances();
+
     int horizon_;
     GameMap* game_;
     PlanetTimelineList planet_timelines_;
@@ -90,6 +98,9 @@ public:
 	//Find the number of ships available to be sent from this planet.
 	int ShipsFree(int when, int owner) const;
 
+    int ShipsAt(int when)                   {return ships_[when];}
+    int OwnerAt(int when)                   {return owner_[when];}
+
     //Check whether the planet is forecast to be owned by a player at a specified date.
     bool IsOwnedBy(int owner, int when = 0) const;
     bool WillNotBeMine() const              {return will_not_be_mine_;}
@@ -109,8 +120,19 @@ public:
 	void RemoveDeparture(Action* action);
 	void RemoveArrival(Action* action);
 
-    int MyArrivalsAt(int when) const        {return my_arrivals_[when];}
-    int EnemyArrivalsAt(int when) const     {return enemy_arrivals_[when];}
+    int MyArrivalsAt(int when) const            {return my_arrivals_[when];}
+    int EnemyArrivalsAt(int when) const         {return enemy_arrivals_[when];}
+
+    //Dealing with strategic balances.
+    std::vector<int>& Balances()                {return balances_;}
+    int BalanceAt(int t)                        {return balances_[t];}
+    void SetBalanceAt(int t, int balance)       {balances_[t] = balance;}
+    int FirstNegativeBalanceTurn() const        {return first_negative_balance_turn_;}
+    int FirstPositiveBalanceTurn() const        {return first_positive_balance_turn_;}
+    int TotalNegativeBalance() const            {return total_negative_balance_;}
+    void SetFirstNegativeBalanceTurn(int t)     {first_negative_balance_turn_ = t;}
+    void SetFirstPositiveBalanceTurn(int t)     {first_positive_balance_turn_ = t;}
+    void SetTotalNegativeBalance(int balance)   {total_negative_balance_ = balance;}
     
     //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
@@ -157,6 +179,9 @@ private:
     
     //Strategic balances.
     std::vector<int> balances_;
+    int first_negative_balance_turn_;
+    int first_positive_balance_turn_;
+    int total_negative_balance_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
