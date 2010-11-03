@@ -81,12 +81,6 @@ PlanetTimelineList GameTimeline::TimelinesEverNotOwnedBy(const int player) const
     return will_not_be_owned;
 }
 
-int GameTimeline::ShipsRequredToPosess(Planet* planet, int arrival_time, int by_whom) const {
-    PlanetTimeline* timeline = planet_timelines_[planet->Id()];
-    const int ships_needed = timeline->ShipsRequredToPosess(arrival_time, by_whom);
-    return ships_needed;
-}
-
 PlanetTimelineList GameTimeline::TimelinesOwnedBy(int owner, int when) const {
     PlanetTimelineList timelines;
 
@@ -376,7 +370,7 @@ void GameTimeline::UpdateBalances() {
                     balance += additional_ships;
                 }
 
-                balances[offset + d] = balance
+                balances[offset + d] = balance;
 
                 //Update summary data.
                 if (min_balance > balance) {
@@ -408,7 +402,7 @@ void GameTimeline::UpdateBalances() {
 
         planet->SetFirstNegativeMinBalanceTurn(first_negative_min_balance);
         planet->SetFirstPositiveMaxBalanceTurn(first_positive_max_balance);
-        planet->SetTotalNegativeMinBalance(-total_negative_balance);
+        planet->SetTotalNegativeMinBalance(-total_negative_min_balance);
     }
 }
 

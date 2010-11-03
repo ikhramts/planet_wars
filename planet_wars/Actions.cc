@@ -73,8 +73,10 @@ ActionPool::~ActionPool() {
 }
 
 void ActionPool::FreeAction(Action *action) {
-    action->SetContingent(false);
-    free_actions_.push_back(action);
+    if (action != NULL) {
+        action->SetContingent(false);
+        free_actions_.push_back(action);
+    }
 }
 
 Action* ActionPool::GetAction() {

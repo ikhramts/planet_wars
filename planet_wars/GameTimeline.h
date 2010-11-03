@@ -31,11 +31,6 @@ public:
     PlanetList PlanetsThatWillNotBeMine() const;
     PlanetTimelineList TimelinesEverNotOwnedBy(int player) const;
 
-    //Find the number of ships needed to make sure that the specified planet
-    //becomes/stays mine given that the ships will arrive in specified number
-    //of turns.
-    int ShipsRequredToPosess(Planet* planet, int arrival_time, int by_whom) const;
-
     PlanetTimelineList Timelines() const            {return planet_timelines_;}
     PlanetTimelineList TimelinesOwnedBy(int owner, int when = 0) const;
     PlanetTimelineList TimelinesNotOwnedBy(int owner, int when = 0) const;
@@ -89,11 +84,6 @@ public:
 
     Planet* GetPlanet() const               {return planet_;}
     int Id() const                          {return id_;}
-
-    //Find the number of ships needed to make sure that this planet
-    //becomes/stays mine given that the ships will arrive in specified number
-    //of turns.
-    int ShipsRequredToPosess(int arrival_time, int by_whom) const;
 
 	//Find the number of ships available to be sent from this planet.
 	int ShipsFree(int when, int owner) const;
