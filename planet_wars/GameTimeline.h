@@ -125,14 +125,18 @@ public:
 
     //Dealing with strategic balances.
     std::vector<int>& Balances()                {return balances_;}
-    int BalanceAt(int t)                        {return balances_[t];}
-    void SetBalanceAt(int t, int balance)       {balances_[t] = balance;}
-    int FirstNegativeBalanceTurn() const        {return first_negative_balance_turn_;}
-    int FirstPositiveBalanceTurn() const        {return first_positive_balance_turn_;}
-    int TotalNegativeBalance() const            {return total_negative_balance_;}
-    void SetFirstNegativeBalanceTurn(int t)     {first_negative_balance_turn_ = t;}
-    void SetFirstPositiveBalanceTurn(int t)     {first_positive_balance_turn_ = t;}
-    void SetTotalNegativeBalance(int balance)   {total_negative_balance_ = balance;}
+    int BalanceAt(int t, int d) const           {return balances_[t*(t-1)/2 + d - 1];}
+    void SetBalanceAt(int t, int d, int balance){balances_[t*(t-1)/2 + d - 1] = balance;}
+    int MaxBalanceAt(int t) const               {return max_balances_[t];}
+    void SetMaxBalanceAt(int t, int balance)    {max_balances_[t] = balance;}
+    int MinBalanceAt(int t) const               {return min_balances_[t];}
+    void SetMinBalanceAt(int t, int balance)    {min_balances_[t] = balance;}
+    int FirstNegativeMinBalanceTurn() const     {return first_negative_min_balance_turn_;}
+    int FirstPositiveMaxBalanceTurn() const     {return first_positive_max_balance_turn_;}
+    int TotalNegativeMinBalance() const         {return total_negative_min_balance_;}
+    void SetFirstNegativeMinBalanceTurn(int t)  {first_negative_min_balance_turn_ = t;}
+    void SetFirstPositiveMaxBalanceTurn(int t)  {first_positive_max_balance_turn_ = t;}
+    void SetTotalNegativeMinBalance(int balance){total_negative_min_balance_ = balance;}
     
     //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
@@ -179,9 +183,11 @@ private:
     
     //Strategic balances.
     std::vector<int> balances_;
-    int first_negative_balance_turn_;
-    int first_positive_balance_turn_;
-    int total_negative_balance_;
+    std::vector<int> min_balances_;
+    std::vector<int> max_balances_;
+    int first_negative_min_balance_turn_;
+    int first_positive_max_balance_turn_;
+    int total_negative_min_balance_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.

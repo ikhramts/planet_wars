@@ -27,12 +27,7 @@ public:
 private:
     ActionList FindActionsFor(int player);
 
-    ActionList BestRemainingMove(PlanetTimelineList& invadeable_planets, 
-                                 int player,
-                                 int earliest_departure,
-                                 const std::vector<int>& earliest_arrivals,
-                                 const std::vector<int>& latest_arrivals,
-                                 int depth = 0);
+    ActionList BestRemainingMove(int player);
 
     CounterActionResult ShipsGainedForAfterMove(const ActionList& invasion_plan, 
                                          PlanetTimelineList& counter_targets,

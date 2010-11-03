@@ -40,20 +40,9 @@ ActionList Bot::MakeMoves() {
 
     ActionList my_best_actions;
     
-    ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
-    my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
+    //ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
+    //my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
 
-    //Skip the first turn.
-    //if (game_->Turn() == 1) {
-    //    return my_best_actions;
-    //}
-    
-    //Find my best response to enemy's best response to my best moves.
- //   ActionList my_actions = this->FindActionsFor(kMe);
-//    ActionList enemy_actions = this->FindActionsFor(kEnemy);
-//    timeline_->UnapplyActions(my_actions);
-//    Action::FreeActions(my_actions);
-    
     ActionList found_actions = this->FindActionsFor(kMe); 
     my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
 
@@ -143,12 +132,7 @@ ActionList Bot::FindActionsFor(const int player) {
     return player_actions;
 }
 
-ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets, 
-                                 const int player,
-                                 const int earliest_allowed_departure,
-                                 const std::vector<int>& earliest_arrivals,
-                                 const std::vector<int>& latest_arrivals,
-                                 const int depth) {
+ActionList Bot::BestRemainingMove(const int player) {
     double best_return = 0;
 	ActionList best_actions;
     
@@ -178,28 +162,6 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 	const uint u_horizon = static_cast<uint>(horizon);
     const int opponent = OtherPlayer(player);
 	
-    //Get a base scenario for opponent's likely behaviour.
-    //int base_ships_gaiend = 0;
-
-    //if (depth > 0) {
-    //    counter_action_targets = timeline_->EverNotOwnedNonReinforcerTimelines(opponent);
-    //    const int earliest_counter_departure = 1;
-    //    earliest_counter_arrivals.resize(counter_action_targets.size(), 0);
-    //    latest_counter_arrivals.resize(counter_action_targets.size(), horizon);
-
-    //    ActionList best_counter_actions = 
-    //        this->BestRemainingMove(counter_action_targets, 
-    //                                opponent, 
-    //                                earliest_counter_departure,
-    //                                earliest_counter_arrivals,
-    //                                latest_counter_arrivals, 
-    //                                depth - 1);
-    //    
-    //    timeline_->ApplyTempActions(best_counter_actions);
-    //    base_ships_gaiend = timeline_->ShipsGainedFromBase();
-    //    timeline_->ResetTimelinesToBase();
-    //}
-
     //Start searching for the best move.
 	for (uint i = 0; i < invadeable_planets.size(); ++i) {
 		PlanetTimeline* target = invadeable_planets[i];
