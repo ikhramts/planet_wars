@@ -42,6 +42,11 @@ private:
     int picking_round_;
 
     ActionList committed_actions_;
+
+#ifndef IS_SUBMISSION
+    int num_s_;
+    int num_apply_temp_actions_;
+#endif
 };
 
 class CounterActionResult {

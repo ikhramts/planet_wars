@@ -6,6 +6,12 @@
 #include "Bot.h"
 #include "GameTimeline.h"
 
+#ifndef IS_SUBMISSION
+#include <iostream>
+#include <sstream>
+#include <string>
+#endif
+
 /************************************************
                GameTimeline class
 ************************************************/
@@ -38,13 +44,25 @@ ActionList Bot::MakeMoves() {
         ActionPool* actionPool = new ActionPool();
     }
 
+#ifndef IS_SUBMISSION
+    num_s_ = 0;
+    num_apply_temp_actions_ = 0;
+#endif
+    
     ActionList my_best_actions;
     
+    ActionList found_actions = this->FindActionsFor(kMe); 
+    my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
+
     //ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
     //my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
 
-    ActionList found_actions = this->FindActionsFor(kMe); 
-    my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
+
+#ifndef IS_SUBMISSION
+    std::stringstream debug_data;
+    debug_data << "ApplyTempAction invokes: " << num_apply_temp_actions_;
+    std::cerr << debug_data.str() << std::endl;
+#endif
 
     return my_best_actions;
 }
@@ -60,7 +78,7 @@ ActionList Bot::FindActionsFor(const int player) {
 
     //General strategy: go for the combination of actions that provides
     //the highest %return of ships over a certain time horizon.
-    
+
     //forceCrash();
     picking_round_ = 1;
 
@@ -126,17 +144,14 @@ ActionList Bot::BestRemainingMove(const int player) {
         }
 
         //Planets that might be participating in the invasion, sorted by distance from target.
-		PlanetTimelineList unfiltered_sources = timeline_->EverOwnedTimelinesByDistance(player, target);
+		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
         
-        //Remove the feeder planets from the sources.
-        PlanetTimelineList sources;
-        
-        for (uint j = 0; j < unfiltered_sources.size(); ++j) {
-            if (!unfiltered_sources[j]->IsReinforcer()) {
-                sources.push_back(unfiltered_sources[j]);
-            }
-        }
-        
+		//Don't proceed if the only source is the target itself.
+		const uint first_source = (sources[0]->Id() == target_id ? 1 : 0);
+		if (first_source == 1 && sources.size() == 1) {
+			continue;
+		}
+		
         //Pre-calculate distances to the sources.
 		std::vector<int> distances_to_sources(sources.size());
 
@@ -144,27 +159,34 @@ ActionList Bot::BestRemainingMove(const int player) {
 			distances_to_sources[s] = game_->GetDistance(sources[s]->Id(), target_id);
 		}
 
-		const uint first_source = sources[0]->Id() == target_id ? 1 : 0;
         const uint distance_to_first_source = distances_to_sources[first_source];
 
-		//Don't proceed if the only source is the target itself.
-		if (first_source == 1 && sources.size() == 1) {
-			continue;
-		}
-		
 		//Try finding a good move for every arrival time.
-        for (int t = distance_to_first_source; t < horizon; ++t) {
+        for (int t = distance_to_first_source; t < horizon - 8; ++t) {
             const int owner = target->OwnerAt(t);
             const int balances_offset = t * (t - 1) / 2 - 1;
             const int ships_to_take_over = target->ShipsAt(t) + 1;
 
             int ships_needed = 0;
+            int source_no_closer_than = 0;
 
             if (player == owner && target->MinBalanceAt(t) < 0) {
-                ships_needed = target->MinBalanceAt(t);
+                ships_needed = -target->MinBalanceAt(t);
+
+                //Find how far the source needs to be from the target to cure the imbalance.
+                const int t_offset = t * (t - 1) / 2 - 1;
+                bool found_negative;
+                for (int d = distance_to_first_source; d <= t; ++d) {
+                    if (balances[t_offset + d] < 0) {
+                        found_negative = true;
+                    
+                    } else if (found_negative) {
+                        source_no_closer_than = d;
+                    }
+                }
             
-            } else if (player != owner && target->MaxBalanceAt(t) > 0) {
-                ships_needed = std::max(balances[balances_offset + distance_to_first_source], ships_to_take_over);
+            } else if (player != owner && target->MaxBalanceAt(t + 1) > 0) {
+                ships_needed = std::max(-balances[balances_offset + distance_to_first_source], ships_to_take_over);
             }
 
             if (0 == ships_needed) {
@@ -176,6 +198,9 @@ ActionList Bot::BestRemainingMove(const int player) {
             
             //Compose an invasion plan.
             for (uint s = first_source; s < sources.size(); ++s) {
+#ifndef IS_SUBMISSION
+                ++num_s_;
+#endif
                 //Calculate how many ships are necessary to make a difference given how fast
                 //the ships can get from this planet to the target.
                 PlanetTimeline* source = sources[s];
@@ -190,7 +215,10 @@ ActionList Bot::BestRemainingMove(const int player) {
 
                 if (turns_to_conquer > t) {
 					break;
-				}
+
+                } else if (turns_to_conquer < source_no_closer_than) {
+                    continue;
+                }
                 
                 if (player != owner) {
                     ships_needed = std::max(balances[balances_offset + turns_to_conquer], ships_to_take_over);
@@ -240,6 +268,7 @@ ActionList Bot::BestRemainingMove(const int player) {
 
             } else {
 #ifndef IS_SUBMISSION
+                ++num_apply_temp_actions_;
                 if (/*32 == turn_ && */20 == target_id && 8 == t && 3 == picking_round_) {
                     int adf = 2;
                 }
@@ -265,11 +294,15 @@ ActionList Bot::BestRemainingMove(const int player) {
                         Action::FreeActions(best_actions);
                         best_actions = invasion_plan;
                         invasion_plan.clear();
+                    
+                    } else {
+                        Action::FreeActions(invasion_plan);
                     }
                 }
+
+                timeline_->ResetTimelinesToBase();
             }
 
-            Action::FreeActions(invasion_plan);
             invasion_plan.clear();
         } //End iterating over arrival times.
 	}//End iterating over targets.
@@ -311,6 +344,9 @@ ActionList Bot::SendFleetsToFront(const int player) {
             const int arrival_time = game_->GetDistance(source->Id(), target->Id());
             
             if (kMe == target->OwnerAt(arrival_time)) {
+#ifndef IS_SUBMISSION
+                ++num_apply_temp_actions_;
+#endif
                 Action* action = Action::Get();
                 action->SetOwner(player);
                 action->SetSource(source);
@@ -333,6 +369,8 @@ ActionList Bot::SendFleetsToFront(const int player) {
                 } else {
                     Action::FreeActions(reinforecement_action_vector);
                 }
+
+                timeline_->ResetTimelinesToBase();
             }
         }//End iterating over targets.
 

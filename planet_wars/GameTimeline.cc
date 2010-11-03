@@ -30,6 +30,8 @@ void GameTimeline::SetGameMap(GameMap* game) {
         planet_timelines_.push_back(timeline);
     }
 
+    this->UpdateBalances(1);
+
     //Initialize the base planet timelines.
     for (uint i = 0; i < planets.size(); ++i) {
         PlanetTimeline* base_timeline = new PlanetTimeline();
@@ -50,7 +52,7 @@ void GameTimeline::Update() {
         are_working_timelines_different_[i] = false;
     }
 
-    this->UpdateBalances();
+    this->UpdateBalances(1);
 }
 
 PlanetList GameTimeline::PlanetsThatWillNotBeMine() const {
@@ -234,15 +236,22 @@ void GameTimeline::ApplyTempActions(const ActionList& actions) {
     }
 
 	//Apply the actions to their sources.
+    int earliest_departure = horizon_;
 	for (uint i = 0; i < actions.size(); ++i) {
 		//pw_assert(target->Id() == actions[i]->Target()->Id() && "Applied actions must have same target");
-
-		PlanetTimeline* source = actions[i]->Source();
-		source->AddDeparture(actions[i]);
+        
+        Action* action = actions[i];
+		PlanetTimeline* source = action->Source();
+		source->AddDeparture(action);
         are_working_timelines_different_[source->Id()] = true;
+
+        if (earliest_departure < action->DepartureTime()) {
+            earliest_departure = action->DepartureTime();
+        }
 	}
 
-    this->UpdateBalances();
+    //this->UpdateBalances(earliest_departure);
+    this->UpdateBalances(1);
 }
 
 //void GameTimeline::UnapplyActions(const ActionList &actions) {
@@ -323,7 +332,7 @@ bool GameTimeline::HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines) {
     return false;
 }
 
-void GameTimeline::UpdateBalances() {
+void GameTimeline::UpdateBalances(const int start_at) {
     //Calculate the strategic balances at each turn for each planet.
     //A strategic balance for turn t and distance d is the sum of my ships that can reach the planet
     //at t departing after turn (t-d) minus the enemy ships that can reach the planet on turn t 
@@ -336,51 +345,92 @@ void GameTimeline::UpdateBalances() {
         int first_negative_min_balance = horizon_;
         int first_positive_max_balance = horizon_;
         int total_negative_min_balance = 0;
+        const int first_source_distance = game_->GetDistance(planets_by_distance[1]->Id(), planet->Id());
+        const int first_t = std::min(first_source_distance, start_at);
 
-        for (int t = 1; t < horizon_; ++t) {
+        for (int t = first_t; t < horizon_; ++t) {
             const int offset = t * (t - 1) / 2 - 1;
             int min_balance = +100000;
             int max_balance = -100000;
             const int planet_owner = planet->OwnerAt(t);
+            
+            //Calculate the planet's own contribution to the balances.
             const int starting_balance = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1);
+            
+            for (int d = 1; d <= t; ++d) {
+                balances[offset + d] = starting_balance;
+            }
 
-            for (int d = 1; d < t; ++d) {
-                int balance = starting_balance;
+            //Calculate the neighbours' contributions to the balances.
+            for (uint s = 1; s < planets_by_distance.size(); ++s) {
+                PlanetTimeline* source = planets_by_distance[s];
+                const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
 
-                for (uint s = 0; s < planets_by_distance.size(); ++s) {
-                    PlanetTimeline* source = planets_by_distance[s];
-                    const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
-
-                    if (distance_to_source > (t - d)) {
-                        break;
-                    }
-
-                    const int owner = source->OwnerAt(t - distance_to_source);
-                    const int ships = source->ShipsFree(t - distance_to_source, owner);
-
-                    int additional_ships = 0;
-
-                    if (kMe == owner && (distance_to_source == (t - d))) {
-                        additional_ships = 0;
-
-                    } else {
-                        additional_ships = OwnerMultiplier(owner) * ships;
-                    }
-
-                    balance += additional_ships;
+                if (distance_to_source > t) {
+                    break;
                 }
 
-                balances[offset + d] = balance;
+                const int owner = source->OwnerAt(t - distance_to_source);
 
-                //Update summary data.
-                if (min_balance > balance) {
-                    min_balance = balance;
-                }
+                const int ships = source->ShipsFree(t - distance_to_source, owner);
+                const int ships_from_source = OwnerMultiplier(owner) * ships;
+                const int first_d = distance_to_source + (kMe == owner ? 1 : 0);
 
-                if (max_balance < balance) {
-                    max_balance = balance;
+                for (int d = first_d; d <= t; ++d) {
+                    balances[offset + d] += ships_from_source;
                 }
             }
+
+            //Calculate the summaries.
+            for (int d = first_source_distance; d <= t; ++d) {
+                const int index = offset + d;
+
+                if (min_balance > balances[index]) {
+                    min_balance = balances[index];
+                }
+
+                if (max_balance < balances[index]) {
+                    max_balance = balances[index];
+                }
+            }
+
+                //for (int d = first_source_distance; d <= t; ++d) {
+            //    int balance = starting_balance;
+
+            //    for (uint s = 1; s < planets_by_distance.size(); ++s) {
+            //        PlanetTimeline* source = planets_by_distance[s];
+            //        const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
+
+            //        if (distance_to_source > d) {
+            //            break;
+            //        }
+            //        
+            //        const int owner = source->OwnerAt(t - distance_to_source);
+            //        const int ships = source->ShipsFree(t - distance_to_source, owner);
+
+            //        int additional_ships = 0;
+
+            //        if (kMe == owner && (distance_to_source == d)) {
+            //            additional_ships = 0;
+
+            //        } else {
+            //            additional_ships = OwnerMultiplier(owner) * ships;
+            //        }
+
+            //        balance += additional_ships;
+            //    }
+
+            //    balances[offset + d] = balance;
+
+                //Update summary data.
+                //if (min_balance > balance) {
+                //    min_balance = balance;
+                //}
+
+                //if (max_balance < balance) {
+                //    max_balance = balance;
+                //}
+            //}
 
             //Update min/max balances at each turn.
             planet->SetMinBalanceAt(t, min_balance);
@@ -842,8 +892,8 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
 
         //Ships available after reservations.  We do not need to subtract the reservations as
         //no reservations for this 
-        ships_free_[i] = cur_ships;
-        enemy_ships_free_[i] = cur_ships;
+        ships_free_[i] = cur_ships * my_multiplier;
+        enemy_ships_free_[i] = cur_ships * enemy_multiplier;
         
         available_growth_[i] = (cur_owner == kMe ? growth_rate : 0);
         enemy_available_growth_[i] = (cur_owner == kEnemy ? growth_rate : 0);

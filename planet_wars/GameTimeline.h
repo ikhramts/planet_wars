@@ -59,7 +59,7 @@ public:
     bool HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines);
 
 private:
-    void UpdateBalances();
+    void UpdateBalances(int start_at);
 
     int horizon_;
     GameMap* game_;
