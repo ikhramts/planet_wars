@@ -39,10 +39,14 @@ private:
                                          const int attack_arrival_time);
 
     ActionList SendFleetsToFront(int player);
+
+    //Mark feeder planets as such.
+    void MarkReinforcers(int player);
     
     GameMap* game_;
     GameTimeline* timeline_;
     int counter_horizon_;
+    int defense_horizon_;
     int turn_;
     int picking_round_;
 

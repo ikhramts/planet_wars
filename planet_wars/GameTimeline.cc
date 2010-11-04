@@ -584,9 +584,9 @@ int PlanetTimeline::ShipsRequredToPosess(int arrival_time, int by_whom) const {
 }
 
 int PlanetTimeline::ShipsFree(int when, int owner) const {
-    if (is_reinforcer_) {
-        return 0;
-    }
+    //if (is_reinforcer_) {
+    //    return 0;
+    //}
 
     int ships_free = 0;
 

@@ -91,7 +91,6 @@ public:
 
     int ShipsGained() const                 {return total_ships_gained_;}
 
-    
     Planet* GetPlanet() const               {return planet_;}
     int Id() const                          {return id_;}
 
@@ -102,8 +101,10 @@ public:
 
 	//Find the number of ships available to be sent from this planet.
 	int ShipsFree(int when, int owner) const;
+    int ShipsAt(int when) const             {return ships_[when];}
 
     //Check whether the planet is forecast to be owned by a player at a specified date.
+    int OwnerAt(int when) const             {return owner_[when];}
     bool IsOwnedBy(int owner, int when = 0) const;
     bool WillNotBeMine() const              {return will_not_be_mine_;}
 	bool WillBeMine() const	                {return will_be_mine_;}
