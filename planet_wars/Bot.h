@@ -49,6 +49,7 @@ private:
     int defense_horizon_;
     int turn_;
     int picking_round_;
+    std::vector<int> when_is_feeder_allowed_to_attack_;
 
     ActionList committed_actions_;
 };

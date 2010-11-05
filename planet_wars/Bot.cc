@@ -27,6 +27,9 @@ void Bot::SetGame(GameMap* game) {
 
     counter_horizon_ = 20;
     defense_horizon_ = 4;
+
+    const int num_planets = game->NumPlanets();
+    when_is_feeder_allowed_to_attack_.resize(num_planets * num_planets, -1);
 }
 
 ActionList Bot::MakeMoves() {
@@ -41,6 +44,15 @@ ActionList Bot::MakeMoves() {
 
     ActionList my_best_actions;
     
+    //Update feeder planet attack permissions.
+    for (uint i = 0; i < when_is_feeder_allowed_to_attack_.size(); ++i) {
+        if (when_is_feeder_allowed_to_attack_[i] > -1) {
+            --when_is_feeder_allowed_to_attack_[i];
+        }
+    }
+
+    timeline_->SetFeederAttackPermissions(&when_is_feeder_allowed_to_attack_);
+
     //Mark the reinforcers.
     this->MarkReinforcers(kMe);
 
@@ -102,16 +114,26 @@ ActionList Bot::FindActionsFor(const int player) {
 
         if (best_actions.empty()) {
             break;
-        
-        } else {
-
-            //invadeable_planets.resize(planets_left);
-            picking_round_++;
         }
+        
+        picking_round_++;
 
         //Add these actions to the list of other actions.
         for (uint i = 0; i < best_actions.size(); ++i) {
             player_actions.push_back(best_actions[i]);
+        }
+
+        //Check whether we need to add permissions for possible future feeder planets
+        //to attack an enemy planet.
+        if (best_actions[best_actions.size() - 1]->DepartureTime() == 0) {
+            const int num_planets = game_->NumPlanets();
+
+            for (uint i = 0; i < best_actions.size(); ++i) {
+                Action* action = best_actions[i];
+                const int source_id = action->Source()->Id();
+                const int target_id = action->Target()->Id();
+                when_is_feeder_allowed_to_attack_[source_id * num_planets + target_id] = action->DepartureTime();
+            }
         }
         
 #ifndef IS_SUBMISSION
@@ -159,6 +181,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 	const int horizon = timeline_->Horizon();
 	const uint u_horizon = static_cast<uint>(horizon);
     const int opponent = OtherPlayer(player);
+    const int num_planets = game_->NumPlanets();
 	
     //Start searching for the best move.
 	for (uint i = 0; i < invadeable_planets.size(); ++i) {
@@ -210,7 +233,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         int t = earliest_arrival;
 
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 18 == target_id) {
+        if (1 == picking_round_ && 8 == target_id) {
             int x = 2;
         }
 #endif
@@ -278,7 +301,9 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
                 //Feeder planets may only attack neutrals or support player's planets.
                 if (source->IsReinforcer() && opponent == target_owner) {
-                    continue;
+                    if (when_is_feeder_allowed_to_attack_[source_id * num_planets + target_id] != 0) {
+                        continue;   //To the next source.
+                    }
                 }
 
 				//Check whether the target is reacheable from the source.  If not, then it

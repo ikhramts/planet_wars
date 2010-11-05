@@ -356,6 +356,9 @@ void GameTimeline::UpdateBalances() {
     //at t departing after turn (t-d) minus the enemy ships that can reach the planet on turn t 
     //departing on or after turn (t-d).
     //Positive balances are good; negative balances are bad.
+    const std::vector<int>& when_is_feeder_allowed_to_attack = *when_is_feeder_allowed_to_attack_;
+    const int num_planets = game_->NumPlanets();
+
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         PlanetTimeline* planet = planet_timelines_[i];
         PlanetTimelineList planets_by_distance = this->TimelinesByDistance(planet);
@@ -393,8 +396,10 @@ void GameTimeline::UpdateBalances() {
                 PlanetTimeline* source = planets_by_distance[s];
                 
                 if (source->IsReinforcer() && planet_owner == kEnemy) {
-                    //Feeder planets aren't allowed to attack enemies.                
-                    continue;
+                    //Feeder planets aren't allowed to attack enemies unless explicitly allowed.
+                    if (when_is_feeder_allowed_to_attack[num_planets * source->Id() + planet->Id()] !=0) {
+                        continue;
+                    }
                 }
 
                 const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());

@@ -71,12 +71,15 @@ public:
     bool HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines);
     void UpdateBalances();
 
+    void SetFeederAttackPermissions(std::vector<int>* permissions) {when_is_feeder_allowed_to_attack_ = permissions;}
+
 private:
     int horizon_;
     GameMap* game_;
     PlanetTimelineList planet_timelines_;
     PlanetTimelineList base_planet_timelines_;
     std::vector<bool> are_working_timelines_different_;
+    std::vector<int>* when_is_feeder_allowed_to_attack_;
 };
 
 //A class for forecasting the state of each planet.
