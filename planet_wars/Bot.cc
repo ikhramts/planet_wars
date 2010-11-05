@@ -210,7 +210,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         int t = earliest_arrival;
 
 #ifndef IS_SUBMISSION
-        if (2 == picking_round_ && 15 == target_id) {
+        if (1 == picking_round_ && 18 == target_id) {
             int x = 2;
         }
 #endif
@@ -228,10 +228,11 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
             const int ships_to_take_over = target->ShipsRequredToPosess(t, player);
 			
             int ships_needed = 0;
+            int remaining_ships_needed = 0;
             int source_no_closer_than = 0;
 
             if (player == target_owner && target->MinBalanceAt(t) < 0) {
-                ships_needed = -target->MinBalanceAt(t);
+                remaining_ships_needed = -target->MinBalanceAt(t);
 
                 //Find how far the source needs to be from the target to cure the imbalance.
                 bool found_negative = false;
@@ -245,10 +246,11 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 }
             
             } else if (player != target_owner && target->MaxBalanceAt(t + 1) > 0) {
-                ships_needed = std::max(-balances[balances_offset + distance_to_first_source], ships_to_take_over);
+                remaining_ships_needed = 
+                    std::max(-balances[balances_offset + distance_to_first_source] + 1, ships_to_take_over);
             }
 
-            if (0 == ships_needed) {
+            if (0 == remaining_ships_needed) {
                 ++t;
                 continue;   //To the next arrival time t.
             }
@@ -264,8 +266,11 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
             const bool was_enemys = (t > 1 && target->IsOwnedBy(opponent, t - 2));
 
             const double reinforecement_factor = (is_enemys && (player == kEnemy || was_enemys) ? 1.0 : 0.5);
+            int current_distance = 0;
 
             for (uint s = first_source; s < sources.size(); ++s) {
+                pw_assert(remaining_ships_needed > 0);
+
                 //Calculate how many ships are necessary to make a difference given how fast
                 //the ships can get from this planet to the target.
                 PlanetTimeline* source = sources[s];
@@ -278,54 +283,61 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
 				//Check whether the target is reacheable from the source.  If not, then it
 				//won't be reacheable from any of the remaining sources.
-                const int turns_to_conquer = distances_to_sources[s];
-                const int departure_time = t - turns_to_conquer;
+                const int distance_to_source = distances_to_sources[s];
+                const int departure_time = t - distance_to_source;
                 earliest_departure = departure_time;
 
-				if (turns_to_conquer > (t - earliest_allowed_departure)) {
+				if (distance_to_source > (t - earliest_allowed_departure)) {
 					break;
 
-				} else if (turns_to_conquer < source_no_closer_than) {
+				} else if (distance_to_source < source_no_closer_than) {
                     continue;
                 }
 
                 //Check whether the source has any ships to send.
-                const int available_ships = source->ShipsFree(t - turns_to_conquer, player);
+                const int available_ships = source->ShipsFree(t - distance_to_source, player);
                 if(0 == available_ships) {
                     continue;
                 
                 } else {
-                    pw_assert(source->IsOwnedBy(player, t - turns_to_conquer));
+                    pw_assert(source->IsOwnedBy(player, t - distance_to_source));
                 }
                 
                 //Never send ships back to the same planet.
                 pw_assert(source_id != target_id);
+
+                //Adjust the number of ships needed to take out this planet and
+                //any possible reinforcing enemies.
+                if (distance_to_source > current_distance) {
+                    remaining_ships_needed = std::max(-balances[balances_offset + distance_to_source], ships_to_take_over);
+                    current_distance = distance_to_source;
+                }
                 
                 //Account for any extra ships that might arrive at the source at the same time.
 //                if (is_enemys) {
                     //Add to the opponent's forces the reinforcing ships that the opponent
                     //can send by this time from other planets.
-//                    ships_needed = std::max(-balances[balances_offset + turns_to_conquer], ships_to_take_over);
+//                    ships_needed = std::max(-balances[balances_offset + distance_to_source], ships_to_take_over);
                 //}
 				
                 //Add ships from this planet.
-                const int remaining_ships_needed = ships_needed - ships_to_send;
                 const int ships_to_send_from_here = std::min(available_ships, remaining_ships_needed);
                 
                 Action* action = Action::Get();
                 action->SetOwner(player);
                 action->SetSource(source);
                 action->SetTarget(target);
-                action->SetDistance(turns_to_conquer);
-				action->SetDepartureTime(t - turns_to_conquer);
+                action->SetDistance(distance_to_source);
+				action->SetDepartureTime(t - distance_to_source);
                 action->SetNumShips(ships_to_send_from_here);
                 
                 invasion_plan.push_back(action);
 
                 ships_to_send += ships_to_send_from_here;
+                remaining_ships_needed -= ships_to_send_from_here;
 
 				//Check whether this planet would already get enough ships.
-                if (ships_needed <= ships_to_send) {
+                if (remaining_ships_needed <= 0) {
                     break;
                 }
             } //End iterating over sources
@@ -724,5 +736,6 @@ void Bot::MarkReinforcers(const int player) {
         }
     }
     
+    timeline_->UpdateBalances();
     timeline_->SaveTimelinesToBase();
 }

@@ -391,6 +391,12 @@ void GameTimeline::UpdateBalances() {
             //Calculate the neighbours' contributions to the balances.
             for (uint s = 1; s < planets_by_distance.size(); ++s) {
                 PlanetTimeline* source = planets_by_distance[s];
+                
+                if (source->IsReinforcer() && planet_owner == kEnemy) {
+                    //Feeder planets aren't allowed to attack enemies.                
+                    continue;
+                }
+
                 const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
 
                 if (distance_to_source > t) {
