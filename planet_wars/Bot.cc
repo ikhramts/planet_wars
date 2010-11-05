@@ -42,6 +42,10 @@ ActionList Bot::MakeMoves() {
         ActionPool* actionPool = new ActionPool();
     }
 
+#ifndef IS_SUBMISSION
+    timeline_->AssertWorkingTimelinesAreEqualToBase();
+#endif
+
     ActionList my_best_actions;
     
     //Update feeder planet attack permissions.
@@ -141,6 +145,7 @@ ActionList Bot::FindActionsFor(const int player) {
             int x = 2;
         }
 #endif
+
         timeline_->ApplyActions(best_actions);
     }
 
@@ -200,14 +205,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 #endif
 
         //Planets that might be participating in the invasion, sorted by distance from target.
-		PlanetTimelineList unfiltered_sources = timeline_->EverOwnedTimelinesByDistance(player, target);
-        
-        //Remove the feeder planets from the sources.
-        PlanetTimelineList sources;
-        
-        for (uint j = 0; j < unfiltered_sources.size(); ++j) {
-            sources.push_back(unfiltered_sources[j]);
-        }
+		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
         
         //Pre-calculate distances to the sources.
 		std::vector<int> distances_to_sources(sources.size());
@@ -233,14 +231,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         int t = earliest_arrival;
 
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 8 == target_id) {
+        if (1 == picking_round_ && 22 == target_id) {
             int x = 2;
         }
 #endif
 
         while (t < latest_arrivals[i]) {
 #ifndef IS_SUBMISSION
-        if (1 == depth && 15 == target_id && 13 == t) {
+        if (1 == picking_round_ && 22 == target_id && 13 == t) {
             int x = 2;
         }
 #endif
@@ -253,9 +251,10 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
             int ships_needed = 0;
             int remaining_ships_needed = 0;
             int source_no_closer_than = 0;
+            const int min_balance = target->MinBalanceAt(t);
 
-            if (player == target_owner && target->MinBalanceAt(t) < 0) {
-                remaining_ships_needed = -target->MinBalanceAt(t);
+            if (player == target_owner && min_balance < 0) {
+                remaining_ships_needed = -min_balance;
 
                 //Find how far the source needs to be from the target to cure the imbalance.
                 bool found_negative = false;
@@ -267,7 +266,9 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                         source_no_closer_than = d;
                     }
                 }
-            
+            } else if (player == target_owner && 0 == min_balance && kEnemy == target->OwnerAt(t-1)) {
+                remaining_ships_needed = 1;
+
             } else if (player != target_owner && target->MaxBalanceAt(t + 1) > 0) {
                 remaining_ships_needed = 
                     std::max(-balances[balances_offset + distance_to_first_source] + 1, ships_to_take_over);
@@ -333,18 +334,11 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
                 //Adjust the number of ships needed to take out this planet and
                 //any possible reinforcing enemies.
-                if (distance_to_source > current_distance) {
+                if (target_owner == kEnemy && distance_to_source > current_distance) {
                     remaining_ships_needed = std::max(-balances[balances_offset + distance_to_source], ships_to_take_over);
                     current_distance = distance_to_source;
                 }
                 
-                //Account for any extra ships that might arrive at the source at the same time.
-//                if (is_enemys) {
-                    //Add to the opponent's forces the reinforcing ships that the opponent
-                    //can send by this time from other planets.
-//                    ships_needed = std::max(-balances[balances_offset + distance_to_source], ships_to_take_over);
-                //}
-				
                 //Add ships from this planet.
                 const int ships_to_send_from_here = std::min(available_ships, remaining_ships_needed);
                 
@@ -442,20 +436,26 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
                 //returns_for_target[t] = return_ratio;
                 if (best_return < return_ratio) {
-                    //Check whether the move will create a negative balance in any of the sources.
-                    //timeline_->ApplyTempActions(invasion_plan);
-                    //timeline_->UpdateBalances();
+//                    Check whether the move will create a negative balance in any of the sources.
+                    timeline_->ApplyTempActions(invasion_plan);
+                    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
+                    timeline_->UpdateBalances(/*sources_and_targets*/);
 
-                    //if (!timeline_->HasNegativeBalanceWorsenedFor(sources)) {
-                        was_plan_accepted = true;
-                        best_return = return_ratio;
-                        Action::FreeActions(best_actions);
-                        best_actions = invasion_plan;
-                        invasion_plan.clear();
+                    if (!timeline_->HasNegativeBalanceWorsenedFor(sources)) {
+                        const int updated_ships_gained = timeline_->ShipsGainedFromBase();
+                        const double updated_return_ratio = 
+                            static_cast<double>(updated_ships_gained) / static_cast<double>(ships_to_send);
+                        
+                        if (best_return < updated_return_ratio) {
+                            was_plan_accepted = true;
+                            best_return = updated_return_ratio;
+                            Action::FreeActions(best_actions);
+                            best_actions = invasion_plan;
+                            invasion_plan.clear();
+                        }
+                    }
 
-                    //}
-
-                    //timeline_->ResetTimelinesToBase();
+                    timeline_->ResetTimelinesToBase();
                 }
 
                 if (!was_plan_accepted) {

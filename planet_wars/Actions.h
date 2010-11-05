@@ -17,6 +17,10 @@ class PlanetTimeline;
 
 typedef std::vector<Action*> ActionList;
 
+#ifndef PlanetTimelineList
+typedef std::vector<PlanetTimeline*> PlanetTimelineList;
+#endif;
+
 class Action {
     friend class ActionPool;
 
@@ -30,6 +34,7 @@ public:
     void Free();
 
     static void FreeActions(const ActionList& actions);
+    static PlanetTimelineList SourcesAndTargets(const ActionList& actions);
     
     int Owner() const                       {return owner_;}
     PlanetTimeline* Source() const        {return source_;}

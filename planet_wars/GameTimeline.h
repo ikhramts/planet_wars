@@ -11,7 +11,9 @@
 
 class PlanetTimeline;
 
+#ifndef PlanetTimelineList
 typedef std::vector<PlanetTimeline*> PlanetTimelineList;
+#endif
 
 //This class is responsible for forecasting the state of the game.
 class GameTimeline {
@@ -69,9 +71,14 @@ public:
     int NegativeBalanceImprovement();
 
     bool HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines);
-    void UpdateBalances();
+    void UpdateBalances(int depth = 1);
+    void UpdateBalances(const PlanetTimelineList& modified_planets, int depth = 1);
 
     void SetFeederAttackPermissions(std::vector<int>* permissions) {when_is_feeder_allowed_to_attack_ = permissions;}
+
+#ifndef IS_SUBMISSION
+    void AssertWorkingTimelinesAreEqualToBase();
+#endif
 
 private:
     int horizon_;
@@ -93,6 +100,8 @@ public:
     
     void Copy(PlanetTimeline* other);
     void CopyTimeline(PlanetTimeline* other);
+    void CopyBalances(PlanetTimeline* other);
+    bool Equals(PlanetTimeline* other) const;
 
     void Update();
 
@@ -151,16 +160,17 @@ public:
     void SetFirstNegativeMinBalanceTurn(int t)  {first_negative_min_balance_turn_ = t;}
     void SetFirstPositiveMaxBalanceTurn(int t)  {first_positive_max_balance_turn_ = t;}
     void SetTotalNegativeMinBalance(int balance){total_negative_min_balance_ = balance;}
+    bool HasBalanceChangedFate() const          {return has_balance_changed_fate_;}
     
      //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
 
     //Update the planet state projections.
-    void RecalculateTimeline(int starting_at);
+    void RecalculateTimeline(int starting_at, bool use_balances = false);
     void RecalculateShipsGained();
 
     //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
-    void SetReinforcer(bool is_reinforcer)  {is_reinforcer_ = is_reinforcer;}
+    void SetReinforcer(bool is_reinforcer);
     bool IsReinforcer() const               {return is_reinforcer_;}
 
 private:
@@ -208,6 +218,7 @@ private:
     int first_negative_min_balance_turn_;
     int first_positive_max_balance_turn_;
     int total_negative_min_balance_;
+    bool has_balance_changed_fate_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
