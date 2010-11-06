@@ -174,19 +174,20 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 		return best_actions;
 	}
 
-    //Pre-create frequently used vectors.
-    PlanetTimelineList counter_action_targets;
-    std::vector<int> earliest_counter_arrivals;
-    std::vector<int> latest_counter_arrivals;
-	
-	//Proceed finding the best planet to invade.
-    ActionList invasion_plan;
-    invasion_plan.reserve(10);
-
 	const int horizon = timeline_->Horizon();
 	const uint u_horizon = static_cast<uint>(horizon);
     const int opponent = OtherPlayer(player);
     const int num_planets = game_->NumPlanets();
+
+    //Pre-create frequently used vectors.
+    PlanetTimelineList counter_action_targets;
+    std::vector<int> earliest_counter_arrivals;
+    std::vector<int> latest_counter_arrivals;
+    std::vector<int> ships_farther_than(u_horizon, 0);
+	
+	//Proceed finding the best planet to invade.
+    ActionList invasion_plan;
+    invasion_plan.reserve(10);
 	
     //Start searching for the best move.
 	for (uint i = 0; i < invadeable_planets.size(); ++i) {
@@ -231,7 +232,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         int t = earliest_arrival;
 
 #ifndef IS_SUBMISSION
-        if (2 == picking_round_ && 11 == target_id) {
+        if (1 == picking_round_ && 11 == target_id) {
             int x = 2;
         }
 #endif
@@ -250,28 +251,42 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 			
             int ships_needed = 0;
             int remaining_ships_needed = 0;
-            int source_no_closer_than = 0;
+            //int source_no_closer_than = 0;
             const int min_balance = target->MinBalanceAt(t);
+            int max_ships_from_this_distance = 0;
 
             if (player == target_owner && min_balance < 0) {
                 remaining_ships_needed = -min_balance;
 
-                //Find how far the source needs to be from the target to cure the imbalance.
-                bool found_negative = false;
-                for (int d = distance_to_first_source; d <= t; ++d) {
-                    if (balances[balances_offset + d] < 0) {
-                        found_negative = true;
-                    
-                    } else if (found_negative) {
-                        source_no_closer_than = d;
-                    }
+                //Find the minimum distances from which some of the ships need to be sent.
+                int ships_farther_than_this_distance = 0;
+                for (int d = t; d >= distance_to_first_source; --d) {
+                    const int ships_from_this_distance = 
+                        std::max(0, -balances[balances_offset + d] - ships_farther_than_this_distance);
+                    ships_farther_than[d] = ships_from_this_distance;
+                    ships_farther_than_this_distance += ships_from_this_distance;
                 }
+
+                ships_farther_than[distance_to_first_source] += (remaining_ships_needed - ships_farther_than_this_distance);
+
+                //Find how far the source needs to be from the target to cure the imbalance.
+                //bool found_negative = false;
+                //for (int d = distance_to_first_source; d <= t; ++d) {
+                //    if (balances[balances_offset + d] < 0) {
+                //        found_negative = true;
+                //    
+                //    } else if (found_negative) {
+                //        source_no_closer_than = d;
+                //    }
+                //}
             } else if (player == target_owner && 0 == min_balance && kEnemy == target->OwnerAt(t-1)) {
                 remaining_ships_needed = 1;
+                max_ships_from_this_distance = 1;
 
             } else if (player != target_owner && target->MaxBalanceAt(t + 1) > 0) {
                 remaining_ships_needed = 
                     std::max(-balances[balances_offset + distance_to_first_source] + 1, ships_to_take_over);
+                max_ships_from_this_distance = remaining_ships_needed;
             }
 
             if (0 == remaining_ships_needed) {
@@ -316,10 +331,28 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 				if (distance_to_source > (t - earliest_allowed_departure)) {
 					break;
 
-				} else if (distance_to_source < source_no_closer_than) {
-                    continue;
-                }
+				}
 
+                //Never send ships back to the same planet.
+                pw_assert(source_id != target_id);
+
+                //Adjust the number of ships needed to take out or support this planet for
+                //any possible reinforcing enemies.
+                if (distance_to_source > current_distance) {
+                    if (target_owner == kEnemy) {
+                        remaining_ships_needed = 
+                            std::max(-balances[balances_offset + distance_to_source], ships_to_take_over);
+                        max_ships_from_this_distance = remaining_ships_needed;
+                    
+                    } else if(target_owner == kMe) {
+                        for (int d = current_distance + 1; d <= distance_to_source; ++d) {
+                            max_ships_from_this_distance += ships_farther_than[d];
+                        }
+                    }
+
+                    current_distance = distance_to_source;
+                }
+                
                 //Check whether the source has any ships to send.
                 const int available_ships = source->ShipsFree(t - distance_to_source, player);
                 if(0 == available_ships) {
@@ -329,18 +362,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                     pw_assert(source->IsOwnedBy(player, t - distance_to_source));
                 }
                 
-                //Never send ships back to the same planet.
-                pw_assert(source_id != target_id);
-
-                //Adjust the number of ships needed to take out this planet and
-                //any possible reinforcing enemies.
-                if (target_owner == kEnemy && distance_to_source > current_distance) {
-                    remaining_ships_needed = std::max(-balances[balances_offset + distance_to_source], ships_to_take_over);
-                    current_distance = distance_to_source;
-                }
-                
                 //Add ships from this planet.
-                const int ships_to_send_from_here = std::min(available_ships, remaining_ships_needed);
+                const int ships_to_send_from_here = std::min(available_ships, max_ships_from_this_distance);
                 
                 Action* action = Action::Get();
                 action->SetOwner(player);
