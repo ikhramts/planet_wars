@@ -232,7 +232,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         int t = earliest_arrival;
 
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 11 == target_id) {
+        if (3 == picking_round_ && 16 == target_id) {
             int x = 2;
         }
 #endif
@@ -268,6 +268,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 }
 
                 ships_farther_than[distance_to_first_source] += (remaining_ships_needed - ships_farther_than_this_distance);
+                max_ships_from_this_distance = ships_farther_than[distance_to_first_source];
 
                 //Find how far the source needs to be from the target to cure the imbalance.
                 //bool found_negative = false;
@@ -305,7 +306,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
             const bool was_enemys = (t > 1 && target->IsOwnedBy(opponent, t - 2));
 
             const double reinforecement_factor = (is_enemys && (player == kEnemy || was_enemys) ? 1.0 : 0.5);
-            int current_distance = 0;
+            int current_distance = distance_to_first_source;
 
             for (uint s = first_source; s < sources.size(); ++s) {
                 pw_assert(remaining_ships_needed > 0);
@@ -459,10 +460,11 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
                 //returns_for_target[t] = return_ratio;
                 if (best_return < return_ratio) {
-//                    Check whether the move will create a negative balance in any of the sources.
+                    //Check whether the move will create a negative balance in any of the sources.
                     timeline_->ApplyTempActions(invasion_plan);
                     PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
-                    timeline_->UpdateBalances(/*sources_and_targets*/);
+//                    timeline_->UpdateBalances();
+                    timeline_->UpdateBalances(sources_and_targets);
 
                     if (!timeline_->HasNegativeBalanceWorsenedFor(sources)) {
                         const int updated_ships_gained = timeline_->ShipsGainedFromBase();

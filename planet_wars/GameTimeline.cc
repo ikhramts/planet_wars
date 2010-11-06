@@ -218,7 +218,8 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 #ifndef IS_SUBMISSION
     this->AssertWorkingTimelinesAreEqualToBase();
 #endif
-    this->UpdateBalances();
+    //this->UpdateBalances(sources_and_targets);
+    //this->UpdateBalances();
 #ifndef IS_SUBMISSION
     this->AssertWorkingTimelinesAreEqualToBase();
 #endif
@@ -380,10 +381,6 @@ bool GameTimeline::HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines) {
                 return true;
             }
         }
-
-        //if (timeline->TotalNegativeMinBalance() > base_planet_timelines_[id]->TotalNegativeMinBalance()) {
-        //    return true;
-        //}
     }
 
     return false;
@@ -494,23 +491,6 @@ void GameTimeline::UpdateBalances(const int depth) {
         planet->SetTotalNegativeMinBalance(-total_negative_min_balance);
     }
 
-    //Recalculate the timelines.
-    //if (depth > 0) {
-    //    bool has_balance_changed_planet_fate = false;
-
-    //    for (uint i = 0; i < planet_timelines_.size(); ++i) {
-    //        PlanetTimeline* planet = planet_timelines_[i];
-    //        planet->ResetStartingData();
-    //        planet->RecalculateTimeline(1, true /* use balances */);
-    //        has_balance_changed_planet_fate |= planet->HasBalanceChangedFate();
-    //    }
-
-    //    //Check whether the calculation changed the fate of any planets.
-    //    if(has_balance_changed_planet_fate) {
-    //        this->UpdateBalances(depth - 1);
-    //    }
-    //}
-
     //Update the timelines' ships gained.
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         planet_timelines_[i]->RecalculateShipsGained();
@@ -539,7 +519,7 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (15 == id && 7 == t) {
+            if (22 == id && 23 == t) {
                 int x = 2;
             }
 #endif
@@ -555,7 +535,6 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
             int max_balance = starting_balance;
             
             if (starting_balance_diff != 0) {
-                pw_assert(starting_balance_diff == 0);         //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                 for (int d = 1; d <= t; ++d) {
                     balances[offset + d] += starting_balance_diff;
                 }
@@ -604,8 +583,8 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
 
                 const int ships = source->ShipsFree(t - distance_to_source, owner);
                 const int ships_from_source = OwnerMultiplier(owner) * ships * source_effect;
-                const int base_ships = source->ShipsFree(t - distance_to_source, owner);
-                const int base_ships_from_source = OwnerMultiplier(owner) * ships * base_source_effect;
+                const int base_ships = base_source->ShipsFree(t - distance_to_source, owner);
+                const int base_ships_from_source = OwnerMultiplier(owner) * base_ships * base_source_effect;
                 const int balance_change = ships_from_source - base_ships_from_source;
 
                 //Apply the changes.
@@ -615,7 +594,6 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
                     const int multiplier = (kMe == owner ? 0 : 1);
                     const int base_multiplier = (kMe == base_owner ? 0 : 1);
                     const int change = ships_from_source * multiplier - base_ships_from_source * base_multiplier;
-                    pw_assert(change == 0);         //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                     balances[offset + distance_to_source] += change;
                 }
 
@@ -623,8 +601,6 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
                     continue;
                 }
 
-                pw_assert(balance_change == 0);         //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                
                 for (int d = first_d; d <= t; ++d) {
                     balances[offset + d] += balance_change;
                 }
@@ -666,23 +642,6 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
         planet->SetTotalNegativeMinBalance(-total_negative_min_balance);
     }
     
-    //Recalculate the timelines.
-    //if (depth > 0) {
-    //    bool has_balance_changed_planet_fate = false;
-
-    //    for (uint i = 0; i < planet_timelines_.size(); ++i) {
-    //        PlanetTimeline* planet = planet_timelines_[i];
-    //        planet->ResetStartingData();
-    //        planet->RecalculateTimeline(1, true /* use balances */);
-    //        has_balance_changed_planet_fate |= planet->HasBalanceChangedFate();
-    //    }
-
-    //    //Check whether the calculation changed the fate of any planets.
-    //    if(has_balance_changed_planet_fate) {
-    //        this->UpdateBalances(depth - 1);
-    //    }
-    //}
-
     //Update the timelines' ships gained.
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         planet_timelines_[i]->RecalculateShipsGained();
