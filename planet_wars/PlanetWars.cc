@@ -376,6 +376,18 @@ int GameMap::NumShips(int player_id) const {
     return num_ships;
 }
 
+int GameMap::GrowthRate(int player_id) const {
+    int growth_rate = 0;
+
+    for (unsigned int i = 0; i < planets_.size(); ++i) {
+        if (planets_[i]->Owner() == player_id) {
+            growth_rate += planets_[i]->GrowthRate();
+        }
+    }
+
+    return growth_rate;
+}
+
 //A functor to be used in the following function.
 struct DistanceComparer {
     GameMap* game_map_;

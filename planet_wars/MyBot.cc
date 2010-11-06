@@ -1,5 +1,6 @@
 #include <iostream>
 #include <list>
+#include <sstream>
 #include "Actions.h"
 #include "Bot.h"
 #include "PlanetWars.h"
@@ -25,6 +26,19 @@ void DoTurn(GameMap* game_map) {
 
     ActionList final_actions = g_bot->MakeMoves();
     
+#ifndef IS_SUBMISSION
+    //Output the game state to stderr.
+    const bool display_ships = true;
+
+    if (display_ships) {
+        std::stringstream player_data;
+        player_data << ">> Player 2: " << game_map->NumShips(kMe)  << "/" << game_map->GrowthRate(kMe) << "      ";
+        player_data << "Player 1: " << game_map->NumShips(kEnemy)  << "/" << game_map->GrowthRate(kEnemy) << " <<";
+        std::cerr << player_data.str();
+        std::cerr.flush();
+    }
+#endif
+
     for (unsigned int i = 0; i < final_actions.size(); ++i) {
         std::cout << final_actions[i]->ToMoveOrder();
     }
@@ -36,6 +50,7 @@ void DoTurn(GameMap* game_map) {
     for (uint i = 0; i < final_actions.size(); ++i) {
         final_actions[i]->Free();
     }
+
 }
 
 // This is just the main game loop that takes care of communicating with the

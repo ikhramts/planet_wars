@@ -211,6 +211,7 @@ public:
     // Returns the number of ships that the given player has, either located
     // on planets or in flight.
     int NumShips(int player_id) const;
+    int GrowthRate(int player_id) const;
 
     // Sends a message to the game engine letting it know that you're done
     // issuing orders for now.
