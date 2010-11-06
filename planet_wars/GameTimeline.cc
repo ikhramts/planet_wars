@@ -372,11 +372,18 @@ int GameTimeline::NegativeBalanceImprovement() {
 bool GameTimeline::HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines) {
     for (uint i = 0; i < timelines.size(); ++i) {
         PlanetTimeline* timeline = timelines[i];
-        const int id = timeline->Id();
-
-        if (timeline->TotalNegativeMinBalance() > base_planet_timelines_[id]->TotalNegativeMinBalance()) {
-            return true;
+        PlanetTimeline* base_timeline = base_planet_timelines_[timeline->Id()];
+        
+        for (int t = 0; t < horizon_; ++t) {
+            const int min_balance = timeline->MinBalanceAt(t);
+            if (min_balance < 0 && min_balance < base_timeline->MinBalanceAt(t)) {
+                return true;
+            }
         }
+
+        //if (timeline->TotalNegativeMinBalance() > base_planet_timelines_[id]->TotalNegativeMinBalance()) {
+        //    return true;
+        //}
     }
 
     return false;
