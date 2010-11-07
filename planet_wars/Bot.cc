@@ -161,7 +161,6 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
     double best_return = 0;
 	ActionList best_actions;
     
-    //forceCrash();
 	//Stop right here if there are no more ships to invade with.
 	int current_free_ships = 0;
 	PlanetTimelineList player_planets = timeline_->TimelinesOwnedBy(player);
@@ -232,7 +231,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         int t = earliest_arrival;
 
 #ifndef IS_SUBMISSION
-        if (3 == picking_round_ && 16 == target_id) {
+        if (1 == picking_round_ && 5 == target_id) {
             int x = 2;
         }
 #endif
@@ -249,7 +248,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 			//Find a possible invasion fleet, calculate the return on sending it.
             const int ships_to_take_over = target->ShipsRequredToPosess(t, player);
 			
-            int ships_needed = 0;
+            //int ships_needed = 0;
             int remaining_ships_needed = 0;
             //int source_no_closer_than = 0;
             const int min_balance = target->MinBalanceAt(t);
@@ -270,16 +269,6 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 ships_farther_than[distance_to_first_source] += (remaining_ships_needed - ships_farther_than_this_distance);
                 max_ships_from_this_distance = ships_farther_than[distance_to_first_source];
 
-                //Find how far the source needs to be from the target to cure the imbalance.
-                //bool found_negative = false;
-                //for (int d = distance_to_first_source; d <= t; ++d) {
-                //    if (balances[balances_offset + d] < 0) {
-                //        found_negative = true;
-                //    
-                //    } else if (found_negative) {
-                //        source_no_closer_than = d;
-                //    }
-                //}
             } else if (player == target_owner && 0 == min_balance && kEnemy == target->OwnerAt(t-1)) {
                 remaining_ships_needed = 1;
                 max_ships_from_this_distance = 1;
@@ -378,6 +367,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
                 ships_to_send += ships_to_send_from_here;
                 remaining_ships_needed -= ships_to_send_from_here;
+                max_ships_from_this_distance -= ships_to_send_from_here;
 
 				//Check whether this planet would already get enough ships.
                 if (remaining_ships_needed <= 0) {
@@ -387,7 +377,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
             //Tally up the return on sending the fleets to this planet.
             //Update the best invasion plan, if necessary.
-            if (0 == ships_to_send || ships_needed > ships_to_send) {
+            if (0 == ships_to_send || remaining_ships_needed > 0) {
                 Action::FreeActions(invasion_plan);
                 invasion_plan.clear();
                 ++t;
@@ -451,8 +441,6 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                     ships_gained = target->ShipsGainedForActions(invasion_plan);
                 }
 
-                //const int ships_gained = timeline_->ShipsGainedFromBase();
-                //const int ships_gained = target->ShipsGainedForActions(invasion_plan);
                 return_ratio = static_cast<double>(ships_gained)
                                             / static_cast<double>(ships_to_send);
                 
@@ -466,7 +454,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 //                    timeline_->UpdateBalances();
                     timeline_->UpdateBalances(sources_and_targets);
 
-                    if (!timeline_->HasNegativeBalanceWorsenedFor(sources)) {
+                    //if (!timeline_->HasNegativeBalanceWorsenedFor(sources)) {
                         const int updated_ships_gained = timeline_->ShipsGainedFromBase();
                         const double updated_return_ratio = 
                             static_cast<double>(updated_ships_gained) / static_cast<double>(ships_to_send);
@@ -478,7 +466,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                             best_actions = invasion_plan;
                             invasion_plan.clear();
                         }
-                    }
+                    //}
 
                     timeline_->ResetTimelinesToBase();
                 }
