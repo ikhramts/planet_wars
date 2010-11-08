@@ -207,7 +207,7 @@ PlanetList GameMap::PlanetsByDistance(Planet* origin) {
     PlanetList planets_by_distance;
     planets_by_distance.reserve(planets_.size());
 
-    for (int i = 0; i < num_planets_; ++i) {
+    for (int i = 1; i < num_planets_; ++i) {
         const int planet_index = offset + i;
         planets_by_distance.push_back(planets_by_distance_[planet_index]);
     }
@@ -220,13 +220,16 @@ PlanetList GameMap::PlanetsByDistance(int planet_id) {
 }
 
 PlanetList GameMap::PlayerPlanetsByDistance(const int player, Planet* origin) {
-    const int origin_id = origin->Id();
+    return this->PlayerPlanetsByDistance(player, origin->Id());
+}
+
+PlanetList GameMap::PlayerPlanetsByDistance(const int player, const int origin_id) {
     const int offset = origin_id * num_planets_;
     
     PlanetList planets_by_distance;
     planets_by_distance.reserve(planets_.size());
 
-    for (int i = 0; i < num_planets_; ++i) {
+    for (int i = 1; i < num_planets_; ++i) {
         const int planet_index = offset + i;
 
         if (planets_by_distance_[planet_index]->Owner() == player) {
@@ -244,7 +247,7 @@ PlanetList GameMap::NotPlayerPlanetsByDistance(const int player, Planet *origin)
     PlanetList planets_by_distance;
     planets_by_distance.reserve(planets_.size());
 
-    for (int i = 0; i < num_planets_; ++i) {
+    for (int i = 1; i < num_planets_; ++i) {
         const int planet_index = offset + i;
 
         if (planets_by_distance_[planet_index]->Owner() != player) {

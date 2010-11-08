@@ -33,6 +33,11 @@ private:
                                  const std::vector<int>& earliest_arrivals,
                                  const std::vector<int>& latest_arrivals,
                                  int depth = 0);
+    
+    ActionList FindInvasionPlan(PlanetTimeline* target, int arrival_time, 
+        const PlanetTimelineList& sources_by_distance, const std::vector<int>& distances_to_sources,
+        int player);
+    double ReturnForMove(const ActionList& invasion_plan, double best_return);
 
     CounterActionResult ShipsGainedForAfterMove(const ActionList& invasion_plan, 
                                          PlanetTimelineList& counter_targets,

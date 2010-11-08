@@ -71,6 +71,21 @@ int GameTimeline::ShipsGainedFromBase() const {
     return ships_gained;
 }
 
+PlanetTimeline* GameTimeline::HighestShipLossTimeline() {
+    int worst_ship_loss = 0;
+    PlanetTimeline* worst_timeline = NULL;
+
+    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        const int ships_gained = planet_timelines_[i]->ShipsGained() - base_planet_timelines_[i]->ShipsGained();
+        if (worst_ship_loss > ships_gained) {
+            worst_ship_loss = ships_gained;
+            worst_timeline = planet_timelines_[i];
+        }
+    }
+
+    return worst_timeline;
+}
+
 PlanetList GameTimeline::PlanetsThatWillNotBeMine() const {
     PlanetList will_not_be_mine;
 
@@ -416,7 +431,7 @@ void GameTimeline::UpdateBalances(const int depth) {
         int first_negative_min_balance = horizon_;
         int first_positive_max_balance = horizon_;
         int total_negative_min_balance = 0;
-        const int first_source_distance = game_->GetDistance(planets_by_distance[1]->Id(), planet->Id());
+        const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
 
 #ifndef IS_SUBMISSION
@@ -442,7 +457,7 @@ void GameTimeline::UpdateBalances(const int depth) {
             }
 
             //Calculate the neighbours' contributions to the balances.
-            for (uint s = 1; s < planets_by_distance.size(); ++s) {
+            for (uint s = 0; s < planets_by_distance.size(); ++s) {
                 PlanetTimeline* source = planets_by_distance[s];
                 
                 if (source->IsReinforcer() && planet_owner == kEnemy) {
@@ -524,7 +539,7 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
         int first_negative_min_balance = horizon_;
         int first_positive_max_balance = horizon_;
         int total_negative_min_balance = 0;
-        const int first_source_distance = game_->GetDistance(planets_by_distance[1]->Id(), planet->Id());
+        const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
 
 #ifndef IS_SUBMISSION
@@ -555,7 +570,7 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
             }
 
             //Calculate the neighbours' contributions to the balances.
-            for (uint s = 1; s < planets_by_distance.size(); ++s) {
+            for (uint s = 0; s < planets_by_distance.size(); ++s) {
                 PlanetTimeline* source = planets_by_distance[s];
                 const int source_id = source->Id();
                 
@@ -1439,17 +1454,22 @@ void PlanetTimeline::RecalculateShipsGained() {
     bool would_planet_be_lost = false;
     const int growth_rate = planet_->GrowthRate();
     total_ships_gained_ = ships_gained_[0];
+    int balance_loss = 0;
 
     for (int t = 1; t < horizon_; ++t) {
-        if (owner_[t] == kMe && (min_balances_[t] < 0 || (0 == min_balances_[t] && kEnemy == owner_[t-1]))) {
-            would_planet_be_lost = true;
-        }
-        
-        if (would_planet_be_lost) {
+        if (would_planet_be_lost && this->OwnerAt(t) == kMe) {
             total_ships_gained_ -= growth_rate;
+            balance_loss -= growth_rate * 2;
         
         } else {
             total_ships_gained_ += ships_gained_[t];
+        }
+
+        if (owner_[t] == kMe && (min_balances_[t] < 0 || (0 == min_balances_[t] && kEnemy == owner_[t-1]))) {
+            would_planet_be_lost = true;
+        
+        } else if (would_planet_be_lost && (min_balances_[t] + balance_loss > 0)) {
+            would_planet_be_lost = false;
         }
     }
 

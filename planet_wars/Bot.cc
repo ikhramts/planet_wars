@@ -182,7 +182,6 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
     PlanetTimelineList counter_action_targets;
     std::vector<int> earliest_counter_arrivals;
     std::vector<int> latest_counter_arrivals;
-    std::vector<int> ships_farther_than(u_horizon, 0);
 	
 	//Proceed finding the best planet to invade.
     ActionList invasion_plan;
@@ -206,6 +205,10 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         //Planets that might be participating in the invasion, sorted by distance from target.
 		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
+
+        if (sources.empty()) {
+            continue;   //To the next arrival time.
+        }
         
         //Pre-calculate distances to the sources.
 		std::vector<int> distances_to_sources(sources.size());
@@ -214,281 +217,297 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 			distances_to_sources[s] = game_->GetDistance(sources[s]->Id(), target_id);
 		}
 
-		const uint first_source = sources[0]->Id() == target_id ? 1 : 0;
-
-		//Don't proceed if the only source is the target itself.
-		if (first_source == 1 && sources.size() == 1) {
-			continue;
-		}
-
-        const int distance_to_first_source = distances_to_sources[first_source];
-		
 		//Find earliest time the fleet can reach the target.
         const int earliest_allowed_arrival = earliest_arrivals[i];
-        const int earliest_possible_arrival = distances_to_sources[first_source] + earliest_allowed_departure;
+        const int earliest_possible_arrival = distances_to_sources[0] + earliest_allowed_departure;
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
-        int t = earliest_arrival;
-
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 17 == target_id) {
+        if (1 == picking_round_ && 10 == target_id) {
             int x = 2;
         }
 #endif
 
-        while (t < latest_arrivals[i]) {
+        for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 18 == target_id && 13 == t) {
-            int x = 2;
-        }
-#endif
-            const int target_owner = target->OwnerAt(t);
-            const int balances_offset = t * (t - 1) / 2 - 1;
-
-			//Find a possible invasion fleet, calculate the return on sending it.
-            const int ships_to_take_over = target->ShipsRequredToPosess(t, player);
-			
-            //int ships_needed = 0;
-            int remaining_ships_needed = 0;
-            //int source_no_closer_than = 0;
-            const int min_balance = target->MinBalanceAt(t);
-            int max_ships_from_this_distance = 0;
-
-            if (player == target_owner && min_balance < 0) {
-                remaining_ships_needed = -min_balance;
-
-                //Find the minimum distances from which some of the ships need to be sent.
-                int ships_farther_than_this_distance = 0;
-                for (int d = t; d >= distance_to_first_source; --d) {
-                    const int ships_from_this_distance = 
-                        std::max(0, -balances[balances_offset + d] - ships_farther_than_this_distance);
-                    ships_farther_than[d] = ships_from_this_distance;
-                    ships_farther_than_this_distance += ships_from_this_distance;
-                }
-
-                ships_farther_than[distance_to_first_source] += (remaining_ships_needed - ships_farther_than_this_distance);
-                max_ships_from_this_distance = ships_farther_than[distance_to_first_source];
-
-            } else if (player == target_owner && 0 == min_balance && kEnemy == target->OwnerAt(t-1)) {
-                remaining_ships_needed = 1;
-                max_ships_from_this_distance = 1;
-
-            } else if (player != target_owner && target->MaxBalanceAt(t + 1) > 0) {
-                remaining_ships_needed = 
-                    std::max(-balances[balances_offset + distance_to_first_source] + 1, ships_to_take_over);
-                max_ships_from_this_distance = remaining_ships_needed;
+            if (8 == picking_round_ && 11 == target_id && 8 == arrival_time) {
+                int x = 2;
             }
-
-            if (0 == remaining_ships_needed) {
-                ++t;
-                continue;   //To the next arrival time t.
-            }
-
-			int ships_to_send = 0;
-            int earliest_departure = t - distances_to_sources[first_source];
-
-            double return_ratio = 0;
-
-            const bool is_enemys = target->IsOwnedBy(opponent, t - 1);
-            const bool is_neutral = target->IsOwnedBy(kNeutral, t - 1);
-            const bool is_not_mine = !target->IsOwnedBy(player, t - 1);
-            const bool was_enemys = (t > 1 && target->IsOwnedBy(opponent, t - 2));
-
-            const double reinforecement_factor = (is_enemys && (player == kEnemy || was_enemys) ? 1.0 : 0.5);
-            int current_distance = distance_to_first_source;
-
-            for (uint s = first_source; s < sources.size(); ++s) {
-                pw_assert(remaining_ships_needed > 0);
-
-                //Calculate how many ships are necessary to make a difference given how fast
-                //the ships can get from this planet to the target.
-                PlanetTimeline* source = sources[s];
-                const int source_id = source->Id();
-
-                //Feeder planets may only attack neutrals or support player's planets.
-                if (source->IsReinforcer() && opponent == target_owner) {
-                    if (when_is_feeder_allowed_to_attack_[source_id * num_planets + target_id] != 0) {
-                        continue;   //To the next source.
-                    }
-                }
-
-				//Check whether the target is reacheable from the source.  If not, then it
-				//won't be reacheable from any of the remaining sources.
-                const int distance_to_source = distances_to_sources[s];
-                const int departure_time = t - distance_to_source;
-                earliest_departure = departure_time;
-
-				if (distance_to_source > (t - earliest_allowed_departure)) {
-					break;
-
-				}
-
-                //Never send ships back to the same planet.
-                pw_assert(source_id != target_id);
-
-                //Adjust the number of ships needed to take out or support this planet for
-                //any possible reinforcing enemies.
-                if (distance_to_source > current_distance) {
-                    //if (target_owner == kEnemy) {
-                    if (target_owner != kMe) {
-                        remaining_ships_needed = 
-                            std::max(-balances[balances_offset + distance_to_source], ships_to_take_over);
-                        max_ships_from_this_distance = remaining_ships_needed;
-                    
-                    } else if(target_owner == kMe) {
-                        for (int d = current_distance + 1; d <= distance_to_source; ++d) {
-                            max_ships_from_this_distance += ships_farther_than[d];
-                        }
-                    }
-
-                    current_distance = distance_to_source;
-                }
-                
-                //Check whether the source has any ships to send.
-                const int available_ships = source->ShipsFree(t - distance_to_source, player);
-                if(0 == available_ships) {
-                    continue;
-                
-                } else {
-                    pw_assert(source->IsOwnedBy(player, t - distance_to_source));
-                }
-
-                if (max_ships_from_this_distance == 0) {
-                    continue;
-                }
-                
-                //Add ships from this planet.
-                const int ships_to_send_from_here = std::min(available_ships, max_ships_from_this_distance);
-                
-                Action* action = Action::Get();
-                action->SetOwner(player);
-                action->SetSource(source);
-                action->SetTarget(target);
-                action->SetDistance(distance_to_source);
-				action->SetDepartureTime(t - distance_to_source);
-                action->SetNumShips(ships_to_send_from_here);
-                
-                invasion_plan.push_back(action);
-
-                ships_to_send += ships_to_send_from_here;
-                remaining_ships_needed -= ships_to_send_from_here;
-                max_ships_from_this_distance -= ships_to_send_from_here;
-
-				//Check whether this planet would already get enough ships.
-                if (remaining_ships_needed <= 0) {
-                    break;
-                }
-            } //End iterating over sources
-
-            //Tally up the return on sending the fleets to this planet.
-            //Update the best invasion plan, if necessary.
-            if (0 == ships_to_send || remaining_ships_needed > 0) {
-                Action::FreeActions(invasion_plan);
-                invasion_plan.clear();
-                ++t;
-                continue;
-
-            } else {
-                int ships_gained = 0;
-
-                //Consider the opponent's possible responses
-                if (depth > 0 && is_neutral) {
-
-#ifndef IS_SUBMISSION
-                    if (/*32 == turn_ && */20 == target_id && 8 == t && 3 == picking_round_) {
-                        int adf = 2;
-                    }
 #endif
-                    //Calculate what will happen if the opponent counterattacks the invasion target.
-                    counter_action_targets.clear();
-                    counter_action_targets.push_back(invasion_plan[0]->Target());
+            invasion_plan = this->FindInvasionPlan(target, arrival_time, sources, distances_to_sources, player);            
 
-                    CounterActionResult target_counter_attack = 
-                        this->ShipsGainedForAfterMove(invasion_plan, counter_action_targets, t);
+            //Check whether this move is better than any other we've seen so far.
+            if (!invasion_plan.empty()) {
+                const double return_ratio = this->ReturnForMove(invasion_plan, best_return);
 
-                    //Calculate what will happen if the opponent counterattacks the invasion sources.
-                    counter_action_targets.clear();
-                    for (uint j = 0; j < invasion_plan.size(); ++j) {
-                        counter_action_targets.push_back(invasion_plan[j]->Source());
-                    }
-
-                    CounterActionResult source_counter_attack = 
-                        this->ShipsGainedForAfterMove(invasion_plan, counter_action_targets, t);
-
-                    //Assume that the opponent will do the worst.
-                    CounterActionResult* counter_attack;
-
-                    if (target_counter_attack.ships_gained < source_counter_attack.ships_gained) {
-                        counter_attack = &target_counter_attack;
-                        Action::FreeActions(source_counter_attack.defense_plan);
-                    
-                    } else {
-                        counter_attack = &source_counter_attack;
-                        Action::FreeActions(target_counter_attack.defense_plan);
-                    }
-                    
-                    ships_gained = counter_attack->ships_gained;
-
-                    //Include the defense plan in the invasion plan.
-                    for (uint k = 0; k < counter_attack->defense_plan.size(); ++k) {
-                        Action* response = counter_attack->defense_plan[k];
-                        response->SetContingent(true);
-                        invasion_plan.push_back(response);
-                    }
-
-                    //Update the ships to commit to this.
-                    ships_to_send = 0;
-                    for (uint k = 0; k < invasion_plan.size(); ++k) {
-                        ships_to_send += invasion_plan[k]->NumShips();
-                    }
-
-                } else {
-                    ships_gained = target->ShipsGainedForActions(invasion_plan);
-                }
-
-                return_ratio = static_cast<double>(ships_gained)
-                                            / static_cast<double>(ships_to_send);
-                
-                bool was_plan_accepted = false;
-
-                //returns_for_target[t] = return_ratio;
                 if (best_return < return_ratio) {
-                    //Check whether the move will create a negative balance in any of the sources.
-                    timeline_->ApplyTempActions(invasion_plan);
-                    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
-//                    timeline_->UpdateBalances();
-                    timeline_->UpdateBalances(sources_and_targets);
+                    best_return = return_ratio;
+                    Action::FreeActions(best_actions);
+                    best_actions = invasion_plan;
+                    invasion_plan.clear();
 
-                    //if (!timeline_->HasNegativeBalanceWorsenedFor(sources)) {
-                        const int updated_ships_gained = timeline_->ShipsGainedFromBase();
-                        const double updated_return_ratio = 
-                            static_cast<double>(updated_ships_gained) / static_cast<double>(ships_to_send);
-                        
-                        if (best_return < updated_return_ratio) {
-                            was_plan_accepted = true;
-                            best_return = updated_return_ratio;
-                            Action::FreeActions(best_actions);
-                            best_actions = invasion_plan;
-                            invasion_plan.clear();
-                        }
-                    //}
-
-                    timeline_->ResetTimelinesToBase();
-                }
-
-                if (!was_plan_accepted) {
+                } else {
                     Action::FreeActions(invasion_plan);
                     invasion_plan.clear();
                 }
-
             }
-
-            ++t;
-        } //End iterating over arrival times.
+        }
 	}//End iterating over targets.
 
 	return best_actions;
 }
+
+ActionList Bot::FindInvasionPlan(PlanetTimeline* target, 
+                                 const int arrival_time, 
+                                 const PlanetTimelineList& sources, 
+                                 const std::vector<int>& distances_to_sources,
+                                 const int player) {
+    ActionList invasion_plan;
+
+    //Various useful variables.
+    const int target_id = target->Id();
+    const int target_owner = target->OwnerAt(arrival_time);
+    const int balances_offset = arrival_time * (arrival_time - 1) / 2 - 1;
+    const int horizon = timeline_->Horizon();
+    const int u_horizon = static_cast<uint>(horizon);
+    const int num_planets = game_->NumPlanets();
+    const std::vector<int>& balances = target->Balances();
+    const int opponent = OtherPlayer(player);
+    const int distance_to_first_source = distances_to_sources[0];
+    std::vector<int> ships_farther_than(u_horizon, 0);
+
+    //Possible adjustment for neutral planets in case of an opponent.
+    const int neutral_adjustment = 
+        ((player == kEnemy && target_owner == kNeutral) ? (2 * target->ShipsAt(arrival_time - 1)) : 0);
+
+	//Minimum number of ships to conquer the planet.  More may be requred to 
+    //fight off any other ships the opponent might send.
+    int remaining_ships_to_take_over = target->ShipsRequredToPosess(arrival_time, player);
+	
+    //Figure out how many ships might be actually needed.  These values would be adjusted
+    //duri the calculation.
+    const int min_balance = target->MinBalanceAt(arrival_time);
+    int remaining_ships_needed = 0;
+    int max_ships_from_this_distance = 0;
+
+    if (player == target_owner && min_balance < 0) {
+        remaining_ships_needed = -min_balance;
+
+        //Find the minimum distances from which some of the ships need to be sent.
+        int ships_farther_than_this_distance = 0;
+        for (int d = arrival_time; d >= distance_to_first_source; --d) {
+            const int ships_from_this_distance = 
+                std::max(0, -balances[balances_offset + d] - ships_farther_than_this_distance);
+            ships_farther_than[d] = ships_from_this_distance;
+            ships_farther_than_this_distance += ships_from_this_distance;
+        }
+
+        ships_farther_than[distance_to_first_source] += (remaining_ships_needed - ships_farther_than_this_distance);
+        max_ships_from_this_distance = ships_farther_than[distance_to_first_source];
+
+    } else if (player == target_owner && 0 == min_balance && kEnemy == target->OwnerAt(arrival_time -1 )) {
+        remaining_ships_needed = 1;
+        max_ships_from_this_distance = 1;
+
+    } else if (player != target_owner && target->MaxBalanceAt(arrival_time + 1) > 0) {
+        const int ships_from_balance = -balances[balances_offset + distance_to_first_source] + neutral_adjustment + 1;
+        remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
+        max_ships_from_this_distance = remaining_ships_needed;
+    }
+
+    if (0 == remaining_ships_needed) {
+        return invasion_plan;   //Nothing to do.
+    }
+
+    //Compose the invasion plan.
+	int ships_to_send = 0;
+    int current_distance = distances_to_sources[0];
+
+    for (uint s = 0; s < sources.size(); ++s) {
+        pw_assert(remaining_ships_needed > 0);
+        PlanetTimeline* source = sources[s];
+        const int source_id = source->Id();
+
+        //Feeder planets may only attack neutrals or support player's planets.
+        if (source->IsReinforcer() && opponent == target_owner) {
+            if (when_is_feeder_allowed_to_attack_[source_id * num_planets + target_id] != 0) {
+                continue;   //To the next source.
+            }
+        }
+
+		//Check whether the target is reacheable from the source.  If not, then it
+		//won't be reacheable from any of the remaining sources.
+        const int distance_to_source = distances_to_sources[s];
+        const int departure_time = arrival_time - distance_to_source;
+
+		//if (distance_to_source > (arrival_time - earliest_allowed_departure)) {
+		if (distance_to_source > (arrival_time)) {
+            break;
+		}
+
+        //Never send ships back to the same planet.
+        pw_assert(source_id != target_id);
+
+        //Adjust the number of ships needed to take out or support this planet for
+        //any possible reinforcing enemies.
+        if (distance_to_source > current_distance) {
+            //if (target_owner == kEnemy) {
+            if (target_owner != player) {
+                const int ships_from_balance = -balances[balances_offset + distance_to_source] + neutral_adjustment + 1;
+                remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
+                max_ships_from_this_distance = remaining_ships_needed;
+            
+            } else if(target_owner == player) {
+                for (int d = current_distance + 1; d <= distance_to_source; ++d) {
+                    max_ships_from_this_distance += ships_farther_than[d];
+                }
+            }
+
+            current_distance = distance_to_source;
+        }
+        
+        //Check whether the source has any ships to send.
+        const int available_ships = source->ShipsFree(arrival_time - distance_to_source, player);
+        if(0 == available_ships) {
+            continue;
+        
+        } else {
+            pw_assert(source->IsOwnedBy(player, arrival_time - distance_to_source));
+        }
+
+        if (max_ships_from_this_distance == 0) {
+            continue;
+        }
+        
+        //Add ships from this planet.
+        const int ships_to_send_from_here = std::min(available_ships, max_ships_from_this_distance);
+        
+        Action* action = Action::Get();
+        action->SetOwner(player);
+        action->SetSource(source);
+        action->SetTarget(target);
+        action->SetDistance(distance_to_source);
+		action->SetDepartureTime(arrival_time - distance_to_source);
+        action->SetNumShips(ships_to_send_from_here);
+        
+        invasion_plan.push_back(action);
+
+        ships_to_send += ships_to_send_from_here;
+        remaining_ships_needed -= ships_to_send_from_here;
+        max_ships_from_this_distance -= ships_to_send_from_here;
+        remaining_ships_to_take_over = std::max(remaining_ships_to_take_over - ships_to_send_from_here, 0);
+
+		//Check whether this planet would already get enough ships.
+        if (remaining_ships_needed <= 0) {
+            break;
+        }
+    } //End iterating over sources
+
+    //Return the invasion plan only if we've found enough ships to do the job.
+    if (remaining_ships_needed > 0 || 0 == ships_to_send) {
+        Action::FreeActions(invasion_plan);
+        invasion_plan.clear();
+    }
+
+    return invasion_plan;
+}
+
+
+
+double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_return) {
+    if (invasion_plan.empty()) {
+        return 0;
+    }
+    
+    const int horizon = timeline_->Horizon();
+
+    //Calculate the number of ships sent.
+    double ships_to_send = 0;
+    for (uint i = 0; i < invasion_plan.size(); ++i) {
+        ships_to_send += static_cast<double>(invasion_plan[i]->NumShips());
+    }
+
+    //Find a rough upper limit of how good this move could be.
+    PlanetTimeline* target = invasion_plan[0]->Target();
+    const int ships_gained = target->ShipsGainedForActions(invasion_plan);
+    const double return_ratio = static_cast<double>(ships_gained) / ships_to_send;
+    
+    if (best_return >= return_ratio) {
+        //The upper limit doesn't beat the best move so far.
+        return return_ratio;
+    }
+
+    //Perform a more thorough check of the move.  Apply it to the timeline, and see how it
+    //impacts ship returns and strategic balances.
+    timeline_->ApplyTempActions(invasion_plan);
+    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
+    timeline_->UpdateBalances(sources_and_targets);
+
+    const int updated_ships_gained = timeline_->ShipsGainedFromBase();
+    const double updated_return_ratio = static_cast<double>(updated_ships_gained) / ships_to_send;
+    
+    if (best_return < updated_return_ratio) {
+        //It is definitely a good move.
+        timeline_->ResetTimelinesToBase();
+        return updated_return_ratio;
+    }
+
+    //At this point, the move seems to impact the strategic balances negatively.
+    //Let's check whether it actually makes sense for the opponet to make the 
+    //moves implied by the strategic balances.
+    //Pick the best move for the opponent to make and apply it to the timeline
+    //to see what happens.
+    const int player = invasion_plan[0]->Owner();
+    const int opponent = OtherPlayer(player);
+    PlanetTimeline* counter_target = timeline_->HighestShipLossTimeline();
+
+    if (NULL == counter_target) {
+        //The move just is naturally bad.  Move on.
+        timeline_->ResetTimelinesToBase();
+        return updated_return_ratio;
+    }
+
+    const int counter_target_id = counter_target->Id();
+
+    //Find the arrival time of the counterattack.
+    int attack_turn = invasion_plan[0]->DepartureTime() + invasion_plan[0]->Distance();
+    while (attack_turn < horizon && counter_target->MinBalanceAt(attack_turn) < 0) {
+        ++attack_turn;
+    }
+
+    if (horizon - 1 <= attack_turn) {
+        //It wouldn't make sense to arrive here.. but whatev, in unlikely event of
+        //passing this condition there's nothing else to do.
+        timeline_->ResetTimelinesToBase();
+        return updated_return_ratio;
+    }
+    
+    //Find the most likely combination of attack fleets that the opponent would likely use.
+    PlanetTimelineList counter_sources = timeline_->EverOwnedTimelinesByDistance(opponent, counter_target);
+    std::vector<int> distances_to_counter_sources(counter_sources.size());
+
+    for (uint i = 0; i < counter_sources.size(); ++i) {
+        distances_to_counter_sources[i] = game_->GetDistance(counter_target_id, counter_sources[i]->Id());
+    }
+
+    ActionList counter_plan = 
+        this->FindInvasionPlan(counter_target, attack_turn, counter_sources, distances_to_counter_sources, opponent);
+
+    if (counter_plan.empty()) {
+        timeline_->ResetTimelinesToBase();
+        return updated_return_ratio;
+    }
+
+    timeline_->ApplyTempActions(counter_plan);
+    timeline_->UpdateBalances();
+
+    const int counter_ships_gained = timeline_->ShipsGainedFromBase();
+    const double counter_return = static_cast<double>(counter_ships_gained) / ships_to_send;
+
+    timeline_->ResetTimelinesToBase();
+    return counter_return;
+}
+
 
 CounterActionResult Bot::ShipsGainedForAfterMove(const ActionList& invasion_plan, 
                                          PlanetTimelineList& counter_targets,
@@ -617,113 +636,11 @@ CounterActionResult Bot::ShipsGainedForAfterMove(const ActionList& invasion_plan
 }
 
 ActionList Bot::SendFleetsToFront(const int player) {
-    //Consider sending all spare ships from a planet to another planet.
-    //Perform those moves that decrease the minimum balance the most
-    //without making the minimim balances more negative for the planets already
-    //owned.
     ActionList reinforcing_fleets;
-    //PlanetTimelineList source_and_target;
-    //source_and_target.push_back(NULL);
-    //source_and_target.push_back(NULL);
-
     ActionList temp_action_list;
     temp_action_list.push_back(NULL);
 
-    //PlanetTimelineList sources = timeline_->TimelinesOwnedBy(player, 0 /*current turn*/);
-    //PlanetTimelineList targets = timeline_->EverOwnedTimelines(player);
-
-    //const int horizon = timeline_->Horizon();
-    //
-    //for (uint s = 0; s < sources.size(); ++s) {
-    //    PlanetTimeline* source = sources[s];
-
-    //    //Find the number of ships this planet can send away.  The planet cannot send
-    //    //ships that have been reserved for other purposes, and cannot put itself into 
-    //    //negative strategic balance at any point in the future.
-    //    int min_min_balance = source->ShipsFree(0, player);
-    //    const int closest_planet_id = game_->ClosestPlanet(source->Id());
-    //    const int distance_to_closest_planet = game_->GetDistance(source->Id(), closest_planet_id);
-
-    //    for (int t = distance_to_closest_planet; t < horizon; ++t) {
-    //        const int min_balance = source->MinBalanceAt(t);
-
-    //        if (min_min_balance > min_balance) {
-    //            min_min_balance = min_balance;
-    //        }
-    //    }
-
-    //    if (min_min_balance <= 0) {
-    //        continue;
-    //    }
-
-    //    const int available_ships = min_min_balance;
-
-    //    //Find the planet where these ships will best serve the player's cause.
-    //    ActionList best_actions;
-    //    int best_balance_gain = 0;
-    //    source_and_target[0] = source;
-
-    //    for (uint i = 0; i < targets.size(); ++i) {
-    //        PlanetTimeline* target = targets[i];
-
-    //        if (target == source) {
-    //            continue;
-    //        }
-
-    //        const int distance = game_->GetDistance(source->Id(), target->Id());
-
-    //        if (target->OwnerAt(distance) != player) {
-    //            continue;
-    //        }
-
-    //        //Apply the move and see what happens.
-    //        Action* action = Action::Get();
-    //        action->SetOwner(player);
-    //        action->SetSource(source);
-    //        action->SetTarget(target);
-    //        action->SetDepartureTime(0);
-    //        action->SetDistance(distance);
-    //        action->SetNumShips(available_ships);
-    //        temp_action_list[0] = action;
-
-    //        timeline_->ApplyTempActions(temp_action_list);
-    //        source_and_target[1] = target;
-    //        timeline_->UpdateBalances(source_and_target);
-
-    //        bool has_found_better_move = false;
-
-    //        if (!timeline_->HasNegativeBalanceWorsenedFor(sources)) {
-    //            const int balance_gain = timeline_->NegativeBalanceImprovement();
-    //            
-    //            if (best_balance_gain < balance_gain) {
-    //                best_balance_gain = balance_gain;
-    //                has_found_better_move = true;
-    //            }
-    //        }
-
-    //        if (has_found_better_move) {
-    //            Action::FreeActions(best_actions);
-    //            best_actions.clear();
-    //            best_actions.push_back(action);
-    //        
-    //        } else {
-    //            action->Free();
-    //        }
-
-    //        timeline_->ResetTimelinesToBase();
-    //    } //End iterating over targets.
-
-    //    if (best_balance_gain > 0) {
-    //        timeline_->ApplyActions(best_actions);
-    //        reinforcing_fleets.push_back(best_actions[0]);
-    //    }
-    //}//End iterating over sources.
-    //        
-    //return reinforcing_fleets;
-
-    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     const int horizon = timeline_->Horizon();
-
     const int distance_threshold = 1;
     const int opponent = OtherPlayer(player);
     
@@ -731,53 +648,70 @@ ActionList Bot::SendFleetsToFront(const int player) {
         return reinforcing_fleets;
     }
 
-    PlanetList player_planets = game_->PlanetsOwnedBy(player);
     PlanetTimelineList timelines = timeline_->Timelines();
     PlanetTimelineList sources = timeline_->TimelinesOwnedBy(player, 0 /*current turn*/);
+    PlanetTimelineList opponent_planets = timeline_->TimelinesOwnedBy(opponent, 0);
 
-    for (uint i = 0; i < player_planets.size(); ++i) {
-        Planet* planet = player_planets[i];
-        PlanetTimeline* planet_timeline = timelines[planet->Id()];
-        const int free_ships = planet_timeline->ShipsFree(0, player);
+    for (uint i = 0; i < sources.size(); ++i) {
+        PlanetTimeline* source = sources[i];
+        const int free_ships = source->ShipsFree(0, player);
+        const int source_id = source->Id();
+        
+        //Work only with those reinforcement targets that are actually owned by the
+        //player at the time of feeder fleet arrivals.
+        PlanetTimelineList possible_feeding_targets = timeline_->EverOwnedTimelinesByDistance(player, source);
+        PlanetTimelineList feeding_targets;
+        feeding_targets.reserve(possible_feeding_targets.size());
+
+        for (uint j = 0; j < possible_feeding_targets.size(); ++j) {
+            PlanetTimeline* possible_target = possible_feeding_targets[j];
+            const int distance_to_target = game_->GetDistance(source_id, possible_target->Id());
+
+            if (possible_target->OwnerAt(distance_to_target) == player) {
+                feeding_targets.push_back(possible_target);
+            }
+        }
 
         //Check whether the player owns any planets closer to enemy
         //planets than this one.
-        PlanetList player_planets_by_distance = game_->PlayerPlanetsByDistance(player, planet);
-        PlanetList targets_by_distance = game_->PlayerPlanetsByDistance(opponent, planet);
+        //PlanetList player_planets_by_distance = game_->PlayerPlanetsByDistance(player, planet);
+        PlanetList opponents_by_distance = game_->PlayerPlanetsByDistance(opponent, source_id);
         //PlanetList targets_by_distance = game_->NotPlayerPlanetsByDistance(player, planet);
 
-        pw_assert(!targets_by_distance.empty());
+        pw_assert(!opponents_by_distance.empty());
 
-        //Find the closest non-zero growth planet not owned by the player.
-        Planet* closest_target = NULL;
-        for (uint j = 0; j < targets_by_distance.size(); ++j) {
-            if (targets_by_distance[j]->GrowthRate() > 0) {
-                closest_target = targets_by_distance[j];
+        //Find the closest non-zero growth planet owned by the opponent.
+        Planet* closest_opponent = NULL;
+        for (uint j = 0; j < opponents_by_distance.size(); ++j) {
+            if (opponents_by_distance[j]->GrowthRate() > 0) {
+                closest_opponent = opponents_by_distance[j];
                 break;
             }
         }
 
-        if (NULL == closest_target) {
+        if (NULL == closest_opponent) {
             break;
         }
 
-        const int distance_to_target = game_->GetDistance(planet, closest_target);
+        const int distance_to_opponent = game_->GetDistance(source_id, closest_opponent->Id());
+        const int closest_opponent_id = closest_opponent->Id();
 
         //Find the best allied planet to reinforce.
         int send_ships_to = -1;
-        int shortest_distance_to_target = distance_to_target;
-        int distance_to_ally_planet = 0;
+        int shortest_distance_to_opponent = distance_to_opponent;
+        int distance_to_target = 0;
 
-        for (uint p = 1; p < player_planets_by_distance.size(); ++p) {
-            Planet* player_planet = player_planets_by_distance[p];
-            const int planet_distance_to_target = game_->GetDistance(player_planet, closest_target);
-            const int planet_distance_to_source = game_->GetDistance(player_planet, planet);
+        for (uint p = 1; p < feeding_targets.size(); ++p) {
+            PlanetTimeline* possible_target = feeding_targets[p];
+            const int possible_target_id = possible_target->Id();
+            const int target_distance_to_opponent = game_->GetDistance(possible_target_id, closest_opponent_id);
+            const int target_distance_to_source = game_->GetDistance(possible_target_id, source_id);
 
-            if (planet_distance_to_target < shortest_distance_to_target
-              && (distance_to_target - distance_threshold) > planet_distance_to_source) {
-                shortest_distance_to_target = planet_distance_to_target;
-                send_ships_to = player_planet->Id();
-                distance_to_ally_planet = planet_distance_to_source;
+            if (target_distance_to_opponent < shortest_distance_to_opponent
+              && (distance_to_opponent - distance_threshold) > target_distance_to_source) {
+                shortest_distance_to_opponent = target_distance_to_opponent;
+                send_ships_to = possible_target_id;
+                distance_to_target = target_distance_to_source;
             }
         }
         
@@ -786,12 +720,12 @@ ActionList Bot::SendFleetsToFront(const int player) {
             //Find the number of ships this planet can send away.  The planet cannot send
             //ships that have been reserved for other purposes, and cannot put itself into 
             //negative strategic balance at any point in the future.
-            int min_min_balance = planet_timeline->ShipsFree(0, player);
-            const int closest_planet_id = game_->ClosestPlanet(planet_timeline->Id());
-            const int distance_to_closest_planet = game_->GetDistance(planet_timeline->Id(), closest_planet_id);
+            int min_min_balance = source->ShipsFree(0, player);
+            const int closest_planet_id = game_->ClosestPlanet(source_id);
+            const int distance_to_closest_planet = game_->GetDistance(source_id, closest_planet_id);
 
             for (int t = distance_to_closest_planet; t < horizon; ++t) {
-                const int min_balance = planet_timeline->MinBalanceAt(t);
+                const int min_balance = source->MinBalanceAt(t);
 
                 if (min_min_balance > min_balance) {
                     min_min_balance = min_balance;
@@ -805,7 +739,7 @@ ActionList Bot::SendFleetsToFront(const int player) {
             const int available_ships = min_min_balance;
 
             //Send the ships to the planet and see if it negatively impacts the balance.
-            PlanetTimeline* forward_planet = timelines[send_ships_to];
+            PlanetTimeline* target = timelines[send_ships_to];
 
             //Send all future available ships to the front line planet.
 //            for (int t = 0; t < horizon - distance_to_ally_planet; ++t) {
@@ -814,10 +748,10 @@ ActionList Bot::SendFleetsToFront(const int player) {
 //                if (0 != turn_free_ships) {
                     Action* action = Action::Get();
                     action->SetOwner(player);
-                    action->SetSource(planet_timeline);
-                    action->SetTarget(forward_planet);
+                    action->SetSource(source);
+                    action->SetTarget(target);
                     action->SetDepartureTime(0);
-                    action->SetDistance(distance_to_ally_planet);
+                    action->SetDistance(distance_to_target);
                     action->SetNumShips(available_ships);
                     temp_action_list[0] = action;
 
@@ -832,7 +766,7 @@ ActionList Bot::SendFleetsToFront(const int player) {
 //                }
 //            }
 
-            planet_timeline->SetReinforcer(true);
+            source->SetReinforcer(true);
         }
     }
     

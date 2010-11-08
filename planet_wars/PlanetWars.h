@@ -173,6 +173,7 @@ public:
     PlanetList PlanetsByDistance(Planet* origin);
     PlanetList PlanetsByDistance(int planet_id);
     PlanetList PlayerPlanetsByDistance(int player, Planet* origin);
+    PlanetList PlayerPlanetsByDistance(int player, int origin_id);
     PlanetList NotPlayerPlanetsByDistance(int player, Planet* origin);
     PlanetList MyPlanetsByDistance(Planet* origin);
     PlanetList NotMyPlanetsByDistance(Planet* origin);
