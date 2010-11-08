@@ -133,6 +133,20 @@ PlanetTimelineList GameTimeline::TimelinesNotOwnedBy(int owner, int when) const 
     return timelines;
 }
 
+PlanetTimelineList GameTimeline::EverOwnedTimelines(const int owner) {
+    PlanetTimelineList timelines;
+
+    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        PlanetTimeline* timeline = planet_timelines_[i];
+
+        if (timeline->WillBeOwnedBy(owner)) {
+            timelines.push_back(timeline);
+        }
+    }
+
+    return timelines;
+}
+
 PlanetTimelineList GameTimeline::EverNotOwnedTimelines(int owner) {
     PlanetTimelineList timelines;
 

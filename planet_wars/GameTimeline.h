@@ -45,9 +45,11 @@ public:
     int ShipsRequredToPosess(Planet* planet, int arrival_time, int by_whom) const;
 
     PlanetTimelineList Timelines() const            {return planet_timelines_;}
+    PlanetTimeline* Timeline(int id)                {return planet_timelines_[id];}
     PlanetTimelineList TimelinesOwnedBy(int owner, int when = 0) const;
     PlanetTimelineList TimelinesNotOwnedBy(int owner, int when = 0) const;
     
+    PlanetTimelineList EverOwnedTimelines(int player);
     PlanetTimelineList EverNotOwnedTimelines(int owner);
     PlanetTimelineList EverNotOwnedNonReinforcerTimelines(int owner);
 	PlanetTimelineList EverOwnedTimelinesByDistance(int owner, PlanetTimeline* source);

@@ -191,6 +191,7 @@ public:
     // the two planets.
     int GetDistance(int source_planet, int destination_planet) const;
     int GetDistance(Planet* first_planet, Planet* second_planet) const;
+    int ClosestPlanet(int source_id) const;
 
     //Find the distance between two farthest planets.
     int MapRadius() const;

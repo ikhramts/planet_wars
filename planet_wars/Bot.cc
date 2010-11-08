@@ -231,14 +231,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         int t = earliest_arrival;
 
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 5 == target_id) {
+        if (1 == picking_round_ && 17 == target_id) {
             int x = 2;
         }
 #endif
 
         while (t < latest_arrivals[i]) {
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 11 == target_id && 11 == t) {
+        if (1 == picking_round_ && 18 == target_id && 13 == t) {
             int x = 2;
         }
 #endif
@@ -329,7 +329,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 //Adjust the number of ships needed to take out or support this planet for
                 //any possible reinforcing enemies.
                 if (distance_to_source > current_distance) {
-                    if (target_owner == kEnemy) {
+                    //if (target_owner == kEnemy) {
+                    if (target_owner != kMe) {
                         remaining_ships_needed = 
                             std::max(-balances[balances_offset + distance_to_source], ships_to_take_over);
                         max_ships_from_this_distance = remaining_ships_needed;
@@ -350,6 +351,10 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 
                 } else {
                     pw_assert(source->IsOwnedBy(player, t - distance_to_source));
+                }
+
+                if (max_ships_from_this_distance == 0) {
+                    continue;
                 }
                 
                 //Add ships from this planet.
@@ -612,10 +617,111 @@ CounterActionResult Bot::ShipsGainedForAfterMove(const ActionList& invasion_plan
 }
 
 ActionList Bot::SendFleetsToFront(const int player) {
+    //Consider sending all spare ships from a planet to another planet.
+    //Perform those moves that decrease the minimum balance the most
+    //without making the minimim balances more negative for the planets already
+    //owned.
     ActionList reinforcing_fleets;
+    //PlanetTimelineList source_and_target;
+    //source_and_target.push_back(NULL);
+    //source_and_target.push_back(NULL);
+
     ActionList temp_action_list;
     temp_action_list.push_back(NULL);
 
+    //PlanetTimelineList sources = timeline_->TimelinesOwnedBy(player, 0 /*current turn*/);
+    //PlanetTimelineList targets = timeline_->EverOwnedTimelines(player);
+
+    //const int horizon = timeline_->Horizon();
+    //
+    //for (uint s = 0; s < sources.size(); ++s) {
+    //    PlanetTimeline* source = sources[s];
+
+    //    //Find the number of ships this planet can send away.  The planet cannot send
+    //    //ships that have been reserved for other purposes, and cannot put itself into 
+    //    //negative strategic balance at any point in the future.
+    //    int min_min_balance = source->ShipsFree(0, player);
+    //    const int closest_planet_id = game_->ClosestPlanet(source->Id());
+    //    const int distance_to_closest_planet = game_->GetDistance(source->Id(), closest_planet_id);
+
+    //    for (int t = distance_to_closest_planet; t < horizon; ++t) {
+    //        const int min_balance = source->MinBalanceAt(t);
+
+    //        if (min_min_balance > min_balance) {
+    //            min_min_balance = min_balance;
+    //        }
+    //    }
+
+    //    if (min_min_balance <= 0) {
+    //        continue;
+    //    }
+
+    //    const int available_ships = min_min_balance;
+
+    //    //Find the planet where these ships will best serve the player's cause.
+    //    ActionList best_actions;
+    //    int best_balance_gain = 0;
+    //    source_and_target[0] = source;
+
+    //    for (uint i = 0; i < targets.size(); ++i) {
+    //        PlanetTimeline* target = targets[i];
+
+    //        if (target == source) {
+    //            continue;
+    //        }
+
+    //        const int distance = game_->GetDistance(source->Id(), target->Id());
+
+    //        if (target->OwnerAt(distance) != player) {
+    //            continue;
+    //        }
+
+    //        //Apply the move and see what happens.
+    //        Action* action = Action::Get();
+    //        action->SetOwner(player);
+    //        action->SetSource(source);
+    //        action->SetTarget(target);
+    //        action->SetDepartureTime(0);
+    //        action->SetDistance(distance);
+    //        action->SetNumShips(available_ships);
+    //        temp_action_list[0] = action;
+
+    //        timeline_->ApplyTempActions(temp_action_list);
+    //        source_and_target[1] = target;
+    //        timeline_->UpdateBalances(source_and_target);
+
+    //        bool has_found_better_move = false;
+
+    //        if (!timeline_->HasNegativeBalanceWorsenedFor(sources)) {
+    //            const int balance_gain = timeline_->NegativeBalanceImprovement();
+    //            
+    //            if (best_balance_gain < balance_gain) {
+    //                best_balance_gain = balance_gain;
+    //                has_found_better_move = true;
+    //            }
+    //        }
+
+    //        if (has_found_better_move) {
+    //            Action::FreeActions(best_actions);
+    //            best_actions.clear();
+    //            best_actions.push_back(action);
+    //        
+    //        } else {
+    //            action->Free();
+    //        }
+
+    //        timeline_->ResetTimelinesToBase();
+    //    } //End iterating over targets.
+
+    //    if (best_balance_gain > 0) {
+    //        timeline_->ApplyActions(best_actions);
+    //        reinforcing_fleets.push_back(best_actions[0]);
+    //    }
+    //}//End iterating over sources.
+    //        
+    //return reinforcing_fleets;
+
+    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     const int horizon = timeline_->Horizon();
 
     const int distance_threshold = 1;
@@ -627,6 +733,7 @@ ActionList Bot::SendFleetsToFront(const int player) {
 
     PlanetList player_planets = game_->PlanetsOwnedBy(player);
     PlanetTimelineList timelines = timeline_->Timelines();
+    PlanetTimelineList sources = timeline_->TimelinesOwnedBy(player, 0 /*current turn*/);
 
     for (uint i = 0; i < player_planets.size(); ++i) {
         Planet* planet = player_planets[i];
@@ -674,27 +781,56 @@ ActionList Bot::SendFleetsToFront(const int player) {
             }
         }
         
+
         if (-1 != send_ships_to) {
+            //Find the number of ships this planet can send away.  The planet cannot send
+            //ships that have been reserved for other purposes, and cannot put itself into 
+            //negative strategic balance at any point in the future.
+            int min_min_balance = planet_timeline->ShipsFree(0, player);
+            const int closest_planet_id = game_->ClosestPlanet(planet_timeline->Id());
+            const int distance_to_closest_planet = game_->GetDistance(planet_timeline->Id(), closest_planet_id);
+
+            for (int t = distance_to_closest_planet; t < horizon; ++t) {
+                const int min_balance = planet_timeline->MinBalanceAt(t);
+
+                if (min_min_balance > min_balance) {
+                    min_min_balance = min_balance;
+                }
+            }
+
+            if (min_min_balance <= 0) {
+                continue;   //To the next source planet.
+            }
+
+            const int available_ships = min_min_balance;
+
+            //Send the ships to the planet and see if it negatively impacts the balance.
             PlanetTimeline* forward_planet = timelines[send_ships_to];
 
             //Send all future available ships to the front line planet.
-            for (int t = 0; t < horizon - distance_to_ally_planet; ++t) {
-                const int turn_free_ships = planet_timeline->ShipsFree(t, player);
+//            for (int t = 0; t < horizon - distance_to_ally_planet; ++t) {
+//                const int turn_free_ships = planet_timeline->ShipsFree(t, player);
 
-                if (0 != turn_free_ships) {
+//                if (0 != turn_free_ships) {
                     Action* action = Action::Get();
                     action->SetOwner(player);
                     action->SetSource(planet_timeline);
                     action->SetTarget(forward_planet);
-                    action->SetDepartureTime(t);
+                    action->SetDepartureTime(0);
                     action->SetDistance(distance_to_ally_planet);
-                    action->SetNumShips(turn_free_ships);
+                    action->SetNumShips(available_ships);
                     temp_action_list[0] = action;
 
                     timeline_->ApplyTempActions(temp_action_list);
-                    reinforcing_fleets.push_back(action);
-                }
-            }
+
+                    if (timeline_->HasNegativeBalanceWorsenedFor(sources)) {
+                        action->Free();
+
+                    } else {
+                        reinforcing_fleets.push_back(action);
+                    }
+//                }
+//            }
 
             planet_timeline->SetReinforcer(true);
         }
