@@ -241,7 +241,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 3 == target_id) {
+        if (1 == picking_round_ && 15 == target_id) {
             int x = 2;
         }
 #endif
@@ -271,10 +271,10 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 }
             }
 
-            //if (HasTimedOut()) {
-            //    has_timed_out = true;
-            //    break;
-            //}
+            if (HasTimedOut()) {
+                has_timed_out = true;
+                break;
+            }
         }
 
         if (has_timed_out) {
@@ -469,8 +469,12 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     const double multiplier = (kEnemy == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
     const int ships_gained = target->ShipsGainedForActions(invasion_plan);
     const double return_ratio = (static_cast<double>(ships_gained) / ships_to_send) * multiplier;
+
+    //Don't be as restrictive on the first turn.
+    const int first_departure_time = invasion_plan[invasion_plan.size() - 1]->DepartureTime(); 
+    const int is_first_turn = (turn_ == 1) && (first_departure_time == 0);
     
-    if (best_return >= return_ratio) {
+    if (best_return >= return_ratio && is_first_turn) {
         //The upper limit doesn't beat the best move so far.
         return return_ratio;
     }
