@@ -4,6 +4,7 @@
 #include "Actions.h"
 #include "Bot.h"
 #include "PlanetWars.h"
+#include "Timer.h"
 #include "Utils.h"
 
 Bot* g_bot = NULL;
@@ -74,6 +75,8 @@ int main(int argc, char *argv[]) {
         if (c == '\n') {
             if (current_line.length() >= 2 && current_line.substr(0, 2) == "go") {
                 turn++;
+                const double timeout = (turn == 1 ? 2.95 : 0.95);
+                SetTimeOut(timeout);
                 
                 //On the first turn, initialize the game map.
                 //On later turns, just update it.
@@ -89,7 +92,13 @@ int main(int argc, char *argv[]) {
                 
                 //Make the moves.
                 DoTurn(&game_map);
-            
+
+#ifndef IS_SUBMISSION
+                std::stringstream time_report;
+                time_report << "\nTurn time: " << MillisElapsed() << "ms";
+                std::cerr << time_report.str();
+                std::cerr.flush();
+#endif            
             } else {
                 map_data += current_line;
             }

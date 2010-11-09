@@ -182,6 +182,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\Timer.cc"
+				>
+			</File>
+			<File
 				RelativePath=".\Utils.cc"
 				>
 			</File>
@@ -205,6 +209,10 @@
 			</File>
 			<File
 				RelativePath=".\PlanetWars.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Timer.h"
 				>
 			</File>
 			<File

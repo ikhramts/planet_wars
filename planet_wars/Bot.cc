@@ -5,6 +5,12 @@
 
 #include "Bot.h"
 #include "GameTimeline.h"
+#include "Timer.h"
+
+#ifndef IS_SUBMISSION
+#include <iostream>
+#include <sstream>
+#endif
 
 /************************************************
                GameTimeline class
@@ -64,9 +70,11 @@ ActionList Bot::MakeMoves() {
 
     ActionList found_actions = this->FindActionsFor(kMe); 
     my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
-
-    ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
-    my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
+    
+//    if (turn_ != 1) {
+        ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
+        my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
+//    }
 
     return my_best_actions;
 }
@@ -151,6 +159,13 @@ ActionList Bot::FindActionsFor(const int player) {
         timeline_->ApplyActions(best_actions);
     }
 
+//#ifndef IS_SUBMISSION
+//    std::stringstream time_report;
+//    time_report << "FindActions Time: " << MillisElapsed() << "ms\n";
+//    std::cerr << time_report.str();
+//    std::cerr.flush();
+//#endif
+
     return player_actions;
 }
 
@@ -162,6 +177,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                                  const int depth) {
     double best_return = 0;
 	ActionList best_actions;
+    bool has_timed_out = false;
     
 	//Stop right here if there are no more ships to invade with.
 	int current_free_ships = 0;
@@ -225,14 +241,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 0 == target_id) {
+        if (1 == picking_round_ && 3 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (4 == picking_round_ && 10 == target_id && 5 == arrival_time) {
+            if (2 == picking_round_ && 7 == target_id && 5 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -254,8 +270,23 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                     invasion_plan.clear();
                 }
             }
+
+            //if (HasTimedOut()) {
+            //    has_timed_out = true;
+            //    break;
+            //}
+        }
+
+        if (has_timed_out) {
+            break;
         }
 	}//End iterating over targets.
+
+    if (has_timed_out) {
+        //Don't send incomplete answers.
+        Action::FreeActions(best_actions);
+        best_actions.clear();
+    }
 
 	return best_actions;
 }
@@ -292,6 +323,8 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     const int min_balance = target->MinBalanceAt(arrival_time);
     int remaining_ships_needed = 0;
     int max_ships_from_this_distance = 0;
+    const int was_my_planet = (target->OwnerAt(arrival_time - 1) == player);
+    const int takeover_ship = (was_my_planet ? 0 : 1);
 
     if (player == target_owner && min_balance < 0) {
         remaining_ships_needed = -min_balance;
@@ -313,7 +346,8 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         max_ships_from_this_distance = 1;
 
     } else if (player != target_owner && target->MaxBalanceAt(arrival_time + 1) > 0) {
-        const int ships_from_balance = -balances[balances_offset + distance_to_first_source] + neutral_adjustment + 1;
+        const int ships_from_balance = 
+            -balances[balances_offset + distance_to_first_source] + neutral_adjustment + takeover_ship;
         remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
         max_ships_from_this_distance = remaining_ships_needed;
     }
@@ -331,13 +365,6 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         PlanetTimeline* source = sources[s];
         const int source_id = source->Id();
 
-        //Feeder planets may only attack neutrals or support player's planets.
-        if (source->IsReinforcer() && opponent == target_owner) {
-            if (when_is_feeder_allowed_to_attack_[source_id * num_planets + target_id] != 0) {
-                continue;   //To the next source.
-            }
-        }
-
 		//Check whether the target is reacheable from the source.  If not, then it
 		//won't be reacheable from any of the remaining sources.
         const int distance_to_source = distances_to_sources[s];
@@ -348,6 +375,13 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
             break;
 		}
 
+        //Feeder planets may only attack neutrals or support player's planets.
+        if (source->IsReinforcer() && opponent == target_owner && !was_my_planet) {
+            if (when_is_feeder_allowed_to_attack_[source_id * num_planets + target_id] != departure_time) {
+                continue;   //To the next source.
+            }
+        }
+
         //Never send ships back to the same planet.
         pw_assert(source_id != target_id);
 
@@ -356,7 +390,8 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         if (distance_to_source > current_distance) {
             //if (target_owner == kEnemy) {
             if (target_owner != player) {
-                const int ships_from_balance = -balances[balances_offset + distance_to_source] + neutral_adjustment + 1;
+                const int ships_from_balance = 
+                    -balances[balances_offset + distance_to_source] + neutral_adjustment + takeover_ship;
                 remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
                 max_ships_from_this_distance = remaining_ships_needed;
             

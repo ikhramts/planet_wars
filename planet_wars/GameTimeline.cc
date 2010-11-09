@@ -446,6 +446,7 @@ void GameTimeline::UpdateBalances(const int depth) {
 #endif
             //Calculate the planet's own contribution to the balances.
             const int planet_owner = planet->OwnerAt(t);
+            const int prev_owner = planet->OwnerAt(t - 1);
             const int starting_balance = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1);
 
             const int offset = t * (t - 1) / 2 - 1;
@@ -460,21 +461,22 @@ void GameTimeline::UpdateBalances(const int depth) {
             for (uint s = 0; s < planets_by_distance.size(); ++s) {
                 PlanetTimeline* source = planets_by_distance[s];
                 
-                if (source->IsReinforcer() && planet_owner == kEnemy) {
+                const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
+
+                if (distance_to_source > t) {
+                    break;
+                }
+
+                if (source->IsReinforcer() && planet_owner == kEnemy && prev_owner != kMe) {
                     //Feeder planets aren't allowed to attack enemies unless explicitly allowed.
-                    if (when_is_feeder_allowed_to_attack[num_planets * source->Id() + planet->Id()] !=0) {
+                    const int attack_permission_index = num_planets * source->Id() + planet->Id();
+                    if (when_is_feeder_allowed_to_attack[attack_permission_index] != (t - distance_to_source)) {
                         continue;
                     }
                 }
                 //if (source->IsReinforcer()) {
                 //    continue;
                 //}
-
-                const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
-
-                if (distance_to_source > t) {
-                    break;
-                }
 
                 const int owner = source->OwnerAt(t - distance_to_source);
 
@@ -557,8 +559,10 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
 #endif
             //Calculate the planet's own contribution to the balances.
             const int planet_owner = planet->OwnerAt(t);
+            const int prev_planet_owner = planet->OwnerAt(t - 1);
             const int starting_balance = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1);
             const int base_planet_owner = base_planet->OwnerAt(t);
+            const int base_prev_planet_owner = base_planet->OwnerAt(t - 1);
             const int base_starting_balance = base_planet->ShipsAt(t) * (base_planet_owner == kMe ? 1 : -1);
             const int starting_balance_diff = starting_balance - base_starting_balance;
 
@@ -600,16 +604,16 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
                 PlanetTimeline* base_source = base_planet_timelines_[source->Id()];
                 const int owner = source->OwnerAt(t - distance_to_source);
                 const int base_owner = base_source->OwnerAt(t - distance_to_source);
-                bool source_effect = 1;
-                bool base_source_effect = 1;
+                int source_effect = 1;
+                int base_source_effect = 1;
 
-                if (source->IsReinforcer() && planet_owner == kEnemy) {
+                if (source->IsReinforcer() && (planet_owner == kEnemy || base_planet_owner == kEnemy)) {
                     //Feeder planets aren't allowed to attack enemies unless explicitly allowed.
                     const int attack_permission_index = num_planets * source->Id() + planet->Id();
 
-                    if (when_is_feeder_allowed_to_attack[attack_permission_index] !=0) {
-                        base_source_effect = 0;
-                        if (owner == kMe) source_effect = 0;
+                    if (when_is_feeder_allowed_to_attack[attack_permission_index] != (t - distance_to_source)) {
+                        if (base_planet_owner == kEnemy && base_prev_planet_owner != kMe) base_source_effect = 0;
+                        if (planet_owner == kEnemy && prev_planet_owner != kMe) source_effect = 0;
                     }
                 }
                 //if (source->IsReinforcer()) {
