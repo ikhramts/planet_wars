@@ -40,6 +40,7 @@ private:
         const PlanetTimelineList& sources_by_distance, const std::vector<int>& distances_to_sources,
         int player);
     double ReturnForMove(const ActionList& invasion_plan, double best_return);
+    double ReturnForMove2(ActionList& invasion_plan, double best_return, int depth);
 
     CounterActionResult ShipsGainedForAfterMove(const ActionList& invasion_plan, 
                                          PlanetTimelineList& counter_targets,

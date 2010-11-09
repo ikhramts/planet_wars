@@ -466,6 +466,9 @@ void GameTimeline::UpdateBalances(const int depth) {
                         continue;
                     }
                 }
+                //if (source->IsReinforcer()) {
+                //    continue;
+                //}
 
                 const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
 
@@ -609,6 +612,9 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
                         if (owner == kMe) source_effect = 0;
                     }
                 }
+                //if (source->IsReinforcer()) {
+                //    continue;
+                //}
 
                 const int ships = source->ShipsFree(t - distance_to_source, owner);
                 const int ships_from_source = OwnerMultiplier(owner) * ships * source_effect;

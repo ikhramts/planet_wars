@@ -240,9 +240,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
             //Check whether this move is better than any other we've seen so far.
             if (!invasion_plan.empty()) {
-                //const double multiplier = (kEnemy == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
-                //const double return_ratio = this->ReturnForMove(invasion_plan, best_return) * multiplier;
                 const double return_ratio = this->ReturnForMove(invasion_plan, best_return);
+                //const double return_ratio = this->ReturnForMove2(invasion_plan, best_return, depth);
 
                 if (best_return < return_ratio) {
                     best_return = return_ratio;
@@ -416,8 +415,6 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     return invasion_plan;
 }
 
-
-
 double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_return) {
     if (invasion_plan.empty()) {
         return 0;
@@ -458,60 +455,126 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         return updated_return_ratio;
     }
 
+    timeline_->ResetTimelinesToBase();
+    return updated_return_ratio;
+
     //At this point, the move seems to impact the strategic balances negatively.
     //Let's check whether it actually makes sense for the opponet to make the 
     //moves implied by the strategic balances.
     //Pick the best move for the opponent to make and apply it to the timeline
     //to see what happens.
-    const int player = invasion_plan[0]->Owner();
-    const int opponent = OtherPlayer(player);
-    PlanetTimeline* counter_target = timeline_->HighestShipLossTimeline();
+    //const int player = invasion_plan[0]->Owner();
+    //const int opponent = OtherPlayer(player);
+    //PlanetTimeline* counter_target = timeline_->HighestShipLossTimeline();
 
-    if (NULL == counter_target) {
-        //The move just is naturally bad.  Move on.
-        timeline_->ResetTimelinesToBase();
-        return updated_return_ratio;
-    }
+    //if (NULL == counter_target) {
+    //    //The move just is naturally bad.  Move on.
+    //    timeline_->ResetTimelinesToBase();
+    //    return updated_return_ratio;
+    //}
 
-    const int counter_target_id = counter_target->Id();
+    //const int counter_target_id = counter_target->Id();
 
-    //Find the arrival time of the counterattack.
-    int attack_turn = arrival_time;
-    while (attack_turn < horizon && counter_target->MinBalanceAt(attack_turn) < 0) {
-        ++attack_turn;
-    }
+    ////Find the arrival time of the counterattack.
+    //int attack_turn = arrival_time;
+    //while (attack_turn < horizon && counter_target->MinBalanceAt(attack_turn) < 0) {
+    //    ++attack_turn;
+    //}
 
-    if (horizon - 1 <= attack_turn) {
-        //It wouldn't make sense to arrive here.. but whatev, in unlikely event of
-        //passing this condition there's nothing else to do.
-        timeline_->ResetTimelinesToBase();
-        return updated_return_ratio;
+    //if (horizon - 1 <= attack_turn) {
+    //    //It wouldn't make sense to arrive here.. but whatev, in unlikely event of
+    //    //passing this condition there's nothing else to do.
+    //    timeline_->ResetTimelinesToBase();
+    //    return updated_return_ratio;
+    //}
+    //
+    ////Find the most likely combination of attack fleets that the opponent would likely use.
+    //PlanetTimelineList counter_sources = timeline_->EverOwnedTimelinesByDistance(opponent, counter_target);
+    //std::vector<int> distances_to_counter_sources(counter_sources.size());
+
+    //for (uint i = 0; i < counter_sources.size(); ++i) {
+    //    distances_to_counter_sources[i] = game_->GetDistance(counter_target_id, counter_sources[i]->Id());
+    //}
+
+    //ActionList counter_plan = 
+    //    this->FindInvasionPlan(counter_target, attack_turn, counter_sources, distances_to_counter_sources, opponent);
+
+    //if (counter_plan.empty()) {
+    //    timeline_->ResetTimelinesToBase();
+    //    return updated_return_ratio;
+    //}
+
+    //timeline_->ApplyTempActions(counter_plan);
+    //timeline_->UpdateBalances();
+
+    //const int counter_ships_gained = timeline_->ShipsGainedFromBase();
+    //const double counter_return = (static_cast<double>(counter_ships_gained) / ships_to_send) * multiplier;
+
+    //timeline_->ResetTimelinesToBase();
+    //return counter_return;
+}
+
+double Bot::ReturnForMove2(ActionList &invasion_plan, double best_return, const int depth) {
+    if (invasion_plan.empty()) {
+        return 0;
     }
     
-    //Find the most likely combination of attack fleets that the opponent would likely use.
-    PlanetTimelineList counter_sources = timeline_->EverOwnedTimelinesByDistance(opponent, counter_target);
-    std::vector<int> distances_to_counter_sources(counter_sources.size());
+    //Calculate the return on the action by considering the opponent's worst responses.
+    int ships_gained = 0;
+    Action* first_action = invasion_plan[0];
+    PlanetTimeline* target = first_action->Target();
 
-    for (uint i = 0; i < counter_sources.size(); ++i) {
-        distances_to_counter_sources[i] = game_->GetDistance(counter_target_id, counter_sources[i]->Id());
+    if (1 > depth) {
+        ships_gained = target->ShipsGainedForActions(invasion_plan);
+    
+    } else {
+        //Calculate what will happen if the opponent counterattacks the invasion target.
+        const int invasion_time = first_action->DepartureTime() + first_action->Distance();
+        PlanetTimelineList counter_action_targets;
+        counter_action_targets.push_back(target);
+
+        CounterActionResult target_counter_attack = 
+            this->ShipsGainedForAfterMove(invasion_plan, counter_action_targets, invasion_time);
+
+        //Calculate what will happen if the opponent counterattacks the invasion sources.
+        counter_action_targets.clear();
+        for (uint j = 0; j < invasion_plan.size(); ++j) {
+            counter_action_targets.push_back(invasion_plan[j]->Source());
+        }
+
+        CounterActionResult source_counter_attack = 
+            this->ShipsGainedForAfterMove(invasion_plan, counter_action_targets, invasion_time);
+
+        //Assume that the opponent will do the worst.
+        CounterActionResult* counter_attack;
+
+        if (target_counter_attack.ships_gained < source_counter_attack.ships_gained) {
+            counter_attack = &target_counter_attack;
+            Action::FreeActions(source_counter_attack.defense_plan);
+        
+        } else {
+            counter_attack = &source_counter_attack;
+            Action::FreeActions(target_counter_attack.defense_plan);
+        }
+        
+        ships_gained = counter_attack->ships_gained;
+
+        for (uint k = 0; k < counter_attack->defense_plan.size(); ++k) {
+            Action* response = counter_attack->defense_plan[k];
+            response->SetContingent(true);
+            invasion_plan.push_back(response);
+        }
+    }
+            
+    //Calculate the return on investing the ships.
+    int ships_to_send = 0;
+
+    for (uint k = 0; k < invasion_plan.size(); ++k) {
+        ships_to_send += invasion_plan[k]->NumShips();
     }
 
-    ActionList counter_plan = 
-        this->FindInvasionPlan(counter_target, attack_turn, counter_sources, distances_to_counter_sources, opponent);
-
-    if (counter_plan.empty()) {
-        timeline_->ResetTimelinesToBase();
-        return updated_return_ratio;
-    }
-
-    timeline_->ApplyTempActions(counter_plan);
-    timeline_->UpdateBalances();
-
-    const int counter_ships_gained = timeline_->ShipsGainedFromBase();
-    const double counter_return = (static_cast<double>(counter_ships_gained) / ships_to_send) * multiplier;
-
-    timeline_->ResetTimelinesToBase();
-    return counter_return;
+    const double return_ratio = static_cast<double>(ships_gained) / static_cast<double>(ships_to_send);
+    return return_ratio;
 }
 
 
