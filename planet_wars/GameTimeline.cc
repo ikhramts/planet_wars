@@ -612,8 +612,8 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
 
                 const int ships = source->ShipsFree(t - distance_to_source, owner);
                 const int ships_from_source = OwnerMultiplier(owner) * ships * source_effect;
-                const int base_ships = base_source->ShipsFree(t - distance_to_source, owner);
-                const int base_ships_from_source = OwnerMultiplier(owner) * base_ships * base_source_effect;
+                const int base_ships = base_source->ShipsFree(t - distance_to_source, base_owner);
+                const int base_ships_from_source = OwnerMultiplier(base_owner) * base_ships * base_source_effect;
                 const int balance_change = ships_from_source - base_ships_from_source;
 
                 //Apply the changes.

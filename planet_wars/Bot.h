@@ -15,6 +15,8 @@ class CounterActionResult;
 
 class Bot {
 public:
+    static const double kAggressionReturnMultiplier;
+
     Bot();
     ~Bot();
 

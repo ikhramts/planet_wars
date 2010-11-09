@@ -9,6 +9,8 @@
 /************************************************
                GameTimeline class
 ************************************************/
+const double Bot::kAggressionReturnMultiplier = 3;
+
 Bot::Bot() 
 : game_(NULL),
 timeline_(NULL),
@@ -223,14 +225,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 10 == target_id) {
+        if (1 == picking_round_ && 0 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (8 == picking_round_ && 11 == target_id && 8 == arrival_time) {
+            if (4 == picking_round_ && 10 == target_id && 5 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -238,6 +240,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
             //Check whether this move is better than any other we've seen so far.
             if (!invasion_plan.empty()) {
+                //const double multiplier = (kEnemy == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
+                //const double return_ratio = this->ReturnForMove(invasion_plan, best_return) * multiplier;
                 const double return_ratio = this->ReturnForMove(invasion_plan, best_return);
 
                 if (best_return < return_ratio) {
@@ -429,8 +433,10 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     //Find a rough upper limit of how good this move could be.
     PlanetTimeline* target = invasion_plan[0]->Target();
+    const int arrival_time = invasion_plan[0]->DepartureTime() + invasion_plan[0]->Distance();
+    const double multiplier = (kEnemy == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
     const int ships_gained = target->ShipsGainedForActions(invasion_plan);
-    const double return_ratio = static_cast<double>(ships_gained) / ships_to_send;
+    const double return_ratio = (static_cast<double>(ships_gained) / ships_to_send) * multiplier;
     
     if (best_return >= return_ratio) {
         //The upper limit doesn't beat the best move so far.
@@ -444,7 +450,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     timeline_->UpdateBalances(sources_and_targets);
 
     const int updated_ships_gained = timeline_->ShipsGainedFromBase();
-    const double updated_return_ratio = static_cast<double>(updated_ships_gained) / ships_to_send;
+    const double updated_return_ratio = (static_cast<double>(updated_ships_gained) / ships_to_send) * multiplier;
     
     if (best_return < updated_return_ratio) {
         //It is definitely a good move.
@@ -470,7 +476,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     const int counter_target_id = counter_target->Id();
 
     //Find the arrival time of the counterattack.
-    int attack_turn = invasion_plan[0]->DepartureTime() + invasion_plan[0]->Distance();
+    int attack_turn = arrival_time;
     while (attack_turn < horizon && counter_target->MinBalanceAt(attack_turn) < 0) {
         ++attack_turn;
     }
@@ -502,7 +508,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     timeline_->UpdateBalances();
 
     const int counter_ships_gained = timeline_->ShipsGainedFromBase();
-    const double counter_return = static_cast<double>(counter_ships_gained) / ships_to_send;
+    const double counter_return = (static_cast<double>(counter_ships_gained) / ships_to_send) * multiplier;
 
     timeline_->ResetTimelinesToBase();
     return counter_return;
