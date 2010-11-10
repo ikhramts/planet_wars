@@ -1166,10 +1166,12 @@ void PlanetTimeline::AddArrivals(const ActionList& actions) {
         
         pw_assert(arrival_time < horizon_ && "In PlanetTimeline::AddArrivals");
         arrivals[arrival_time] += action->NumShips();
-        
+
+#ifndef ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
         if (kMe == action_owner) {
             my_unreserved_arrivals_[arrival_time] += action->NumShips();
         }
+#endif
     
         if (earliest_arrival > arrival_time) {
             earliest_arrival = arrival_time;

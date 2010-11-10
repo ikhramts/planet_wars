@@ -241,14 +241,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 15 == target_id) {
+        if (19 == picking_round_ && 22 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (2 == picking_round_ && 7 == target_id && 5 == arrival_time) {
+            if (1 == picking_round_ && 0 == target_id && 7 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -271,10 +271,13 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 }
             }
 
+#ifdef WITH_TIMEOUTS
             if (HasTimedOut()) {
                 has_timed_out = true;
                 break;
             }
+#endif
+
         }
 
         if (has_timed_out) {
@@ -326,7 +329,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     const int was_my_planet = (target->OwnerAt(arrival_time - 1) == player);
     const int takeover_ship = (was_my_planet ? 0 : 1);
 
-    if (player == target_owner && min_balance < 0) {
+    if ((player == target_owner || was_my_planet) && min_balance < 0) {
         remaining_ships_needed = -min_balance;
 
         //Find the minimum distances from which some of the ships need to be sent.
@@ -389,13 +392,13 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         //any possible reinforcing enemies.
         if (distance_to_source > current_distance) {
             //if (target_owner == kEnemy) {
-            if (target_owner != player) {
+            if (target_owner != player && !was_my_planet) {
                 const int ships_from_balance = 
                     -balances[balances_offset + distance_to_source] + neutral_adjustment + takeover_ship;
                 remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
                 max_ships_from_this_distance = remaining_ships_needed;
             
-            } else if(target_owner == player) {
+            } else if(target_owner == player || was_my_planet) {
                 for (int d = current_distance + 1; d <= distance_to_source; ++d) {
                     max_ships_from_this_distance += ships_farther_than[d];
                 }
