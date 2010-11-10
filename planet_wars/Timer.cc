@@ -67,7 +67,7 @@ const long int SECONDS_PER_DAY = 86400;
     }
 #else
 	#include <sys/time.h>
-#endif /* #ifdef TEST_ENVIRONMENT */
+#endif
 
 //In microseconds
 long int gTimeOut = 0;

@@ -16,4 +16,4 @@ int MillisElapsed();
 #define NULL 0
 #endif
 
-#endif /* TIMER_H_ */
+#endif
