@@ -19,7 +19,7 @@ typedef std::vector<Action*> ActionList;
 
 #ifndef PlanetTimelineList
 typedef std::vector<PlanetTimeline*> PlanetTimelineList;
-#endif;
+#endif
 
 class Action {
     friend class ActionPool;
@@ -86,4 +86,3 @@ private:
 };
 
 #endif
-
