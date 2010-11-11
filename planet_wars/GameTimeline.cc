@@ -447,7 +447,8 @@ void GameTimeline::UpdateBalances(const int depth) {
             //Calculate the planet's own contribution to the balances.
             const int planet_owner = planet->OwnerAt(t);
             const int prev_owner = planet->OwnerAt(t - 1);
-            const int starting_balance = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1);
+            const int neutral_adjustment = planet->NeutralBalanceAdjustment(t);
+            const int starting_balance = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1) + neutral_adjustment;
 
             const int offset = t * (t - 1) / 2 - 1;
             int min_balance = starting_balance;
@@ -564,7 +565,13 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
             const int base_planet_owner = base_planet->OwnerAt(t);
             const int base_prev_planet_owner = base_planet->OwnerAt(t - 1);
             const int base_starting_balance = base_planet->ShipsAt(t) * (base_planet_owner == kMe ? 1 : -1);
-            const int starting_balance_diff = starting_balance - base_starting_balance;
+
+            const int neutral_adjustment = planet->NeutralBalanceAdjustment(t);
+            const int base_neutral_adjustment = base_planet->NeutralBalanceAdjustment(t);
+            const int neutral_adjustment_change = neutral_adjustment - base_neutral_adjustment;
+
+            const int starting_balance_diff = starting_balance - base_starting_balance + neutral_adjustment_change;
+
 
             const int offset = t * (t - 1) / 2 - 1;
             int min_balance = starting_balance;
@@ -1496,6 +1503,22 @@ void PlanetTimeline::RecalculateShipsGained() {
 void PlanetTimeline::SetReinforcer(bool is_reinforcer) {
     is_reinforcer_ = is_reinforcer;
     this->MarkAsChanged();
+}
+
+int PlanetTimeline::NeutralBalanceAdjustment(const int when) const {
+    const int planet_owner = this->OwnerAt(when);
+    const int was_neutral = (kNeutral == this->OwnerAt(when - 1));
+    const int prev_ships = this->ShipsAt(when - 1);
+    const int my_arrivals = this->MyArrivalsAt(when);
+    const int enemy_arrivals = this->EnemyArrivalsAt(when);
+    const int my_neutral_shortage = std::max(prev_ships - my_arrivals, 0);
+    const int enemy_neutral_shortage = std::max(prev_ships - enemy_arrivals, 0);
+
+    const int my_neutral_adjustment = (kEnemy == planet_owner && was_neutral) ? my_neutral_shortage : 0;
+    const int enemy_neutral_adjustment = (kMe == planet_owner && was_neutral) ? enemy_neutral_shortage : 0;
+    const int neutral_adjustment = enemy_neutral_adjustment - my_neutral_adjustment;
+
+    return neutral_adjustment;
 }
 
 void PlanetTimeline::RemoveDepartingAction(const uint departure_index) {

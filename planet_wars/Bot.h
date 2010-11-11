@@ -38,7 +38,7 @@ private:
     
     ActionList FindInvasionPlan(PlanetTimeline* target, int arrival_time, 
         const PlanetTimelineList& sources_by_distance, const std::vector<int>& distances_to_sources,
-        int player);
+        int player, int balance_adjustment = 0, int owner_adjustment -1);
     double ReturnForMove(const ActionList& invasion_plan, double best_return);
     double ReturnForMove2(ActionList& invasion_plan, double best_return, int depth);
 
@@ -50,6 +50,9 @@ private:
 
     //Mark feeder planets as such.
     void MarkReinforcers(int player);
+
+    ActionList FindSupportPlanFor(PlanetTimeline *planet, int player);
+    double ReturnOnSupportPlan(const ActionList& support_plan);
     
     GameMap* game_;
     GameTimeline* timeline_;

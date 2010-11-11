@@ -186,7 +186,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
     
 	//Stop right here if there are no more ships to invade with.
 	int current_free_ships = 0;
-	PlanetTimelineList player_planets = timeline_->TimelinesOwnedBy(player);
+	PlanetTimelineList player_planets = timeline_->TimelinesOwnedBy(player, 0);
 
 	for (uint i = 0; i < player_planets.size(); ++i) {
 		current_free_ships += player_planets[i]->ShipsFree(0, player);
@@ -208,14 +208,35 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 	
 	//Proceed finding the best planet to invade.
     ActionList invasion_plan;
-    invasion_plan.reserve(10);
+    invasion_plan.reserve(20);
+
+    //Find the best support plan for existing planets.
+    for (uint i = 0; i < invadeable_planets.size(); ++i) {
+        PlanetTimeline* target = invadeable_planets[i];
+        invasion_plan = this->FindSupportPlanFor(target, player);
+
+        if (invasion_plan.empty()) {
+            continue;
+        }
+
+        const double return_ratio = this->ReturnOnSupportPlan(invasion_plan);
+
+        if (best_return < return_ratio) {
+            best_return = return_ratio;
+            Action::FreeActions(best_actions);
+            best_actions = invasion_plan;
+
+        } else {
+            Actions::FreeActions(invasion_plan);
+        }
+    }   
 	
-    //Start searching for the best move.
+    //Find the best plan of action.
 	for (uint i = 0; i < invadeable_planets.size(); ++i) {
 		PlanetTimeline* target = invadeable_planets[i];
         const int target_id = target->Id();
 
-        if (target->GetPlanet()->GrowthRate() == 0) {
+        if (target->GetPlanet()->GrowthRate() == 0 || !target->WillNotBeOwnedBy(player)) {
             continue;
         }
 
@@ -245,16 +266,16 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 20 == target_id) {
+        if (1 == picking_round_ && 5 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            //if (1 == picking_round_ && 0 == target_id && 7 == arrival_time) {
-            //    int x = 2;
-            //}
+            if (1 == picking_round_ && 5 == target_id && 12 == arrival_time) {
+                int x = 2;
+            }
 #endif
             invasion_plan = this->FindInvasionPlan(target, arrival_time, sources, distances_to_sources, player);            
 
@@ -302,12 +323,14 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
                                  const int arrival_time, 
                                  const PlanetTimelineList& sources, 
                                  const std::vector<int>& distances_to_sources,
-                                 const int player) {
+                                 const int player, 
+                                 const int balance_adjustment = 0, 
+                                 const int owner_adjustment -1) {
     ActionList invasion_plan;
 
     //Various useful variables.
     const int target_id = target->Id();
-    const int target_owner = target->OwnerAt(arrival_time);
+    const int target_owner = (owner_adjustment == -1 ? target->OwnerAt(arrival_time) : owner_adjustment);
     const int balances_offset = arrival_time * (arrival_time - 1) / 2 - 1;
     const int horizon = timeline_->Horizon();
     const int u_horizon = static_cast<uint>(horizon);
@@ -327,7 +350,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
 	
     //Figure out how many ships might be actually needed.  These values would be adjusted
     //duri the calculation.
-    const int min_balance = target->MinBalanceAt(arrival_time);
+    const int min_balance = target->MinBalanceAt(arrival_time) + balance_adjustment;
     int remaining_ships_needed = 0;
     int max_ships_from_this_distance = 0;
     const int was_my_planet = (target->OwnerAt(arrival_time - 1) == player);
@@ -971,4 +994,158 @@ void Bot::MarkReinforcers(const int player) {
     
     timeline_->UpdateBalances();
     timeline_->SaveTimelinesToBase();
+}
+
+
+ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
+    ActionList support_actions;
+
+    if (!planet->WillBeOwnedBy(player)) {
+        return support_actions;
+    }
+
+    //Find a way to supply enough forces to maintain ownerships of the planet for as long
+    //as possible.
+    int x = 2;
+    const int planet_id = planet->Id();
+    const int horizon = timeline_->Horizon();
+    const uint u_horizon = static_cast<uint>(horizon);
+
+    //Find the first turn when the planet will be owned by the player.
+    int owned_starting_from = 0;
+
+    for (int t = 0; t < horizon; ++t) {
+        if (player == planet->OwnerAt(t)) {
+            owned_starting_from = t;
+            break;
+        }
+    }
+
+    //Find the number of ships needed, and when they need to arrive.
+    int total_ships_needed = 0;
+    std::vector<int> ships_needed_for_turn(u_search_horizon);
+    std::vector<int> support_turns;
+
+    for (int t = owned_starting_from, t < search_horizon, ++t) {
+        const int min_balance = planet->MinBalanceAt(t);
+        const int additional_ships_needed = std::max(0, min_balance - total_ships_needed);
+        total_ships_needed += additional_ships_needed;
+        ships_needed_for_turn[t] = additional_ships_needed;
+
+        if (additional_ships_needed > 0) {
+            support_turns.push_back(t);
+        }
+    }
+
+    if (total_ships_needed == 0) {
+        return support_actions;
+    }
+    
+    //Find the planets that could support the current planet, and distances to them.
+	PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
+
+    if (sources.empty()) {
+        return support_actions;
+    }
+    
+	std::vector<int> distances_to_sources(sources.size());
+
+	for (uint s = 0; s < sources.size(); ++s) {
+		distances_to_sources[s] = game_->GetDistance(sources[s]->Id(), target_id);
+	}
+
+    //Find the necessary ships combinations.
+    ActionList candidate_support_actions;
+    std::vector<uint> support_action_group_starts;
+    support_action_group_starts.reserve(support_turns.size());
+
+    for (uint i = 0, i < support_turns.size(), ++i) {
+        const int arrival_time = support_turns[i];
+        ActionList actions = this->FindInvasionPlan(planet, arrival_time, sources, distances_to_sources, player);
+
+        if (actions.empty()) {
+            break;
+        }
+
+        support_action_group_starts.push_back(candidate_support_actions.size());
+
+        for (uint j = 0; i < actions.size(); ++j) {
+            candidate_support_actions.push_back(actions[j]);
+        }
+    }
+
+    //Find which actions we can apply without causing other planets to lose balance.
+    PlanetTimelineList test_planets = timeline_->TimelinesOwnedBy(player, 0);
+    uint test_limit = candidate_support_actions.size();
+    uint upper_group = support_action_group_starts.size() - 1;
+    uint lower_group = -1;
+    uint current_group = upper_group;
+    bool found_limit = false;
+
+    ActionList temp_action_list;
+    temp_action_list.reserve(candidate_support_actions.size());
+    PlanetTimelineList sources_and_targets;
+    
+    do {
+        //Apply the actions.
+        temp_action_list.clear();
+
+        for (uint i = 0; i <= test_limit; ++i) {
+            temp_action_list.push_back(candidate_support_actions[i];
+        }
+
+        timeline_->ApplyTempActions(temp_action_list);
+        sources_and_targets = Action::SourcesAndTargets(temp_action_list);
+        timeline_->UpdateBalances(sources_and_targets);
+
+        const bool is_appliable = timeline_->HasNegativeBalanceWorsenedFor(test_planets);
+        timeline_->ResetTimelinesToBase();
+
+        if (is_appliable && (current_group == upper_group)) {
+            found_limit == true;
+        
+        } else if (!is_appliable && (current_group == lower_group + 1) {
+            found_limit = true;
+            test_limit = support_action_group_starts[current_group];
+        
+        } else if (is_appliable) {
+            lower_group = current_group;
+            current_group = (lower_group + upper_group + 1) / 2;
+            test_limit = support_action_group_starts[current_group + 1];
+        
+        } else { //if (!is_appliable)
+            upper_group = current_group - 1;
+            current_group = (lower_group + upper_group + 1) / 2;
+            test_limit = support_action_group_starts[current_group + 1];
+        }
+    } while (!found_limit);
+    
+    ActionList support_actions;
+    support_actions.reserve(test_limit);
+
+    for (uint i = 0; i < test_limit; ++i) {
+        support_actions.push_back(candidate_support_actions[i]);
+    }
+
+    return support_actions;
+}
+
+double Bot::ReturnOnSupportPlan(const ActionList& support_plan) {
+    //Find ships gained.
+    timeline_->ApplyTempActions(support_plan);
+    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(support_plan);
+    timeline_->UpdateBalances(sources_and_targets);
+
+    const int ships_gained = timeline_->ShipsGainedFromBase();
+    timeline_->ResetTimelinesToBase();
+
+    //Find ships sent.
+    int ships_sent = 0;
+
+    for (uint i = 0; i < support_plan.size(); ++i) {
+        ships_sent += support_plan[i]->NumShips();
+    }
+
+    const int return_ratio = static_cast<double>(ships_gained)/static_cast<double>(ships_sent);
+    return return_ratio;
 }

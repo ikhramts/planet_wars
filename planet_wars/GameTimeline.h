@@ -33,6 +33,7 @@ public:
     int ShipsGainedForActions(const ActionList& actions, Planet* planet) const;
 
     int ShipsGainedFromBase() const;
+    int ShipsGainedFromBase(PlanetTimeline* planet) const;
 
     //Get the timeline that had the worst ship return in return from the base.
     //Return NULL if none.
@@ -178,6 +179,10 @@ public:
     //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
     void SetReinforcer(bool is_reinforcer);
     bool IsReinforcer() const               {return is_reinforcer_;}
+
+    //Calculate the neutral balance adjustment.
+    //Is used in balance calculations.
+    int NeutralBalanceAdjustment(int when) const;
 
 private:
     //Reserve ships for a departure or defense.
