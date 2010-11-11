@@ -65,16 +65,21 @@ ActionList Bot::MakeMoves() {
 
     timeline_->SetFeederAttackPermissions(&when_is_feeder_allowed_to_attack_);
 
+#ifdef MAKE_ENEMY_MOVES_ON_FIRST_TURN
+    if (1 == turn_) {
+        //On the first turn, consider what the enemy would do.
+        ActionList enemy_actions = this->FindActionsFor(kEnemy);
+    }
+#endif
+
     //Mark the reinforcers.
     this->MarkReinforcers(kMe);
 
     ActionList found_actions = this->FindActionsFor(kMe); 
     my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
     
-//    if (turn_ != 1) {
-        ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
-        my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
-//    }
+    ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
+    my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
 
     return my_best_actions;
 }
@@ -208,8 +213,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
     //Start searching for the best move.
 	for (uint i = 0; i < invadeable_planets.size(); ++i) {
 		PlanetTimeline* target = invadeable_planets[i];
-		const int target_id = target->Id();
-        std::vector<int>& balances = target->Balances();
+        const int target_id = target->Id();
 
         if (target->GetPlanet()->GrowthRate() == 0) {
             continue;
