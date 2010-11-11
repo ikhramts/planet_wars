@@ -241,16 +241,16 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (19 == picking_round_ && 22 == target_id) {
+        if (1 == picking_round_ && 20 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 0 == target_id && 7 == arrival_time) {
-                int x = 2;
-            }
+            //if (1 == picking_round_ && 0 == target_id && 7 == arrival_time) {
+            //    int x = 2;
+            //}
 #endif
             invasion_plan = this->FindInvasionPlan(target, arrival_time, sources, distances_to_sources, player);            
 
@@ -852,30 +852,40 @@ ActionList Bot::SendFleetsToFront(const int player) {
             //Send the ships to the planet and see if it negatively impacts the balance.
             PlanetTimeline* target = timelines[send_ships_to];
 
-            //Send all future available ships to the front line planet.
-//            for (int t = 0; t < horizon - distance_to_ally_planet; ++t) {
-//                const int turn_free_ships = planet_timeline->ShipsFree(t, player);
+            Action* action = Action::Get();
+            action->SetOwner(player);
+            action->SetSource(source);
+            action->SetTarget(target);
+            action->SetDepartureTime(0);
+            action->SetDistance(distance_to_target);
+            action->SetNumShips(available_ships);
+            temp_action_list[0] = action;
 
-//                if (0 != turn_free_ships) {
-                    Action* action = Action::Get();
-                    action->SetOwner(player);
-                    action->SetSource(source);
-                    action->SetTarget(target);
-                    action->SetDepartureTime(0);
-                    action->SetDistance(distance_to_target);
-                    action->SetNumShips(available_ships);
-                    temp_action_list[0] = action;
+            timeline_->ApplyTempActions(temp_action_list);
 
-                    timeline_->ApplyTempActions(temp_action_list);
+            bool was_action_accepted = true;
 
-                    if (timeline_->HasNegativeBalanceWorsenedFor(sources)) {
-                        action->Free();
+            if (timeline_->HasNegativeBalanceWorsenedFor(sources)) {
+                //Try the same thing, but with only 2x the source's growth rate.
+                timeline_->ResetTimelinesToBase();
+                const int ships_to_send = source->GetPlanet()->GrowthRate() * 2;
+                action->SetNumShips(ships_to_send);
+                timeline_->ApplyTempActions(temp_action_list);
 
-                    } else {
-                        reinforcing_fleets.push_back(action);
-                    }
-//                }
-//            }
+                if (timeline_->HasNegativeBalanceWorsenedFor(sources)) {
+                    was_action_accepted = false;
+                }
+            }
+
+            if (was_action_accepted) {
+                timeline_->SaveTimelinesToBase();
+                reinforcing_fleets.push_back(action);
+            
+            } else {
+                action->Free();
+                timeline_->ResetTimelinesToBase();
+            }
+
 
             source->SetReinforcer(true);
         }

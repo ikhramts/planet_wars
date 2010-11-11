@@ -11,7 +11,7 @@
 #define ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
 
 //Switch between test environment and contest environment.
-#define IS_SUBMISSION
+//#define IS_SUBMISSION
 
 //Define assertions.
 #ifdef IS_SUBMISSION
