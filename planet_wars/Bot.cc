@@ -209,6 +209,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 	//Proceed finding the best planet to invade.
     ActionList invasion_plan;
     invasion_plan.reserve(20);
+    FindInvasionPlanSettings invasion_settings;
+    invasion_settings.invade_my_planets = false;
 
     //Find the best support plan for existing planets.
     for (uint i = 0; i < invadeable_planets.size(); ++i) {
@@ -227,7 +229,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
             best_actions = invasion_plan;
 
         } else {
-            Actions::FreeActions(invasion_plan);
+            Action::FreeActions(invasion_plan);
         }
     }   
 	
@@ -277,7 +279,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 int x = 2;
             }
 #endif
-            invasion_plan = this->FindInvasionPlan(target, arrival_time, sources, distances_to_sources, player);            
+            invasion_plan = 
+                this->FindInvasionPlan(target, arrival_time, sources, distances_to_sources, player, &invasion_settings);            
 
             //Check whether this move is better than any other we've seen so far.
             if (!invasion_plan.empty()) {
@@ -324,12 +327,12 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
                                  const PlanetTimelineList& sources, 
                                  const std::vector<int>& distances_to_sources,
                                  const int player, 
-                                 const int balance_adjustment = 0, 
-                                 const int owner_adjustment -1) {
+                                 FindInvasionPlanSettings* settings) {
     ActionList invasion_plan;
 
     //Various useful variables.
     const int target_id = target->Id();
+    const int owner_adjustment = (NULL != settings ? settings->owner_adjustment : 0);
     const int target_owner = (owner_adjustment == -1 ? target->OwnerAt(arrival_time) : owner_adjustment);
     const int balances_offset = arrival_time * (arrival_time - 1) / 2 - 1;
     const int horizon = timeline_->Horizon();
@@ -350,13 +353,19 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
 	
     //Figure out how many ships might be actually needed.  These values would be adjusted
     //duri the calculation.
+    const int balance_adjustment = (NULL != settings ? settings->balance_adjustment : 0); 
     const int min_balance = target->MinBalanceAt(arrival_time) + balance_adjustment;
     int remaining_ships_needed = 0;
     int max_ships_from_this_distance = 0;
     const int was_my_planet = (target->OwnerAt(arrival_time - 1) == player);
     const int takeover_ship = (was_my_planet ? 0 : 1);
 
-    if ((player == target_owner || was_my_planet) && min_balance < 0) {
+    //Extract settings on what we're allowed to attack.
+    const int attack_player_planets = (NULL != settings ? settings->invade_my_planets : true);
+    const int attack_opponent_planets = (NULL != settings ? settings->invade_enemy_planets : true);
+    const int attack_neutral_planets = (NULL != settings ? settings->invade_neutral_planets : true);
+
+    if ((player == target_owner || was_my_planet) && min_balance < 0 && attack_player_planets) {
         remaining_ships_needed = -min_balance;
 
         //Find the minimum distances from which some of the ships need to be sent.
@@ -1023,10 +1032,10 @@ ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
 
     //Find the number of ships needed, and when they need to arrive.
     int total_ships_needed = 0;
-    std::vector<int> ships_needed_for_turn(u_search_horizon);
+    std::vector<int> ships_needed_for_turn(u_horizon);
     std::vector<int> support_turns;
 
-    for (int t = owned_starting_from, t < search_horizon, ++t) {
+    for (int t = owned_starting_from; t < horizon; ++t) {
         const int min_balance = planet->MinBalanceAt(t);
         const int additional_ships_needed = std::max(0, min_balance - total_ships_needed);
         total_ships_needed += additional_ships_needed;
@@ -1042,7 +1051,7 @@ ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
     }
     
     //Find the planets that could support the current planet, and distances to them.
-	PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
+	PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, planet);
 
     if (sources.empty()) {
         return support_actions;
@@ -1051,7 +1060,7 @@ ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
 	std::vector<int> distances_to_sources(sources.size());
 
 	for (uint s = 0; s < sources.size(); ++s) {
-		distances_to_sources[s] = game_->GetDistance(sources[s]->Id(), target_id);
+		distances_to_sources[s] = game_->GetDistance(sources[s]->Id(), planet_id);
 	}
 
     //Find the necessary ships combinations.
@@ -1059,8 +1068,13 @@ ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
     std::vector<uint> support_action_group_starts;
     support_action_group_starts.reserve(support_turns.size());
 
-    for (uint i = 0, i < support_turns.size(), ++i) {
+    for (uint i = 0; i < support_turns.size(); ++i) {
         const int arrival_time = support_turns[i];
+        
+        if (planet->OwnerAt(arrival_time) != player) {
+            break;
+        }
+
         ActionList actions = this->FindInvasionPlan(planet, arrival_time, sources, distances_to_sources, player);
 
         if (actions.empty()) {
@@ -1069,17 +1083,21 @@ ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
 
         support_action_group_starts.push_back(candidate_support_actions.size());
 
-        for (uint j = 0; i < actions.size(); ++j) {
+        for (uint j = 0; j < actions.size(); ++j) {
             candidate_support_actions.push_back(actions[j]);
         }
     }
 
+    if (candidate_support_actions.empty()) {
+        return support_actions;
+    }
+
     //Find which actions we can apply without causing other planets to lose balance.
     PlanetTimelineList test_planets = timeline_->TimelinesOwnedBy(player, 0);
-    uint test_limit = candidate_support_actions.size();
-    uint upper_group = support_action_group_starts.size() - 1;
-    uint lower_group = -1;
-    uint current_group = upper_group;
+    uint test_limit = candidate_support_actions.size() - 1;
+    int upper_group = static_cast<int>(support_action_group_starts.size()) - 1;
+    int lower_group = -1;
+    int current_group = upper_group;
     bool found_limit = false;
 
     ActionList temp_action_list;
@@ -1091,7 +1109,7 @@ ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
         temp_action_list.clear();
 
         for (uint i = 0; i <= test_limit; ++i) {
-            temp_action_list.push_back(candidate_support_actions[i];
+            temp_action_list.push_back(candidate_support_actions[i]);
         }
 
         timeline_->ApplyTempActions(temp_action_list);
@@ -1102,9 +1120,9 @@ ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
         timeline_->ResetTimelinesToBase();
 
         if (is_appliable && (current_group == upper_group)) {
-            found_limit == true;
+            found_limit = true;
         
-        } else if (!is_appliable && (current_group == lower_group + 1) {
+        } else if (!is_appliable && (current_group == lower_group + 1)) {
             found_limit = true;
             test_limit = support_action_group_starts[current_group];
         
@@ -1120,13 +1138,17 @@ ActionList Bot::FindSupportPlanFor(PlanetTimeline *planet, const int player) {
         }
     } while (!found_limit);
     
-    ActionList support_actions;
+    //Return the resulting actions.  Free all others.
     support_actions.reserve(test_limit);
 
     for (uint i = 0; i < test_limit; ++i) {
         support_actions.push_back(candidate_support_actions[i]);
     }
 
+    for (uint i = test_limit; i < candidate_support_actions.size(); ++i) {
+        candidate_support_actions[i]->Free();
+    }
+    
     return support_actions;
 }
 
@@ -1146,6 +1168,17 @@ double Bot::ReturnOnSupportPlan(const ActionList& support_plan) {
         ships_sent += support_plan[i]->NumShips();
     }
 
-    const int return_ratio = static_cast<double>(ships_gained)/static_cast<double>(ships_sent);
+    const double return_ratio = static_cast<double>(ships_gained)/static_cast<double>(ships_sent);
     return return_ratio;
+}
+
+/************************************************
+          FindInvasionPlanSettings class
+************************************************/
+FindInvasionPlanSettings::FindInvasionPlanSettings()
+:invade_my_planets(true),
+invade_enemy_planets(true),
+invade_neutral_planets(true),
+balance_adjustment(0),
+owner_adjustment(-1) {
 }

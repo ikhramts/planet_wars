@@ -7,7 +7,7 @@
 #define PLANET_WARS_UTILS_H_
 
 //Various switches in the bot's logic.
-//#define WITH_TIMEOUTS
+#define WITH_TIMEOUTS
 #define ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 

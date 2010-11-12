@@ -12,6 +12,7 @@
 
 class GameTimeline;
 class CounterActionResult;
+class FindInvasionPlanSettings;
 
 class Bot {
 public:
@@ -38,7 +39,7 @@ private:
     
     ActionList FindInvasionPlan(PlanetTimeline* target, int arrival_time, 
         const PlanetTimelineList& sources_by_distance, const std::vector<int>& distances_to_sources,
-        int player, int balance_adjustment = 0, int owner_adjustment -1);
+        int player, FindInvasionPlanSettings* settings = NULL);
     double ReturnForMove(const ActionList& invasion_plan, double best_return);
     double ReturnForMove2(ActionList& invasion_plan, double best_return, int depth);
 
@@ -71,5 +72,15 @@ public:
     ActionList defense_plan;
 };
 
+class FindInvasionPlanSettings {
+public:
+    FindInvasionPlanSettings();
+
+    bool invade_my_planets;
+    bool invade_enemy_planets;
+    bool invade_neutral_planets;
+    int balance_adjustment;
+    int owner_adjustment;
+};
 
 #endif
