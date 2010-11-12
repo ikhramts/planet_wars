@@ -209,6 +209,8 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 	//Proceed finding the best planet to invade.
     ActionList invasion_plan;
     invasion_plan.reserve(20);
+
+#ifdef USE_SEPARATE_SUPPORT_PLANS
     FindInvasionPlanSettings invasion_settings;
     invasion_settings.invade_my_planets = false;
 
@@ -232,7 +234,10 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
             Action::FreeActions(invasion_plan);
         }
     }   
-	
+#else
+    FindInvasionPlanSettings invasion_settings;
+#endif
+
     //Find the best plan of action.
 	for (uint i = 0; i < invadeable_planets.size(); ++i) {
 		PlanetTimeline* target = invadeable_planets[i];
