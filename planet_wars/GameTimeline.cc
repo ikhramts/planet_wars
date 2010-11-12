@@ -30,7 +30,7 @@ void GameTimeline::SetGameMap(GameMap* game) {
         planet_timelines_.push_back(timeline);
     }
 
-    this->UpdateBalances();
+    this->UpdatePotentials();
 
     //Initialize the base planet timelines.
     for (uint i = 0; i < planets.size(); ++i) {
@@ -51,7 +51,7 @@ void GameTimeline::Update() {
         are_working_timelines_different_[i] = true;
     }
 
-    this->UpdateBalances();
+    this->UpdatePotentials();
     this->SaveTimelinesToBase();
 }
 
@@ -241,19 +241,19 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 
     this->ApplyTempActions(actions);
     PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(actions);
-    this->UpdateBalances();
+    this->UpdatePotentials();
     this->SaveTimelinesToBase();
 
 #ifndef IS_SUBMISSION
     this->AssertWorkingTimelinesAreEqualToBase();
 #endif
-    //this->UpdateBalances(sources_and_targets);
-    //this->UpdateBalances();
+    //this->UpdatePotentials(sources_and_targets);
+    //this->UpdatePotentials();
 #ifndef IS_SUBMISSION
     this->AssertWorkingTimelinesAreEqualToBase();
 #endif
 
-    //this->UpdateBalances(sources_and_targets);
+    //this->UpdatePotentials(sources_and_targets);
 
     
     //for (uint i = 0; i < are_working_timelines_different_.size(); ++i) {
@@ -262,7 +262,7 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
     //        are_working_timelines_different_[i] = false;
     //    }
 
-    //    base_planet_timelines_[i]->CopyBalances(planet_timelines_[i]);
+    //    base_planet_timelines_[i]->CopyPotentials(planet_timelines_[i]);
     //}
 
 #ifndef IS_SUBMISSION
@@ -359,7 +359,7 @@ void GameTimeline::ResetTimelinesToBase() {
             are_working_timelines_different_[i] = false;
         }
 
-        planet_timelines_[i]->CopyBalances(base_planet_timelines_[i]);
+        planet_timelines_[i]->CopyPotentials(base_planet_timelines_[i]);
     }
 
 #ifndef IS_SUBMISSION
@@ -374,7 +374,7 @@ void GameTimeline::SaveTimelinesToBase() {
             are_working_timelines_different_[i] = false;
         }
 
-        base_planet_timelines_[i]->CopyBalances(planet_timelines_[i]);
+        base_planet_timelines_[i]->CopyPotentials(planet_timelines_[i]);
     }
 
 #ifndef IS_SUBMISSION
@@ -386,27 +386,14 @@ void GameTimeline::MarkTimelineAsModified(int timeline_id) {
     are_working_timelines_different_[timeline_id] = true;
 }
 
-int GameTimeline::NegativeBalanceImprovement() {
-    int total_improvement = 0;
-    
-    for (uint i = 0; i < planet_timelines_.size(); ++i) {
-        const int base_negative_balance = base_planet_timelines_[i]->TotalNegativeMinBalance();
-        const int working_negative_balance = planet_timelines_[i]->TotalNegativeMinBalance();
-        const int improvement = base_negative_balance - working_negative_balance;
-        total_improvement += improvement;
-    }
-
-    return total_improvement;
-}
-
-bool GameTimeline::HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines) {
+bool GameTimeline::HasSupportWorsenedFor(PlanetTimelineList timelines) {
     for (uint i = 0; i < timelines.size(); ++i) {
         PlanetTimeline* timeline = timelines[i];
         PlanetTimeline* base_timeline = base_planet_timelines_[timeline->Id()];
         
         for (int t = 0; t < horizon_; ++t) {
-            const int min_balance = timeline->MinBalanceAt(t);
-            if (min_balance < 0 && min_balance < base_timeline->MinBalanceAt(t)) {
+            const int min_defense_potential = timeline->MinDefensePotentialAt(t);
+            if (min_defense_potential < 0 && min_defense_potential < base_timeline->MinDefensePotentialAt(t)) {
                 return true;
             }
         }
@@ -415,22 +402,19 @@ bool GameTimeline::HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines) {
     return false;
 }
 
-void GameTimeline::UpdateBalances(const int depth) {
-    //Calculate the strategic balances at each turn for each planet.
+void GameTimeline::UpdatePotentials(const int depth) {
+    //Calculate the strategic defense_potentials at each turn for each planet.
     //A strategic balance for turn t and distance d is the sum of my ships that can reach the planet
     //at t departing after turn (t-d) minus the enemy ships that can reach the planet on turn t 
     //departing on or after turn (t-d).
-    //Positive balances are good; negative balances are bad.
+    //Positive defense_potentials are good; negative defense_potentials are bad.
     const std::vector<int>& when_is_feeder_allowed_to_attack = *when_is_feeder_allowed_to_attack_;
     const int num_planets = game_->NumPlanets();
 
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         PlanetTimeline* planet = planet_timelines_[i];
         PlanetTimelineList planets_by_distance = this->TimelinesByDistance(planet);
-        std::vector<int>& balances = planet->Balances();
-        int first_negative_min_balance = horizon_;
-        int first_positive_max_balance = horizon_;
-        int total_negative_min_balance = 0;
+        std::vector<int>& defense_potentials = planet->DefensePotentials();
         const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
 
@@ -444,20 +428,20 @@ void GameTimeline::UpdateBalances(const int depth) {
                 int x = 2;
             }
 #endif
-            //Calculate the planet's own contribution to the balances.
+            //Calculate the planet's own contribution to the defense_potentials.
             const int planet_owner = planet->OwnerAt(t);
             const int prev_owner = planet->OwnerAt(t - 1);
-            const int starting_balance = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1);
+            const int starting_potential = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1);
 
             const int offset = t * (t - 1) / 2 - 1;
-            int min_balance = starting_balance;
-            int max_balance = starting_balance;
+            int min_defense_potential = starting_potential;
+            int max_defense_potential = starting_potential;
            
             for (int d = 1; d <= t; ++d) {
-                balances[offset + d] = starting_balance;
+                defense_potentials[offset + d] = starting_potential;
             }
 
-            //Calculate the neighbours' contributions to the balances.
+            //Calculate the neighbours' contributions to the defense_potentials.
             for (uint s = 0; s < planets_by_distance.size(); ++s) {
                 PlanetTimeline* source = planets_by_distance[s];
                 
@@ -485,7 +469,7 @@ void GameTimeline::UpdateBalances(const int depth) {
                 const int first_d = distance_to_source + (kMe == owner ? 1 : 0);
 
                 for (int d = first_d; d <= t; ++d) {
-                    balances[offset + d] += ships_from_source;
+                    defense_potentials[offset + d] += ships_from_source;
                 }
             }
 
@@ -493,36 +477,20 @@ void GameTimeline::UpdateBalances(const int depth) {
             for (int d = first_source_distance; d <= t; ++d) {
                 const int index = offset + d;
 
-                if (min_balance > balances[index]) {
-                    min_balance = balances[index];
+                if (min_defense_potential > defense_potentials[index]) {
+                    min_defense_potential = defense_potentials[index];
                 }
 
-                if (max_balance < balances[index]) {
-                    max_balance = balances[index];
+                if (max_defense_potential < defense_potentials[index]) {
+                    max_defense_potential = defense_potentials[index];
                 }
             }
 
-            //Update min/max balances at each turn.
-            planet->SetMinBalanceAt(t, min_balance);
-            planet->SetMaxBalanceAt(t, max_balance);
-
-            if (min_balance < 0 && first_negative_min_balance == horizon_) {
-                first_negative_min_balance = t;
-
-            } else if (max_balance > 0 && first_positive_max_balance == horizon_) {
-                first_positive_max_balance = t;
-
-            }
-
-            if (min_balance < 0) {
-                total_negative_min_balance += min_balance;
-            }
+            //Update min/max defense_potentials at each turn.
+            planet->SetMinDefensePotentialAt(t, min_defense_potential);
+            planet->SetMaxDefensePotentialAt(t, max_defense_potential);
 
         }
-
-        planet->SetFirstNegativeMinBalanceTurn(first_negative_min_balance);
-        planet->SetFirstPositiveMaxBalanceTurn(first_positive_max_balance);
-        planet->SetTotalNegativeMinBalance(-total_negative_min_balance);
     }
 
     //Update the timelines' ships gained.
@@ -531,8 +499,8 @@ void GameTimeline::UpdateBalances(const int depth) {
     }
 }
 
-void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, const int depth) {
-    //Update balances.  Update only the effects of the planets whose timelines have been changed.
+void GameTimeline::UpdatePotentials(const PlanetTimelineList& modified_planets, const int depth) {
+    //Update defense_potentials.  Update only the effects of the planets whose timelines have been changed.
     const std::vector<int>& when_is_feeder_allowed_to_attack = *when_is_feeder_allowed_to_attack_;
     const int num_planets = game_->NumPlanets();
 
@@ -540,10 +508,7 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
         PlanetTimeline* planet = planet_timelines_[i];
         PlanetTimeline* base_planet = base_planet_timelines_[i];
         PlanetTimelineList planets_by_distance = this->TimelinesByDistance(planet);
-        std::vector<int>& balances = planet->Balances();
-        int first_negative_min_balance = horizon_;
-        int first_positive_max_balance = horizon_;
-        int total_negative_min_balance = 0;
+        std::vector<int>& defense_potentials = planet->DefensePotentials();
         const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
 
@@ -557,26 +522,26 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
                 int x = 2;
             }
 #endif
-            //Calculate the planet's own contribution to the balances.
+            //Calculate the planet's own contribution to the defense_potentials.
             const int planet_owner = planet->OwnerAt(t);
             const int prev_planet_owner = planet->OwnerAt(t - 1);
-            const int starting_balance = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1);
+            const int starting_potential = planet->ShipsAt(t) * (planet_owner == kMe ? 1 : -1);
             const int base_planet_owner = base_planet->OwnerAt(t);
             const int base_prev_planet_owner = base_planet->OwnerAt(t - 1);
-            const int base_starting_balance = base_planet->ShipsAt(t) * (base_planet_owner == kMe ? 1 : -1);
-            const int starting_balance_diff = starting_balance - base_starting_balance;
+            const int base_starting_potential = base_planet->ShipsAt(t) * (base_planet_owner == kMe ? 1 : -1);
+            const int starting_potential_diff = starting_potential - base_starting_potential;
 
             const int offset = t * (t - 1) / 2 - 1;
-            int min_balance = starting_balance;
-            int max_balance = starting_balance;
+            int min_defense_potential = starting_potential;
+            int max_defense_potential = starting_potential;
             
-            if (starting_balance_diff != 0) {
+            if (starting_potential_diff != 0) {
                 for (int d = 1; d <= t; ++d) {
-                    balances[offset + d] += starting_balance_diff;
+                    defense_potentials[offset + d] += starting_potential_diff;
                 }
             }
 
-            //Calculate the neighbours' contributions to the balances.
+            //Calculate the neighbours' contributions to the defense_potentials.
             for (uint s = 0; s < planets_by_distance.size(); ++s) {
                 PlanetTimeline* source = planets_by_distance[s];
                 const int source_id = source->Id();
@@ -624,7 +589,7 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
                 const int ships_from_source = OwnerMultiplier(owner) * ships * source_effect;
                 const int base_ships = base_source->ShipsFree(t - distance_to_source, base_owner);
                 const int base_ships_from_source = OwnerMultiplier(base_owner) * base_ships * base_source_effect;
-                const int balance_change = ships_from_source - base_ships_from_source;
+                const int defense_potential_change = ships_from_source - base_ships_from_source;
 
                 //Apply the changes.
                 const int first_d = distance_to_source + (kMe == owner || kMe == base_owner ? 1 : 0);
@@ -633,15 +598,15 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
                     const int multiplier = (kMe == owner ? 0 : 1);
                     const int base_multiplier = (kMe == base_owner ? 0 : 1);
                     const int change = ships_from_source * multiplier - base_ships_from_source * base_multiplier;
-                    balances[offset + distance_to_source] += change;
+                    defense_potentials[offset + distance_to_source] += change;
                 }
 
-                if (0 == balance_change) {
+                if (0 == defense_potential_change) {
                     continue;
                 }
 
                 for (int d = first_d; d <= t; ++d) {
-                    balances[offset + d] += balance_change;
+                    defense_potentials[offset + d] += defense_potential_change;
                 }
             }
 
@@ -649,36 +614,19 @@ void GameTimeline::UpdateBalances(const PlanetTimelineList& modified_planets, co
             for (int d = first_source_distance; d <= t; ++d) {
                 const int index = offset + d;
 
-                if (min_balance > balances[index]) {
-                    min_balance = balances[index];
+                if (min_defense_potential > defense_potentials[index]) {
+                    min_defense_potential = defense_potentials[index];
                 }
 
-                if (max_balance < balances[index]) {
-                    max_balance = balances[index];
+                if (max_defense_potential < defense_potentials[index]) {
+                    max_defense_potential = defense_potentials[index];
                 }
             }
 
-            //Update min/max balances at each turn.
-            planet->SetMinBalanceAt(t, min_balance);
-            planet->SetMaxBalanceAt(t, max_balance);
-
-            if (min_balance < 0 && first_negative_min_balance == horizon_) {
-                first_negative_min_balance = t;
-
-            } else if (max_balance > 0 && first_positive_max_balance == horizon_) {
-                first_positive_max_balance = t;
-
-            }
-
-            if (min_balance < 0) {
-                total_negative_min_balance += min_balance;
-            }
-
+            //Update min/max defense_potentials at each turn.
+            planet->SetMinDefensePotentialAt(t, min_defense_potential);
+            planet->SetMaxDefensePotentialAt(t, max_defense_potential);
         }
-
-        planet->SetFirstNegativeMinBalanceTurn(first_negative_min_balance);
-        planet->SetFirstPositiveMaxBalanceTurn(first_positive_max_balance);
-        planet->SetTotalNegativeMinBalance(-total_negative_min_balance);
     }
     
     //Update the timelines' ships gained.
@@ -736,9 +684,9 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     my_contingent_departures_.resize(u_horizon, 0);
     enemy_contingent_departures_.resize(u_horizon, 0);
     
-    balances_.resize(u_horizon*(u_horizon + 1)/2, 0);
-    min_balances_.resize(u_horizon, 0);
-    max_balances_.resize(u_horizon, 0);
+    defense_potentials_.resize(u_horizon*(u_horizon + 1)/2, 0);
+    min_defense_potentials_.resize(u_horizon, 0);
+    max_defense_potentials_.resize(u_horizon, 0);
     
     will_not_be_mine_ = false;
 	will_be_mine_ = false;
@@ -817,13 +765,9 @@ void PlanetTimeline::CopyTimeline(PlanetTimeline* other) {
 
     departing_actions_ = other->departing_actions_;
 
-    balances_ = other->balances_;
-    min_balances_ = other->min_balances_;
-    max_balances_ = other->max_balances_;
-    first_negative_min_balance_turn_ = other->first_negative_min_balance_turn_;
-    first_positive_max_balance_turn_ = other->first_positive_max_balance_turn_;
-    total_negative_min_balance_ = other->total_negative_min_balance_;
-    has_balance_changed_fate_ = other->has_balance_changed_fate_;
+    defense_potentials_ = other->defense_potentials_;
+    min_defense_potentials_ = other->min_defense_potentials_;
+    max_defense_potentials_ = other->max_defense_potentials_;
 
     will_not_be_enemys_ = other->will_not_be_enemys_;
     will_not_be_mine_ = other->will_not_be_mine_;
@@ -833,13 +777,10 @@ void PlanetTimeline::CopyTimeline(PlanetTimeline* other) {
     is_reinforcer_ = other->is_reinforcer_;
 }
 
-void PlanetTimeline::CopyBalances(PlanetTimeline* other) {
-    balances_ = other->balances_;
-    min_balances_ = other->min_balances_;
-    max_balances_ = other->max_balances_;
-    first_negative_min_balance_turn_ = other->first_negative_min_balance_turn_;
-    first_positive_max_balance_turn_ = other->first_positive_max_balance_turn_;
-    total_negative_min_balance_ = other->total_negative_min_balance_;
+void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
+    defense_potentials_ = other->defense_potentials_;
+    min_defense_potentials_ = other->min_defense_potentials_;
+    max_defense_potentials_ = other->max_defense_potentials_;
     total_ships_gained_ = other->total_ships_gained_;
 }
 
@@ -875,9 +816,9 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
         are_equal &= (my_contingent_departures_[t] == other->my_contingent_departures_[t]);
         are_equal &= (enemy_contingent_departures_[t] == other->enemy_contingent_departures_[t]);
 
-        //Strategic balances.
-        are_equal &= (min_balances_[t] == other->min_balances_[t]);
-        are_equal &= (max_balances_[t] == other->max_balances_[t]);
+        //Strategic defense_potentials.
+        are_equal &= (min_defense_potentials_[t] == other->min_defense_potentials_[t]);
+        are_equal &= (max_defense_potentials_[t] == other->max_defense_potentials_[t]);
 
         if (!are_equal) {
             return false;
@@ -894,17 +835,13 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
         }
     }
 
-    for (uint i = 0; i < balances_.size(); ++i) {
-        if (balances_[i] != other->balances_[i]) {
+    for (uint i = 0; i < defense_potentials_.size(); ++i) {
+        if (defense_potentials_[i] != other->defense_potentials_[i]) {
             return false;
         }
     }
 
     are_equal &= (total_ships_gained_ == other->total_ships_gained_);
-    are_equal &= (first_negative_min_balance_turn_ == other->first_negative_min_balance_turn_);
-    are_equal &= (first_positive_max_balance_turn_ == other->first_positive_max_balance_turn_);
-    are_equal &= (total_negative_min_balance_ == other->total_negative_min_balance_);
-    are_equal &= (has_balance_changed_fate_ == other->has_balance_changed_fate_);
 
     are_equal &= (will_not_be_enemys_ == other->will_not_be_enemys_);
     are_equal &= (will_not_be_mine_ == other->will_not_be_mine_);
@@ -1253,10 +1190,9 @@ void PlanetTimeline::ResetStartingData() {
 
 }
 
-void PlanetTimeline::RecalculateTimeline(int starting_at, const bool use_balances) {
+void PlanetTimeline::RecalculateTimeline(int starting_at) {
     is_recalculating_ = true;
     const int growth_rate = planet_->GrowthRate();
-    has_balance_changed_fate_ = false;
     
 #ifndef IS_SUBMISSION
     if (22 == id_ && 0 != my_departures_[17] && 0 == enemy_departures_[17]) {
@@ -1299,14 +1235,6 @@ void PlanetTimeline::RecalculateTimeline(int starting_at, const bool use_balance
                 if (0 < ships_to_reserve) {
                     this->ReserveShips(kEnemy, i, ships_to_reserve);
                 }
-            }
-
-            //Account for the opponent possibly sending reinforecements.
-            if (use_balances && min_balances_[i] == 0 && prev_owner == kEnemy && kMe == outcome.owner) {
-                //Assume that the enemy managed to hold off the attack.
-                ships_[i] = 0;
-                owner_[i] = kEnemy;
-                has_balance_changed_fate_ = true;
             }
         }
         
@@ -1477,10 +1405,10 @@ void PlanetTimeline::RecalculateShipsGained() {
             total_ships_gained_ += ships_gained_[t];
         }
 
-        if (owner_[t] == kMe && (min_balances_[t] < 0 || (0 == min_balances_[t] && kEnemy == owner_[t-1]))) {
+        if (owner_[t] == kMe && (min_defense_potentials_[t] < 0 || (0 == min_defense_potentials_[t] && kEnemy == owner_[t-1]))) {
             would_planet_be_lost = true;
         
-        } else if (would_planet_be_lost && (min_balances_[t] + balance_loss > 0)) {
+        } else if (would_planet_be_lost && (min_defense_potentials_[t] + balance_loss > 0)) {
             would_planet_be_lost = false;
         }
     }

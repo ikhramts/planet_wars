@@ -72,13 +72,9 @@ public:
 
     void MarkTimelineAsModified(int timeline_id);
 
-    //Get the difference between negative strategic balances in the 
-    //base timelines and working timelines.  Positive numbers are better.
-    int NegativeBalanceImprovement();
-
-    bool HasNegativeBalanceWorsenedFor(PlanetTimelineList timelines);
-    void UpdateBalances(int depth = 1);
-    void UpdateBalances(const PlanetTimelineList& modified_planets, int depth = 1);
+    bool HasSupportWorsenedFor(PlanetTimelineList timelines);
+    void UpdatePotentials(int depth = 1);
+    void UpdatePotentials(const PlanetTimelineList& modified_planets, int depth = 1);
 
     void SetFeederAttackPermissions(std::vector<int>* permissions) {when_is_feeder_allowed_to_attack_ = permissions;}
 
@@ -106,7 +102,7 @@ public:
     
     void Copy(PlanetTimeline* other);
     void CopyTimeline(PlanetTimeline* other);
-    void CopyBalances(PlanetTimeline* other);
+    void CopyPotentials(PlanetTimeline* other);
     bool Equals(PlanetTimeline* other) const;
 
     void Update();
@@ -152,27 +148,20 @@ public:
     int MyArrivalsAt(int when) const        {return my_arrivals_[when];}
     int EnemyArrivalsAt(int when) const     {return enemy_arrivals_[when];}
     
-    //Dealing with strategic balances.
-    std::vector<int>& Balances()                {return balances_;}
-    int BalanceAt(int t, int d) const           {return balances_[t*(t-1)/2 + d - 1];}
-    void SetBalanceAt(int t, int d, int balance){balances_[t*(t-1)/2 + d - 1] = balance;}
-    int MaxBalanceAt(int t) const               {return max_balances_[t];}
-    void SetMaxBalanceAt(int t, int balance)    {max_balances_[t] = balance;}
-    int MinBalanceAt(int t) const               {return min_balances_[t];}
-    void SetMinBalanceAt(int t, int balance)    {min_balances_[t] = balance;}
-    int FirstNegativeMinBalanceTurn() const     {return first_negative_min_balance_turn_;}
-    int FirstPositiveMaxBalanceTurn() const     {return first_positive_max_balance_turn_;}
-    int TotalNegativeMinBalance() const         {return total_negative_min_balance_;}
-    void SetFirstNegativeMinBalanceTurn(int t)  {first_negative_min_balance_turn_ = t;}
-    void SetFirstPositiveMaxBalanceTurn(int t)  {first_positive_max_balance_turn_ = t;}
-    void SetTotalNegativeMinBalance(int balance){total_negative_min_balance_ = balance;}
-    bool HasBalanceChangedFate() const          {return has_balance_changed_fate_;}
+    //Dealing with strategic defense_potentials.
+    std::vector<int>& DefensePotentials()                {return defense_potentials_;}
+    int DefensePotentialAt(int t, int d) const           {return defense_potentials_[t*(t-1)/2 + d - 1];}
+    void SetDefensePotentialAt(int t, int d, int balance){defense_potentials_[t*(t-1)/2 + d - 1] = balance;}
+    int MaxDefensePotentialAt(int t) const               {return max_defense_potentials_[t];}
+    void SetMaxDefensePotentialAt(int t, int balance)    {max_defense_potentials_[t] = balance;}
+    int MinDefensePotentialAt(int t) const               {return min_defense_potentials_[t];}
+    void SetMinDefensePotentialAt(int t, int balance)    {min_defense_potentials_[t] = balance;}
     
      //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
 
     //Update the planet state projections.
-    void RecalculateTimeline(int starting_at, bool use_balances = false);
+    void RecalculateTimeline(int starting_at);
     void RecalculateShipsGained();
 
     //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
@@ -217,14 +206,10 @@ private:
 
     ActionList departing_actions_;
 
-    //Strategic balances.
-    std::vector<int> balances_;
-    std::vector<int> min_balances_;
-    std::vector<int> max_balances_;
-    int first_negative_min_balance_turn_;
-    int first_positive_max_balance_turn_;
-    int total_negative_min_balance_;
-    bool has_balance_changed_fate_;
+    //Strategic defense_potentials.
+    std::vector<int> defense_potentials_;
+    std::vector<int> min_defense_potentials_;
+    std::vector<int> max_defense_potentials_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.

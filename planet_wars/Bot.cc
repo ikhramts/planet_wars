@@ -94,7 +94,7 @@ ActionList Bot::FindActionsFor(const int player) {
     }
 
     //General strategy: go for the combination of actions that provides
-    //the highest %return of ships over a certain time horizon.
+    //the highest % return of ships over a certain time horizon.
     
     //Compile the list of available ships.
     PlanetList planets = game_->Planets();
@@ -112,7 +112,6 @@ ActionList Bot::FindActionsFor(const int player) {
     }
 
     //Set up the list of invadeable planets.
-    //PlanetTimelineList invadeable_planets = timeline_->TimelinesEverNotOwnedBy(player);
     PlanetTimelineList invadeable_planets = timeline_->Timelines();
     
     //forceCrash();
@@ -308,11 +307,11 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     //Various useful variables.
     const int target_id = target->Id();
     const int target_owner = target->OwnerAt(arrival_time);
-    const int balances_offset = arrival_time * (arrival_time - 1) / 2 - 1;
+    const int potentials_offset = arrival_time * (arrival_time - 1) / 2 - 1;
     const int horizon = timeline_->Horizon();
     const int u_horizon = static_cast<uint>(horizon);
     const int num_planets = game_->NumPlanets();
-    const std::vector<int>& balances = target->Balances();
+    const std::vector<int>& defense_potentials = target->DefensePotentials();
     const int opponent = OtherPlayer(player);
     const int distance_to_first_source = distances_to_sources[0];
     std::vector<int> ships_farther_than(u_horizon, 0);
@@ -327,20 +326,20 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
 	
     //Figure out how many ships might be actually needed.  These values would be adjusted
     //duri the calculation.
-    const int min_balance = target->MinBalanceAt(arrival_time);
+    const int min_defense_potential = target->MinDefensePotentialAt(arrival_time);
     int remaining_ships_needed = 0;
     int max_ships_from_this_distance = 0;
     const int was_my_planet = (target->OwnerAt(arrival_time - 1) == player);
     const int takeover_ship = (was_my_planet ? 0 : 1);
 
-    if ((player == target_owner || was_my_planet) && min_balance < 0) {
-        remaining_ships_needed = -min_balance;
+    if ((player == target_owner || was_my_planet) && min_defense_potential < 0) {
+        remaining_ships_needed = -min_defense_potential;
 
         //Find the minimum distances from which some of the ships need to be sent.
         int ships_farther_than_this_distance = 0;
         for (int d = arrival_time; d >= distance_to_first_source; --d) {
             const int ships_from_this_distance = 
-                std::max(0, -balances[balances_offset + d] - ships_farther_than_this_distance);
+                std::max(0, -defense_potentials[potentials_offset + d] - ships_farther_than_this_distance);
             ships_farther_than[d] = ships_from_this_distance;
             ships_farther_than_this_distance += ships_from_this_distance;
         }
@@ -348,13 +347,13 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         ships_farther_than[distance_to_first_source] += (remaining_ships_needed - ships_farther_than_this_distance);
         max_ships_from_this_distance = ships_farther_than[distance_to_first_source];
 
-    } else if (player == target_owner && 0 == min_balance && kEnemy == target->OwnerAt(arrival_time -1 )) {
+    } else if (player == target_owner && 0 == min_defense_potential && kEnemy == target->OwnerAt(arrival_time -1 )) {
         remaining_ships_needed = 1;
         max_ships_from_this_distance = 1;
 
-    } else if (player != target_owner && target->MaxBalanceAt(arrival_time + 1) > 0) {
+    } else if (player != target_owner && target->MaxDefensePotentialAt(arrival_time + 1) > 0) {
         const int ships_from_balance = 
-            -balances[balances_offset + distance_to_first_source] + neutral_adjustment + takeover_ship;
+            -defense_potentials[potentials_offset + distance_to_first_source] + neutral_adjustment + takeover_ship;
         remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
         max_ships_from_this_distance = remaining_ships_needed;
     }
@@ -398,7 +397,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
             //if (target_owner == kEnemy) {
             if (target_owner != player && !was_my_planet) {
                 const int ships_from_balance = 
-                    -balances[balances_offset + distance_to_source] + neutral_adjustment + takeover_ship;
+                    -defense_potentials[potentials_offset + distance_to_source] + neutral_adjustment + takeover_ship;
                 remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
                 max_ships_from_this_distance = remaining_ships_needed;
             
@@ -487,10 +486,10 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     }
 
     //Perform a more thorough check of the move.  Apply it to the timeline, and see how it
-    //impacts ship returns and strategic balances.
+    //impacts ship returns and strategic defense_potentials.
     timeline_->ApplyTempActions(invasion_plan);
     PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
-    timeline_->UpdateBalances(sources_and_targets);
+    timeline_->UpdatePotentials(sources_and_targets);
 
     const int updated_ships_gained = timeline_->ShipsGainedFromBase();
     const double updated_return_ratio = (static_cast<double>(updated_ships_gained) / ships_to_send) * multiplier;
@@ -504,9 +503,9 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     timeline_->ResetTimelinesToBase();
     return updated_return_ratio;
 
-    //At this point, the move seems to impact the strategic balances negatively.
+    //At this point, the move seems to impact the strategic defense_potentials negatively.
     //Let's check whether it actually makes sense for the opponet to make the 
-    //moves implied by the strategic balances.
+    //moves implied by the strategic defense_potentials.
     //Pick the best move for the opponent to make and apply it to the timeline
     //to see what happens.
     //const int player = invasion_plan[0]->Owner();
@@ -523,7 +522,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     ////Find the arrival time of the counterattack.
     //int attack_turn = arrival_time;
-    //while (attack_turn < horizon && counter_target->MinBalanceAt(attack_turn) < 0) {
+    //while (attack_turn < horizon && counter_target->MinDefensePotentialAt(attack_turn) < 0) {
     //    ++attack_turn;
     //}
 
@@ -551,7 +550,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     //}
 
     //timeline_->ApplyTempActions(counter_plan);
-    //timeline_->UpdateBalances();
+    //timeline_->UpdatePotentials();
 
     //const int counter_ships_gained = timeline_->ShipsGainedFromBase();
     //const double counter_return = (static_cast<double>(counter_ships_gained) / ships_to_send) * multiplier;
@@ -840,10 +839,10 @@ ActionList Bot::SendFleetsToFront(const int player) {
             const int distance_to_closest_planet = game_->GetDistance(source_id, closest_planet_id);
 
             for (int t = distance_to_closest_planet; t < horizon; ++t) {
-                const int min_balance = source->MinBalanceAt(t);
+                const int min_defense_potential = source->MinDefensePotentialAt(t);
 
-                if (min_min_balance > min_balance) {
-                    min_min_balance = min_balance;
+                if (min_min_balance > min_defense_potential) {
+                    min_min_balance = min_defense_potential;
                 }
             }
 
@@ -869,14 +868,14 @@ ActionList Bot::SendFleetsToFront(const int player) {
 
             bool was_action_accepted = true;
 
-            if (timeline_->HasNegativeBalanceWorsenedFor(sources)) {
+            if (timeline_->HasSupportWorsenedFor(sources)) {
                 //Try the same thing, but with only 2x the source's growth rate.
                 timeline_->ResetTimelinesToBase();
                 const int ships_to_send = source->GetPlanet()->GrowthRate() * 2;
                 action->SetNumShips(ships_to_send);
                 timeline_->ApplyTempActions(temp_action_list);
 
-                if (timeline_->HasNegativeBalanceWorsenedFor(sources)) {
+                if (timeline_->HasSupportWorsenedFor(sources)) {
                     was_action_accepted = false;
                 }
             }
@@ -969,6 +968,6 @@ void Bot::MarkReinforcers(const int player) {
         }
     }
     
-    timeline_->UpdateBalances();
+    timeline_->UpdatePotentials();
     timeline_->SaveTimelinesToBase();
 }
