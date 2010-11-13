@@ -148,16 +148,20 @@ public:
     int MyArrivalsAt(int when) const        {return my_arrivals_[when];}
     int EnemyArrivalsAt(int when) const     {return enemy_arrivals_[when];}
     
-    //Dealing with strategic defense_potentials.
-    std::vector<int>& DefensePotentials()                {return defense_potentials_;}
-    int DefensePotentialAt(int t, int d) const           {return defense_potentials_[t*(t-1)/2 + d - 1];}
-    void SetDefensePotentialAt(int t, int d, int balance){defense_potentials_[t*(t-1)/2 + d - 1] = balance;}
-    int MaxDefensePotentialAt(int t) const               {return max_defense_potentials_[t];}
-    void SetMaxDefensePotentialAt(int t, int balance)    {max_defense_potentials_[t] = balance;}
-    int MinDefensePotentialAt(int t) const               {return min_defense_potentials_[t];}
-    void SetMinDefensePotentialAt(int t, int balance)    {min_defense_potentials_[t] = balance;}
+    //Dealing with strategic potentials.
+    std::vector<int>& DefensePotentials()                   {return defense_potentials_;}
+    int DefensePotentialAt(int t, int d) const              {return defense_potentials_[t*(t-1)/2 + d - 1];}
+    void SetDefensePotentialAt(int t, int d, int potential) {defense_potentials_[t*(t-1)/2 + d - 1] = potential;}
+    int MaxDefensePotentialAt(int t) const                  {return max_defense_potentials_[t];}
+    void SetMaxDefensePotentialAt(int t, int potential)     {max_defense_potentials_[t] = potential;}
+    int MinDefensePotentialAt(int t) const                  {return min_defense_potentials_[t];}
+    void SetMinDefensePotentialAt(int t, int potential)     {min_defense_potentials_[t] = potential;}
     
-     //Reset various data before starting full timeline recalculation.
+    std::vector<int>& SupportPotentials()                   {return support_potentials_;}
+    int MinSupportPotentialAt(int t) const                  {return min_support_potentials_[t];}
+    void SetMinSupportPotentialAt(int t, int potential)     {min_support_potentials_[t] = potential;}
+    
+    //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
 
     //Update the planet state projections.
@@ -167,6 +171,10 @@ public:
     //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
     void SetReinforcer(bool is_reinforcer);
     bool IsReinforcer() const               {return is_reinforcer_;}
+
+    //Adjust the potential for any ships that the enemy or me would have to defeat to beat the other
+    //side.
+    int StartingPotentialAt(int when) const;
 
 private:
     //Reserve ships for a departure or defense.
@@ -210,6 +218,9 @@ private:
     std::vector<int> defense_potentials_;
     std::vector<int> min_defense_potentials_;
     std::vector<int> max_defense_potentials_;
+
+    std::vector<int> support_potentials_;
+    std::vector<int> min_support_potentials_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
