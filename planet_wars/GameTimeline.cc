@@ -1513,7 +1513,11 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
         if (actual_owner == kEnemy && (this->MaxSupportPotentialAt(t) + potential_adjustment) > 0) {
             potential_owner = kMe;
 
+#ifdef USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
+        } else if (actual_owner == kMe && (this->SupportPotentialAt(t, t) + potential_adjustment) < 0) {
+#else
         } else if (actual_owner == kMe && (this->MinSupportPotentialAt(t) + potential_adjustment) < 0) {
+#endif
             potential_owner = kEnemy;
         
         } else {

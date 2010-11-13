@@ -11,6 +11,7 @@
 #define ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 #define USE_SUPPORT_POTENTIALS_FOR_ATTACK
+#define USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
 
 //Switch between test environment and contest environment.
 //#define IS_SUBMISSION
