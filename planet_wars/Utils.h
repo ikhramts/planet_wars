@@ -10,6 +10,7 @@
 //#define WITH_TIMEOUTS
 #define ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
+#define USE_SUPPORT_POTENTIALS_FOR_ATTACK
 
 //Switch between test environment and contest environment.
 //#define IS_SUBMISSION

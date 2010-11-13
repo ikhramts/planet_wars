@@ -244,14 +244,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 5 == target_id) {
+        if (1 == picking_round_ && 8 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 5 == target_id && 8 == arrival_time) {
+            if (1 == picking_round_ && 7 == target_id && 16 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -351,7 +351,11 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         remaining_ships_needed = 1;
         max_ships_from_this_distance = 1;
 
+#ifdef USE_SUPPORT_POTENTIALS_FOR_ATTACK
+    } else if (player != target_owner && target->MaxSupportPotentialAt(arrival_time) > 0) {
+#else
     } else if (player != target_owner && target->MaxDefensePotentialAt(arrival_time + 1) > 0) {
+#endif
         const int ships_from_balance = 
             -defense_potentials[potentials_offset + distance_to_first_source] + neutral_adjustment + takeover_ship;
         remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
