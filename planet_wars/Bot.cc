@@ -251,9 +251,9 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            //if (1 == picking_round_ && 0 == target_id && 7 == arrival_time) {
-            //    int x = 2;
-            //}
+            if (1 == picking_round_ && 5 == target_id && 8 == arrival_time) {
+                int x = 2;
+            }
 #endif
             invasion_plan = this->FindInvasionPlan(target, arrival_time, sources, distances_to_sources, player);            
 
@@ -491,7 +491,8 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
     timeline_->UpdatePotentials(sources_and_targets);
 
-    const int updated_ships_gained = timeline_->ShipsGainedFromBase();
+    //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
+    const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target);
     const double updated_return_ratio = (static_cast<double>(updated_ships_gained) / ships_to_send) * multiplier;
     
     if (best_return < updated_return_ratio) {

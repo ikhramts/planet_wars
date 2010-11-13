@@ -33,6 +33,7 @@ public:
     int ShipsGainedForActions(const ActionList& actions, Planet* planet) const;
 
     int ShipsGainedFromBase() const;
+    int PotentialShipsGainedForTarget(PlanetTimeline* target) const;
 
     //Get the timeline that had the worst ship return in return from the base.
     //Return NULL if none.
@@ -112,6 +113,7 @@ public:
     int ShipsGainedForActions(const ActionList& actions) const;
 
     int ShipsGained() const                 {return total_ships_gained_;}
+    int PotentialShipsGained() const        {return potential_ships_gained_;}
 
     Planet* GetPlanet() const               {return planet_;}
     int Id() const                          {return id_;}
@@ -158,8 +160,11 @@ public:
     void SetMinDefensePotentialAt(int t, int potential)     {min_defense_potentials_[t] = potential;}
     
     std::vector<int>& SupportPotentials()                   {return support_potentials_;}
+    int SupportPotentialAt(int t, int d) const              {return support_potentials_[t*(t-1)/2 + d - 1];}
     int MinSupportPotentialAt(int t) const                  {return min_support_potentials_[t];}
     void SetMinSupportPotentialAt(int t, int potential)     {min_support_potentials_[t] = potential;}
+    int MaxSupportPotentialAt(int t) const                  {return max_support_potentials_[t];}
+    void SetMaxSupportPotentialAt(int t, int potential)     {max_support_potentials_[t] = potential;}
     
     //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
@@ -167,6 +172,7 @@ public:
     //Update the planet state projections.
     void RecalculateTimeline(int starting_at);
     void RecalculateShipsGained();
+    void RecalculatePotentialShipsGained();
 
     //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
     void SetReinforcer(bool is_reinforcer);
@@ -211,6 +217,7 @@ private:
     std::vector<int> enemy_contingent_departures_;
 
     int total_ships_gained_;
+    int potential_ships_gained_;
 
     ActionList departing_actions_;
 
@@ -221,6 +228,7 @@ private:
 
     std::vector<int> support_potentials_;
     std::vector<int> min_support_potentials_;
+    std::vector<int> max_support_potentials_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
