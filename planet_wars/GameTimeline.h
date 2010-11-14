@@ -172,6 +172,8 @@ public:
     void SetMinSupportPotentialAt(int t, int potential)     {min_support_potentials_[t] = potential;}
     int MaxSupportPotentialAt(int t) const                  {return max_support_potentials_[t];}
     void SetMaxSupportPotentialAt(int t, int potential)     {max_support_potentials_[t] = potential;}
+
+    int PotentialOwnerAt(int t) const                       {return potential_owner_[t];}
     
     //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
@@ -237,6 +239,8 @@ private:
     std::vector<int> support_potentials_;
     std::vector<int> min_support_potentials_;
     std::vector<int> max_support_potentials_;
+
+    std::vector<int> potential_owner_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.

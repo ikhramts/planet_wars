@@ -97,5 +97,9 @@ private:
     GameMap* game_;
 };
 
+inline double ReturnRatio(int ships_gained, int ships_sent) {
+    const double return_ratio = static_cast<double>(ships_gained)/static_cast<double>(ships_sent);
+    return return_ratio;
+}
 
 #endif

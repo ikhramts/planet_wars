@@ -83,12 +83,16 @@ int GameTimeline::PotentialShipsGainedForTarget(PlanetTimeline* target, const bo
             ships_gained += (planet->ShipsGained() - base_planet_timelines_[i]->ShipsGained());
         
         } else {
+#ifdef USE_SEPARATE_GAIN_CALCULATION_FOR_NEUTRALS
             if (use_defense_potential) {
                 planet->RecalculateDefensePotentialShipsGained();
 
             } else {
+#endif
                 planet->RecalculatePotentialShipsGained();
+#ifdef USE_SEPARATE_GAIN_CALCULATION_FOR_NEUTRALS
             }
+#endif
 
             ships_gained += (planet->PotentialShipsGained() - base_planet_timelines_[i]->ShipsGained());
         }
@@ -777,6 +781,7 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     support_potentials_.resize(u_horizon*(u_horizon + 1)/2, 0);
     min_support_potentials_.resize(u_horizon, 0);
     max_support_potentials_.resize(u_horizon, 0);
+    potential_owner_.resize(u_horizon, 0);
     
     will_not_be_mine_ = false;
 	will_be_mine_ = false;
@@ -862,6 +867,7 @@ void PlanetTimeline::CopyTimeline(PlanetTimeline* other) {
     support_potentials_ = other->support_potentials_;
     min_support_potentials_ = other->min_support_potentials_;
     max_support_potentials_ = other->max_support_potentials_;
+    potential_owner_ = other->potential_owner_;
 
     will_not_be_enemys_ = other->will_not_be_enemys_;
     will_not_be_mine_ = other->will_not_be_mine_;
@@ -880,6 +886,7 @@ void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
     support_potentials_ = other->support_potentials_;
     min_support_potentials_ = other->min_support_potentials_;
     max_support_potentials_ = other->max_support_potentials_;
+    potential_owner_ = other->potential_owner_;
 }
 
 bool PlanetTimeline::Equals(PlanetTimeline* other) const {
@@ -919,6 +926,7 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
         are_equal &= (max_defense_potentials_[t] == other->max_defense_potentials_[t]);
         are_equal &= (min_support_potentials_[t] == other->min_support_potentials_[t]);
         are_equal &= (max_support_potentials_[t] == other->max_support_potentials_[t]);
+        are_equal &= (potential_owner_[t] == other->potential_owner_[t]);
 
         if (!are_equal) {
             return false;
@@ -1576,6 +1584,8 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
                 potential_adjustment -= growth_rate;
             }
         }
+
+        potential_owner_[t] = potential_owner;
     } //End iterating over turns.
 }
 
@@ -1588,7 +1598,7 @@ void PlanetTimeline::RecalculateDefensePotentialShipsGained() {
     const int growth_rate = planet_->GrowthRate();
 
     potential_ships_gained_ = 0;
-
+    
     for (int t = 1; t < horizon_; ++t) {
         potential_ships_gained_ += OwnerMultiplier(prev_potential_owner) * growth_rate;
         //const int full_potential = this->SupportPotentialAt(t, t) + potential_adjustment;
@@ -1623,6 +1633,8 @@ void PlanetTimeline::RecalculateDefensePotentialShipsGained() {
                 potential_adjustment -= growth_rate;
             }
         }
+
+        potential_owner_[t] = potential_owner;
     } //End iterating over turns.
 }
 

@@ -482,9 +482,9 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     const int horizon = timeline_->Horizon();
 
     //Calculate the number of ships sent.
-    double ships_to_send = 0;
+    int ships_to_send = 0;
     for (uint i = 0; i < invasion_plan.size(); ++i) {
-        ships_to_send += static_cast<double>(invasion_plan[i]->NumShips());
+        ships_to_send += invasion_plan[i]->NumShips();
     }
 
     //Find a rough upper limit of how good this move could be.
@@ -492,7 +492,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     const int arrival_time = invasion_plan[0]->DepartureTime() + invasion_plan[0]->Distance();
     const double multiplier = (kEnemy == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
     const int ships_gained = target->ShipsGainedForActions(invasion_plan);
-    const double return_ratio = (static_cast<double>(ships_gained) / ships_to_send) * multiplier;
+    const double return_ratio = ReturnRatio(ships_gained, ships_to_send);
 
     //Don't be as restrictive on the first turn.
     const int first_departure_time = invasion_plan[invasion_plan.size() - 1]->DepartureTime(); 
@@ -514,7 +514,27 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     if (target->OwnerAt(arrival_time - 1) == kNeutral) use_min_support = true;
 
     const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target, use_min_support);
-    const double updated_return_ratio = (static_cast<double>(updated_ships_gained) / ships_to_send) * multiplier;
+    
+    int updated_ships_to_send = ships_to_send;
+
+#ifdef ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
+    int my_cumulative_arrivals = 0;
+    
+    for (int t = arrival_time + 1; t < horizon; ++t) {
+        if (target->PotentialOwnerAt(t) != kMe) {
+            break;
+        }
+        
+        my_cumulative_arrivals += target->MyArrivalsAt(t);
+        const int enemy_arrivals = target->EnemyArrivalsAt(t);
+        const int enemies_to_deal_with = std::max(0, enemy_arrivals - my_cumulative_arrivals);
+        my_cumulative_arrivals = std::max(0, my_cumulative_arrivals - enemy_arrivals);
+        
+        updated_ships_to_send += enemies_to_deal_with;
+    }
+#endif
+
+    const double updated_return_ratio = ReturnRatio(updated_ships_gained, updated_ships_to_send) * multiplier;
     
     if (best_return < updated_return_ratio) {
         //It is definitely a good move.
