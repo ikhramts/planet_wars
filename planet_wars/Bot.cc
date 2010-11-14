@@ -38,6 +38,8 @@ void Bot::SetGame(GameMap* game) {
 
     const int num_planets = game->NumPlanets();
     when_is_feeder_allowed_to_attack_.resize(num_planets * num_planets, -1);
+
+    support_constraints_ = new SupportConstraints(game_->NumPlanets(), game_);
 }
 
 ActionList Bot::MakeMoves() {
@@ -62,6 +64,8 @@ ActionList Bot::MakeMoves() {
             --when_is_feeder_allowed_to_attack_[i];
         }
     }
+
+    support_constraints_->ClearConstraints();
 
     timeline_->SetFeederAttackPermissions(&when_is_feeder_allowed_to_attack_);
 
@@ -163,14 +167,9 @@ ActionList Bot::FindActionsFor(const int player) {
                 when_is_feeder_allowed_to_attack_[source_id * num_planets + target_id] = action->DepartureTime();
             }
         }
-        
-#ifndef IS_SUBMISSION
-        if (26 == turn_ && 3 == picking_round_) {
-            int x = 2;
-        }
-#endif
 
-        timeline_->ApplyActions(best_actions);
+        this->ApplyActions(best_actions);
+        //timeline_->ApplyActions(best_actions);
     }
 
 //#ifndef IS_SUBMISSION
@@ -254,14 +253,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 9 == target_id) {
+        if (1 == picking_round_ && 15 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 7 == target_id && 16 == arrival_time) {
+            if (1 == picking_round_ && 15 == target_id && 8 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -422,6 +421,11 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
             }
 
             current_distance = distance_to_source;
+        }
+
+        //Check whether the source is allowed to send ships to the target.
+        if (target_owner == player && !support_constraints_->MaySupport(source, target)) {
+            continue;
         }
         
         //Check whether the source has any ships to send.
@@ -1047,13 +1051,16 @@ ActionList Bot::SendSupportFleets(const int player) {
             timeline_->UpdatePotentials(support_plan);
 
             if (timeline_->HasSupportWorsenedFor(test_planets)) {
+            //if (this->ReturnForMove(support_plan, 0) <= 0) {
                 //Bad plan, don't do it.
                 Action::FreeActions(support_plan);
                 timeline_->ResetTimelinesToBase();
 
             } else {
                 //Good plan, go ahead.
+                //this->AddSupportConstraints(support_plan);
                 timeline_->SaveTimelinesToBase();
+                //this->ApplyActions(support_plan);
                 
                 for (uint j = 0; j < support_plan.size(); ++j) {
                     support_actions.push_back(support_plan[j]);
@@ -1063,4 +1070,79 @@ ActionList Bot::SendSupportFleets(const int player) {
     } //End iterating over targets.
 
     return support_actions;
+}
+
+void Bot::ApplyActions(const ActionList& actions) {
+    if (actions.empty()) {
+        return;
+    }
+    
+    //Check whether the action has caused any planets to lose support.
+    //If that's the case, set the constraints on support of those planets.
+    timeline_->ApplyTempActions(actions);
+    timeline_->UpdatePotentials(actions);
+    this->AddSupportConstraints(actions);
+
+    timeline_->SaveTimelinesToBase();
+}
+
+void Bot::AddSupportConstraints(const ActionList &actions) {
+    //Assumes that the actions have already been temporarily applied to the working timelines.
+    if (actions.empty()) {
+        return;
+    }
+    
+    const int player = actions[0]->Owner();
+    PlanetTimeline* target = actions[0]->Target();
+    PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
+
+    for (uint i = 0; i < my_planets.size(); ++i) {
+        PlanetTimeline* planet = my_planets[i];
+
+        if (timeline_->HasSupportWorsenedFor(planet)) {
+            support_constraints_->AddConstraint(planet, target);
+        }
+    }
+}
+
+/************************************************
+            SupportConstraints class
+************************************************/
+SupportConstraints::SupportConstraints(const int num_planets, GameMap* game) {
+    const uint u_num_planets = static_cast<uint>(num_planets);
+    constraint_centers_.resize(u_num_planets);
+    constraint_radii_.resize(u_num_planets);
+    game_ = game;
+}
+
+void SupportConstraints::AddConstraint(PlanetTimeline *constrained_planet, PlanetTimeline *constraint_center) {
+    const int constrainee_id = constrained_planet->Id();
+    const int center_id = constraint_center->Id();
+    const int radius = game_->GetDistance(center_id, constrainee_id);
+
+    constraint_centers_[constrainee_id].push_back(center_id);
+    constraint_radii_[constrainee_id].push_back(radius);
+}
+
+bool SupportConstraints::MaySupport(PlanetTimeline *source, PlanetTimeline *target) {
+    const int source_id = source->Id();
+    const int target_id = target->Id();
+
+    for(uint i = 0; i < constraint_centers_[target_id].size(); ++i) {
+        const int distance_from_center = game_->GetDistance(constraint_centers_[target_id][i], source_id);
+        const int minimum_distance = constraint_radii_[target_id][i];
+
+        if (distance_from_center <= minimum_distance) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void SupportConstraints::ClearConstraints() {
+    for (uint i = 0; i < constraint_centers_.size(); ++i) {
+        constraint_centers_[i].clear();
+        constraint_radii_[i].clear();
+    }
 }

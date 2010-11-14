@@ -4,10 +4,9 @@
 # command to run tcp server with your own bot
 #  (ex: "/home/me/tcpserver/tcp 213.3.30.106 9999 supaman314 /home/me/MyBot" )
 
-# A Half Cautious Reinforcer that considers opponent's best counter-move to
-# any given move.
-botName = "iouri.45"
-cmd = "tcp.exe 72.44.46.68 995 " + botName + " -p victory potentials.exe"
+botName = "iouri.45"			# <<< Put the username you want to use here
+fileName = "potentials.exe"		# <<< Put the name of the executable file here
+cmd = "tcp.exe 72.44.46.68 995 " + botName + " -p EditedOut " + fileName
 
 import os
 import sys

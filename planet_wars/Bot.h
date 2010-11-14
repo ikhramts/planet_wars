@@ -12,6 +12,7 @@
 
 class GameTimeline;
 class CounterActionResult;
+class SupportConstraints;
 
 class Bot {
 public:
@@ -53,6 +54,13 @@ private:
     void MarkReinforcers(int player);
 
     ActionList SendSupportFleets(int player);
+
+    //Apply the actions to the timeline, and do some record-keeping while we're at it.
+    void ApplyActions(const ActionList& actions);
+
+    //Check which planets lost support due to the actions, and add appropriate
+    //prohibitions on sending support fleets to those planets.
+    void AddSupportConstraints(const ActionList& actions);
     
     GameMap* game_;
     GameTimeline* timeline_;
@@ -63,12 +71,30 @@ private:
     std::vector<int> when_is_feeder_allowed_to_attack_;
 
     ActionList committed_actions_;
+    SupportConstraints* support_constraints_;
 };
 
 class CounterActionResult {
 public:
     int ships_gained;
     ActionList defense_plan;
+};
+
+/************************************************
+            SupportConstraints class
+************************************************/
+
+class SupportConstraints {
+public:
+    SupportConstraints(int num_planets, GameMap* game);
+    void AddConstraint(PlanetTimeline* constrained_planet, PlanetTimeline* constraint_center);
+    bool MaySupport(PlanetTimeline* source, PlanetTimeline* target);
+    void ClearConstraints();
+
+private:
+    std::vector<std::vector<int> > constraint_centers_;
+    std::vector<std::vector<int> > constraint_radii_;
+    GameMap* game_;
 };
 
 

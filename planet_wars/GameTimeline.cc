@@ -406,13 +406,33 @@ void GameTimeline::MarkTimelineAsModified(int timeline_id) {
 bool GameTimeline::HasSupportWorsenedFor(PlanetTimelineList timelines) {
     for (uint i = 0; i < timelines.size(); ++i) {
         PlanetTimeline* timeline = timelines[i];
-        PlanetTimeline* base_timeline = base_planet_timelines_[timeline->Id()];
+        //PlanetTimeline* base_timeline = base_planet_timelines_[timeline->Id()];
         
-        for (int t = 0; t < horizon_; ++t) {
-            const int min_defense_potential = timeline->MinDefensePotentialAt(t);
-            if (min_defense_potential < 0 && min_defense_potential < base_timeline->MinDefensePotentialAt(t)) {
-                return true;
-            }
+        //for (int t = 0; t < horizon_; ++t) {
+        //    const int min_defense_potential = timeline->MinDefensePotentialAt(t);
+        //    if (min_defense_potential < 0 && min_defense_potential < base_timeline->MinDefensePotentialAt(t)) {
+        //        return true;
+        //    }
+        //}
+
+        if (this->HasSupportWorsenedFor(timeline)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool GameTimeline::HasSupportWorsenedFor(PlanetTimeline* planet) {
+    PlanetTimeline* base_planet = base_planet_timelines_[planet->Id()];
+
+    for (int t = 0; t < horizon_; ++t) {
+        const int min_defense_potential = planet->MinDefensePotentialAt(t);
+        const int base_min_defense_potential = base_planet->MinDefensePotentialAt(t);
+        const int is_mine = (base_planet->OwnerAt(t) == kMe);
+
+        if (is_mine && min_defense_potential < 0 && min_defense_potential < base_min_defense_potential) {
+            return true;
         }
     }
 

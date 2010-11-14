@@ -74,6 +74,7 @@ public:
     void MarkTimelineAsModified(int timeline_id);
 
     bool HasSupportWorsenedFor(PlanetTimelineList timelines);
+    bool HasSupportWorsenedFor(PlanetTimeline* timeline);
     void UpdatePotentials(int depth = 1);
     void UpdatePotentials(const PlanetTimelineList& modified_planets, int depth = 1);
     void UpdatePotentials(const ActionList& actions);

@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
         if (c == '\n') {
             if (current_line.length() >= 2 && current_line.substr(0, 2) == "go") {
                 turn++;
-                const double timeout = (turn == 1 ? 2.95 : 0.95);
+                const double timeout = (turn == 1 ? 2.80 : 0.80);
                 SetTimeOut(timeout);
                 
                 //On the first turn, initialize the game map.
