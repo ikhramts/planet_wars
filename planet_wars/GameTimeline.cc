@@ -688,6 +688,11 @@ void GameTimeline::UpdatePotentials(const PlanetTimelineList& modified_planets, 
     }
 }
 
+void GameTimeline::UpdatePotentials(const ActionList& actions) {
+    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(actions);
+    this->UpdatePotentials(sources_and_targets);
+}
+
 #ifndef IS_SUBMISSION
 void GameTimeline::AssertWorkingTimelinesAreEqualToBase() {
     for (uint i = 0; i < planet_timelines_.size(); ++i) {

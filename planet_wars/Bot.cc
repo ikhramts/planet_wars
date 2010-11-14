@@ -75,6 +75,11 @@ ActionList Bot::MakeMoves() {
     //Mark the reinforcers.
     this->MarkReinforcers(kMe);
 
+//#ifdef PRE_APPLY_SUPPORT_ACTIONS
+//    ActionList support_actions = this->SendSupportFleets(kMe);
+//    my_best_actions.insert(my_best_actions.end(), support_actions.begin(), support_actions.end());
+//#endif
+
     ActionList found_actions = this->FindActionsFor(kMe); 
     my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
     
@@ -123,6 +128,11 @@ ActionList Bot::FindActionsFor(const int player) {
     picking_round_ = 1;
 
     while (invadeable_planets.size() != 0) {
+#ifdef PRE_APPLY_SUPPORT_ACTIONS
+        ActionList support_actions = this->SendSupportFleets(kMe);
+        player_actions.insert(player_actions.end(), support_actions.begin(), support_actions.end());
+#endif
+
         ActionList best_actions = this->BestRemainingMove(invadeable_planets, 
                                                           player, 
                                                           earliest_departure, 
@@ -975,4 +985,82 @@ void Bot::MarkReinforcers(const int player) {
     
     timeline_->UpdatePotentials();
     timeline_->SaveTimelinesToBase();
+}
+
+ActionList Bot::SendSupportFleets(const int player) {
+    ActionList support_actions;
+    const int horizon = timeline_->Horizon();
+
+    PlanetTimelineList targets = timeline_->EverOwnedTimelines(player);
+    if (targets.empty()) {
+        return support_actions;
+    }
+
+    PlanetTimelineList test_planets = timeline_->TimelinesOwnedBy(player, 0);
+
+    for (uint i = 0; i < targets.size(); ++i) {
+        PlanetTimeline* target = targets[i];
+        const int target_id = target->Id();
+
+        //Planets that might be participating in the invasion, sorted by distance from target.
+		PlanetTimelineList sources = timeline_->EverOwnedTimelinesByDistance(player, target);
+
+        if (sources.empty()) {
+            continue;   //To the next arrival time.
+        }
+        
+        //Pre-calculate distances to the sources.
+		std::vector<int> distances_to_sources(sources.size());
+
+		for (uint s = 0; s < sources.size(); ++s) {
+			distances_to_sources[s] = game_->GetDistance(sources[s]->Id(), target_id);
+		}
+
+		//Find earliest time the fleet can reach the target.
+        const int earliest_arrival = distances_to_sources[0];
+        
+#ifndef IS_SUBMISSION
+        if (1 == picking_round_ && 11 == target_id) {
+            int x = 2;
+        }
+#endif
+        for (int arrival_time = distances_to_sources[0]; arrival_time < horizon; ++arrival_time) {
+            if (target->OwnerAt(arrival_time) != player) {
+                continue;
+            }
+
+            //Check whether there is a need for support.
+            const int min_defense_potential = target->MinDefensePotentialAt(arrival_time);
+            if (min_defense_potential >= 0 || min_defense_potential < -kSupportShipLimit) {
+                continue;
+            }
+
+            //Find the supporting actions.
+            ActionList support_plan = this->FindInvasionPlan(target, arrival_time, sources, distances_to_sources, player);
+
+            if (support_plan.empty()) {
+                continue;
+            }
+
+            //Check whether they cause other planets to lose support.
+            timeline_->ApplyTempActions(support_plan);
+            timeline_->UpdatePotentials(support_plan);
+
+            if (timeline_->HasSupportWorsenedFor(test_planets)) {
+                //Bad plan, don't do it.
+                Action::FreeActions(support_plan);
+                timeline_->ResetTimelinesToBase();
+
+            } else {
+                //Good plan, go ahead.
+                timeline_->SaveTimelinesToBase();
+                
+                for (uint j = 0; j < support_plan.size(); ++j) {
+                    support_actions.push_back(support_plan[j]);
+                }
+            }
+        } //End iterating over arrival times.
+    } //End iterating over targets.
+
+    return support_actions;
 }

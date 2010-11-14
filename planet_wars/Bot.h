@@ -16,6 +16,7 @@ class CounterActionResult;
 class Bot {
 public:
     static const double kAggressionReturnMultiplier;
+    static const int kSupportShipLimit = 40;
 
     Bot();
     ~Bot();
@@ -50,6 +51,8 @@ private:
 
     //Mark feeder planets as such.
     void MarkReinforcers(int player);
+
+    ActionList SendSupportFleets(int player);
     
     GameMap* game_;
     GameTimeline* timeline_;

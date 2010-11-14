@@ -76,6 +76,7 @@ public:
     bool HasSupportWorsenedFor(PlanetTimelineList timelines);
     void UpdatePotentials(int depth = 1);
     void UpdatePotentials(const PlanetTimelineList& modified_planets, int depth = 1);
+    void UpdatePotentials(const ActionList& actions);
 
     void SetFeederAttackPermissions(std::vector<int>* permissions) {when_is_feeder_allowed_to_attack_ = permissions;}
 
