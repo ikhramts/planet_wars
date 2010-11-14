@@ -20,7 +20,9 @@ GameTimeline::~GameTimeline() {
 
 void GameTimeline::SetGameMap(GameMap* game) {
     game_ = game;
+#ifndef STATIC_CONST_HORIZON
     horizon_ = game->MapRadius() + 5;
+#endif
 
     //Update the ships gained from planets vector.
     PlanetList planets = game->Planets();
@@ -71,7 +73,7 @@ int GameTimeline::ShipsGainedFromBase() const {
     return ships_gained;
 }
 
-int GameTimeline::PotentialShipsGainedForTarget(PlanetTimeline* target) const {
+int GameTimeline::PotentialShipsGainedForTarget(PlanetTimeline* target, const bool use_defense_potential) {
     int ships_gained = 0;
 
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
@@ -81,6 +83,13 @@ int GameTimeline::PotentialShipsGainedForTarget(PlanetTimeline* target) const {
             ships_gained += (planet->ShipsGained() - base_planet_timelines_[i]->ShipsGained());
         
         } else {
+            if (use_defense_potential) {
+                planet->RecalculateDefensePotentialShipsGained();
+
+            } else {
+                planet->RecalculatePotentialShipsGained();
+            }
+
             ships_gained += (planet->PotentialShipsGained() - base_planet_timelines_[i]->ShipsGained());
         }
     }
@@ -1516,7 +1525,7 @@ void PlanetTimeline::RecalculateShipsGained() {
         total_ships_gained_ += OwnerMultiplier(owner_[horizon_ - 1]) * kAdditionalGrowthTurns * growth_rate;
     }
 
-    this->RecalculatePotentialShipsGained();
+    //this->RecalculatePotentialShipsGained();
 }
 
 void PlanetTimeline::RecalculatePotentialShipsGained() {
@@ -1543,6 +1552,53 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
 #else
         } else if (actual_owner == kMe && (this->MinSupportPotentialAt(t) + potential_adjustment) < 0) {
 #endif
+            potential_owner = kEnemy;
+        
+        } else {
+            potential_owner = actual_owner;
+        }
+
+        prev_potential_owner = potential_owner;
+
+        //Update the potential adjustment.
+
+        if (actual_owner == kMe && kEnemy == potential_owner) {
+            potential_adjustment -= growth_rate * 2;
+
+        } else if (kEnemy == actual_owner && kMe == potential_owner) {
+            potential_adjustment += growth_rate * 2;
+
+        } else if (kNeutral == actual_owner) {
+            if (kMe == potential_owner) {
+                potential_adjustment += growth_rate;
+         
+            } else if (kEnemy == potential_owner) {
+                potential_adjustment -= growth_rate;
+            }
+        }
+    } //End iterating over turns.
+}
+
+void PlanetTimeline::RecalculateDefensePotentialShipsGained() {
+    //Calculate the number of ships that can be potentially earned from this planet
+    //given the current support potentials.
+    int prev_potential_owner = this->OwnerAt(0);
+    int potential_owner = -1;
+    int potential_adjustment = 0;
+    const int growth_rate = planet_->GrowthRate();
+
+    potential_ships_gained_ = 0;
+
+    for (int t = 1; t < horizon_; ++t) {
+        potential_ships_gained_ += OwnerMultiplier(prev_potential_owner) * growth_rate;
+        //const int full_potential = this->SupportPotentialAt(t, t) + potential_adjustment;
+        const int actual_owner = this->OwnerAt(t);
+        
+        //Check whether the owner has changed.
+        if (actual_owner == kEnemy && (this->MaxSupportPotentialAt(t) + potential_adjustment) > 0) {
+            potential_owner = kMe;
+
+        } else if (actual_owner == kMe && (this->MinSupportPotentialAt(t) + potential_adjustment) < 0) {
             potential_owner = kEnemy;
         
         } else {

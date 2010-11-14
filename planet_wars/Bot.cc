@@ -510,7 +510,10 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     timeline_->UpdatePotentials(sources_and_targets);
 
     //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
-    const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target);
+    bool use_min_support = false;
+    if (target->OwnerAt(arrival_time - 1) == kNeutral) use_min_support = true;
+
+    const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target, use_min_support);
     const double updated_return_ratio = (static_cast<double>(updated_ships_gained) / ships_to_send) * multiplier;
     
     if (best_return < updated_return_ratio) {

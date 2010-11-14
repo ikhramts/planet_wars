@@ -33,7 +33,7 @@ public:
     int ShipsGainedForActions(const ActionList& actions, Planet* planet) const;
 
     int ShipsGainedFromBase() const;
-    int PotentialShipsGainedForTarget(PlanetTimeline* target) const;
+    int PotentialShipsGainedForTarget(PlanetTimeline* target, bool use_defense_potential = false);
 
     //Get the timeline that had the worst ship return in return from the base.
     //Return NULL if none.
@@ -86,7 +86,12 @@ public:
 #endif
 
 private:
+#ifdef STATIC_CONST_HORIZON
+    static const int horizon_ = 33;
+#else 
     int horizon_;
+#endif
+
     GameMap* game_;
     PlanetTimelineList planet_timelines_;
     PlanetTimelineList base_planet_timelines_;
@@ -175,6 +180,7 @@ public:
     void RecalculateTimeline(int starting_at);
     void RecalculateShipsGained();
     void RecalculatePotentialShipsGained();
+    void RecalculateDefensePotentialShipsGained();
 
     //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
     void SetReinforcer(bool is_reinforcer);
