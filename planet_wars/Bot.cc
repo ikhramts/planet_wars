@@ -424,9 +424,11 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         }
 
         //Check whether the source is allowed to send ships to the target.
+#ifdef USE_SUPPORT_CONSTRAINTS
         if (target_owner == player && !support_constraints_->MaySupport(source, target)) {
             continue;
         }
+#endif
         
         //Check whether the source has any ships to send.
         const int available_ships = source->ShipsFree(arrival_time - distance_to_source, player);
@@ -1115,7 +1117,10 @@ void Bot::ApplyActions(const ActionList& actions) {
     //If that's the case, set the constraints on support of those planets.
     timeline_->ApplyTempActions(actions);
     timeline_->UpdatePotentials(actions);
+
+#ifdef USE_SUPPORT_CONSTRAINTS
     this->AddSupportConstraints(actions);
+#endif
 
     timeline_->SaveTimelinesToBase();
 }
