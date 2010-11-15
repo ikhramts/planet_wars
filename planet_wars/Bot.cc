@@ -79,11 +79,6 @@ ActionList Bot::MakeMoves() {
     //Mark the reinforcers.
     this->MarkReinforcers(kMe);
 
-//#ifdef PRE_APPLY_SUPPORT_ACTIONS
-//    ActionList support_actions = this->SendSupportFleets(kMe);
-//    my_best_actions.insert(my_best_actions.end(), support_actions.begin(), support_actions.end());
-//#endif
-
     ActionList found_actions = this->FindActionsFor(kMe); 
     my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
     
@@ -171,13 +166,6 @@ ActionList Bot::FindActionsFor(const int player) {
         this->ApplyActions(best_actions);
         //timeline_->ApplyActions(best_actions);
     }
-
-//#ifndef IS_SUBMISSION
-//    std::stringstream time_report;
-//    time_report << "FindActions Time: " << MillisElapsed() << "ms\n";
-//    std::cerr << time_report.str();
-//    std::cerr.flush();
-//#endif
 
     return player_actions;
 }
@@ -559,251 +547,6 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     timeline_->ResetTimelinesToBase();
     return updated_return_ratio;
-
-    //At this point, the move seems to impact the strategic defense_potentials negatively.
-    //Let's check whether it actually makes sense for the opponet to make the 
-    //moves implied by the strategic defense_potentials.
-    //Pick the best move for the opponent to make and apply it to the timeline
-    //to see what happens.
-    //const int player = invasion_plan[0]->Owner();
-    //const int opponent = OtherPlayer(player);
-    //PlanetTimeline* counter_target = timeline_->HighestShipLossTimeline();
-
-    //if (NULL == counter_target) {
-    //    //The move just is naturally bad.  Move on.
-    //    timeline_->ResetTimelinesToBase();
-    //    return updated_return_ratio;
-    //}
-
-    //const int counter_target_id = counter_target->Id();
-
-    ////Find the arrival time of the counterattack.
-    //int attack_turn = arrival_time;
-    //while (attack_turn < horizon && counter_target->MinDefensePotentialAt(attack_turn) < 0) {
-    //    ++attack_turn;
-    //}
-
-    //if (horizon - 1 <= attack_turn) {
-    //    //It wouldn't make sense to arrive here.. but whatev, in unlikely event of
-    //    //passing this condition there's nothing else to do.
-    //    timeline_->ResetTimelinesToBase();
-    //    return updated_return_ratio;
-    //}
-    //
-    ////Find the most likely combination of attack fleets that the opponent would likely use.
-    //PlanetTimelineList counter_sources = timeline_->EverOwnedTimelinesByDistance(opponent, counter_target);
-    //std::vector<int> distances_to_counter_sources(counter_sources.size());
-
-    //for (uint i = 0; i < counter_sources.size(); ++i) {
-    //    distances_to_counter_sources[i] = game_->GetDistance(counter_target_id, counter_sources[i]->Id());
-    //}
-
-    //ActionList counter_plan = 
-    //    this->FindInvasionPlan(counter_target, attack_turn, counter_sources, distances_to_counter_sources, opponent);
-
-    //if (counter_plan.empty()) {
-    //    timeline_->ResetTimelinesToBase();
-    //    return updated_return_ratio;
-    //}
-
-    //timeline_->ApplyTempActions(counter_plan);
-    //timeline_->UpdatePotentials();
-
-    //const int counter_ships_gained = timeline_->ShipsGainedFromBase();
-    //const double counter_return = (static_cast<double>(counter_ships_gained) / ships_to_send) * multiplier;
-
-    //timeline_->ResetTimelinesToBase();
-    //return counter_return;
-}
-
-double Bot::ReturnForMove2(ActionList &invasion_plan, double best_return, const int depth) {
-    if (invasion_plan.empty()) {
-        return 0;
-    }
-    
-    //Calculate the return on the action by considering the opponent's worst responses.
-    int ships_gained = 0;
-    Action* first_action = invasion_plan[0];
-    PlanetTimeline* target = first_action->Target();
-
-    if (1 > depth) {
-        ships_gained = target->ShipsGainedForActions(invasion_plan);
-    
-    } else {
-        //Calculate what will happen if the opponent counterattacks the invasion target.
-        const int invasion_time = first_action->DepartureTime() + first_action->Distance();
-        PlanetTimelineList counter_action_targets;
-        counter_action_targets.push_back(target);
-
-        CounterActionResult target_counter_attack = 
-            this->ShipsGainedForAfterMove(invasion_plan, counter_action_targets, invasion_time);
-
-        //Calculate what will happen if the opponent counterattacks the invasion sources.
-        counter_action_targets.clear();
-        for (uint j = 0; j < invasion_plan.size(); ++j) {
-            counter_action_targets.push_back(invasion_plan[j]->Source());
-        }
-
-        CounterActionResult source_counter_attack = 
-            this->ShipsGainedForAfterMove(invasion_plan, counter_action_targets, invasion_time);
-
-        //Assume that the opponent will do the worst.
-        CounterActionResult* counter_attack;
-
-        if (target_counter_attack.ships_gained < source_counter_attack.ships_gained) {
-            counter_attack = &target_counter_attack;
-            Action::FreeActions(source_counter_attack.defense_plan);
-        
-        } else {
-            counter_attack = &source_counter_attack;
-            Action::FreeActions(target_counter_attack.defense_plan);
-        }
-        
-        ships_gained = counter_attack->ships_gained;
-
-        for (uint k = 0; k < counter_attack->defense_plan.size(); ++k) {
-            Action* response = counter_attack->defense_plan[k];
-            response->SetContingent(true);
-            invasion_plan.push_back(response);
-        }
-    }
-            
-    //Calculate the return on investing the ships.
-    int ships_to_send = 0;
-
-    for (uint k = 0; k < invasion_plan.size(); ++k) {
-        ships_to_send += invasion_plan[k]->NumShips();
-    }
-
-    const double return_ratio = static_cast<double>(ships_gained) / static_cast<double>(ships_to_send);
-    return return_ratio;
-}
-
-
-CounterActionResult Bot::ShipsGainedForAfterMove(const ActionList& invasion_plan, 
-                                         PlanetTimelineList& counter_targets,
-                                         const int attack_arrival_time) {
-    timeline_->ApplyTempActions(invasion_plan);
-    CounterActionResult result;
-    const int horizon = timeline_->Horizon();
-
-    //Find the best counter-attack involving the targets.
-    const int player = invasion_plan[0]->Owner();
-    const int opponent = OtherPlayer(player);
-    PlanetTimeline* const target = invasion_plan[0]->Target();
-
-    //Find the earliest and latest allowed departure/arrival times for the counter fleets.
-    std::vector<int> earliest_arrivals;
-    std::vector<int> latest_arrivals;
-
-    for (uint i = 0; i < counter_targets.size(); ++i) {
-        PlanetTimeline* const counter_target = counter_targets[i];
-
-        if (counter_target == target) {
-            if (target->IsOwnedBy(kNeutral, attack_arrival_time - 1)) {
-                earliest_arrivals.push_back(attack_arrival_time);
-                latest_arrivals.push_back(std::min(attack_arrival_time + counter_horizon_, horizon));
-
-            } else if (target->IsOwnedBy(player, attack_arrival_time - 1)) {
-                earliest_arrivals.push_back(attack_arrival_time - counter_horizon_);
-                latest_arrivals.push_back(attack_arrival_time + 1);
-
-            } else {
-                earliest_arrivals.push_back(attack_arrival_time);
-                latest_arrivals.push_back(attack_arrival_time + 1);
-            }
-
-        } else {
-            //For sources of the original attack
-            //Find the corresponding source of attack
-            Action* action = NULL;
-
-            for (uint j = 0; j < invasion_plan.size(); ++j) {
-                action = invasion_plan[i];
-
-                if (action->Source() == counter_target) {
-                    break;
-                }
-            }
-
-            earliest_arrivals.push_back(action->DepartureTime() + 1);
-            latest_arrivals.push_back(horizon);
-        }
-    }
-
-    //Find the earliest invasion plan departure.
-    int earliest_departure = attack_arrival_time;
-    for (uint i = 0; i < invasion_plan.size(); ++i) {
-        earliest_departure = std::min(earliest_departure, invasion_plan[i]->DepartureTime() + 1);
-    }
-
-
-    ActionList best_counter_actions = this->BestRemainingMove(counter_targets, 
-                                                                opponent, 
-                                                                earliest_departure,
-                                                                earliest_arrivals,
-                                                                latest_arrivals, 
-                                                                0 /* depth */);
-
-    if (best_counter_actions.size() > 0) {
-        timeline_->ApplyTempActions(best_counter_actions);
-
-        //Find the best response to this counter-attack.
-        PlanetTimelineList defense_targets;
-        earliest_arrivals.clear();
-        latest_arrivals.clear();
-        
-        PlanetTimeline* counter_target = best_counter_actions[0]->Target();
-        defense_targets.push_back(counter_target);
-
-        if (counter_target->IsOwnedBy(kNeutral, attack_arrival_time - 1)) {
-            earliest_arrivals.push_back(attack_arrival_time);
-            latest_arrivals.push_back(std::min(attack_arrival_time + defense_horizon_, horizon));
-
-        } else if (counter_target->IsOwnedBy(player, attack_arrival_time - 1)) {
-            earliest_arrivals.push_back(attack_arrival_time - defense_horizon_);
-            latest_arrivals.push_back(attack_arrival_time + 1);
-
-        } else {
-            earliest_arrivals.push_back(attack_arrival_time);
-            latest_arrivals.push_back(attack_arrival_time + 1);
-        }
-
-        int earliest_defense_departure = horizon;
-
-        for (uint j = 0; j < best_counter_actions.size(); ++j) {
-            Action* action = best_counter_actions[j];
-            defense_targets.push_back(action->Source());
-            earliest_arrivals.push_back(action->DepartureTime() + 1);
-            latest_arrivals.push_back(horizon);
-
-            const int possible_defense_departure = action->DepartureTime() + 1;
-
-            if (earliest_defense_departure > possible_defense_departure) {
-                earliest_defense_departure = possible_defense_departure;
-            }
-        }
-        
-        result.defense_plan = this->BestRemainingMove(defense_targets, 
-                                    player, 
-                                    earliest_defense_departure,
-                                    earliest_arrivals,
-                                    latest_arrivals, 
-                                    0 /* depth */);
-
-        ActionList& best_defense = result.defense_plan;
-
-        timeline_->ApplyTempActions(best_defense);
-    }
-
-    result.ships_gained = timeline_->ShipsGainedFromBase();
-    timeline_->ResetTimelinesToBase();
-    
-    //Update the ships to commit to this.
-    Action::FreeActions(best_counter_actions);
-    best_counter_actions.clear();
-    
-    return result;
 }
 
 ActionList Bot::SendFleetsToFront(const int player) {
@@ -959,11 +702,7 @@ ActionList Bot::SendFleetsToFront(const int player) {
 
 void Bot::MarkReinforcers(const int player) {
     ActionList reinforcing_fleets;
-    ActionList temp_action_list;
-    temp_action_list.push_back(NULL);
-
     const int horizon = timeline_->Horizon();
-
     const int distance_threshold = 1;
     const int opponent = OtherPlayer(player);
     
@@ -983,7 +722,6 @@ void Bot::MarkReinforcers(const int player) {
         //planets than this one.
         PlanetList player_planets_by_distance = game_->PlayerPlanetsByDistance(player, planet);
         PlanetList targets_by_distance = game_->PlayerPlanetsByDistance(opponent, planet);
-        //PlanetList targets_by_distance = game_->NotPlayerPlanetsByDistance(player, planet);
 
         pw_assert(!targets_by_distance.empty());
 
