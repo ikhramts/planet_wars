@@ -85,6 +85,8 @@ public:
     void AssertWorkingTimelinesAreEqualToBase();
 #endif
 
+    int AdditionalGrowthTurns() const       {return additional_growth_turns_;}
+
 private:
 #ifdef STATIC_CONST_HORIZON
     static const int horizon_ = 33;
@@ -97,13 +99,12 @@ private:
     PlanetTimelineList base_planet_timelines_;
     std::vector<bool> are_working_timelines_different_;
     std::vector<int>* when_is_feeder_allowed_to_attack_;
+    int additional_growth_turns_;
 };
 
 //A class for forecasting the state of each planet.
 class PlanetTimeline {
 public:
-    static const int kAdditionalGrowthTurns = 0;
-
     PlanetTimeline();
     
     void Initialize(int forecast_horizon, Planet* planet, GameMap* game, GameTimeline* game_timeline);

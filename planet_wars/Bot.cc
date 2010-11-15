@@ -253,7 +253,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 15 == target_id) {
+        if (1 == picking_round_ && 18 == target_id) {
             int x = 2;
         }
 #endif
@@ -518,13 +518,13 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 #ifdef LOSE_SHIPS_ONLY_TO_NEUTRALS
     const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
     const int ships_permanently_lost = std::max(0, neutral_ships - my_arrivals);
-    const int returned_ships = ships_to_send - ships_permanently_lost;
-    pw_assert(returned_ships >= 0 && "Can't regain more ships than were spent");
+    //const int returned_ships = ships_to_send - ships_permanently_lost;
+    //pw_assert(returned_ships >= 0 && "Can't regain more ships than were spent");
 #else
     const int returned_ships = 0;
 #endif
 
-    const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target, use_min_support) + returned_ships;
+    const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
     
     int updated_ships_to_send = ships_to_send;
 

@@ -24,6 +24,12 @@ void GameTimeline::SetGameMap(GameMap* game) {
     horizon_ = game->MapRadius() + 5;
 #endif
 
+#ifdef UPDATE_ADDITIONAL_GROWTH_TURNS
+    additional_growth_turns_ = kTurnsPerGame - horizon_;
+#else
+    additional_growth_turns_ = 0;
+#endif
+
     //Update the ships gained from planets vector.
     PlanetList planets = game->Planets();
     for (uint i = 0; i < planets.size(); ++i) {
@@ -47,6 +53,10 @@ void GameTimeline::SetGameMap(GameMap* game) {
 }
 
 void GameTimeline::Update() {
+#ifdef UPDATE_ADDITIONAL_GROWTH_TURNS
+    --additional_growth_turns_;
+#endif
+
     //Update the planet data.
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
         planet_timelines_[i]->Update();
@@ -1104,7 +1114,7 @@ int PlanetTimeline::ShipsGainedForActions(const ActionList& actions) const {
         }
     }
 
-    ships_gained += growth_rate * kAdditionalGrowthTurns * OwnerMultiplier(owner);
+    ships_gained += growth_rate * game_timeline_->AdditionalGrowthTurns() * OwnerMultiplier(owner);
     
     const int additional_ships_gained = ships_gained - total_ships_gained_;
     const int ships_gained_by_action_owner = additional_ships_gained * action_owner_multiplier;
@@ -1460,7 +1470,7 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
         total_ships_gained_ += ships_gained_[i];
     }
 
-    total_ships_gained_ += growth_rate * kAdditionalGrowthTurns * OwnerMultiplier(owner_[horizon_ - 1]);
+    total_ships_gained_ += growth_rate * game_timeline_->AdditionalGrowthTurns() * OwnerMultiplier(owner_[horizon_ - 1]);
 
     is_recalculating_ = false;
 }
@@ -1527,10 +1537,10 @@ void PlanetTimeline::RecalculateShipsGained() {
     }
 
     if (would_planet_be_lost) {
-        total_ships_gained_ -= kAdditionalGrowthTurns * growth_rate;
+        total_ships_gained_ -= game_timeline_->AdditionalGrowthTurns() * growth_rate;
     
     } else {
-        total_ships_gained_ += OwnerMultiplier(owner_[horizon_ - 1]) * kAdditionalGrowthTurns * growth_rate;
+        total_ships_gained_ += OwnerMultiplier(owner_[horizon_ - 1]) * game_timeline_->AdditionalGrowthTurns() * growth_rate;
     }
 
     //this->RecalculatePotentialShipsGained();
@@ -1587,6 +1597,8 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
 
         potential_owner_[t] = potential_owner;
     } //End iterating over turns.
+
+    potential_ships_gained_ += OwnerMultiplier(prev_potential_owner) * growth_rate * game_timeline_->AdditionalGrowthTurns();
 }
 
 void PlanetTimeline::RecalculateDefensePotentialShipsGained() {
@@ -1636,6 +1648,8 @@ void PlanetTimeline::RecalculateDefensePotentialShipsGained() {
 
         potential_owner_[t] = potential_owner;
     } //End iterating over turns.
+
+    potential_ships_gained_ += OwnerMultiplier(prev_potential_owner) * growth_rate * game_timeline_->AdditionalGrowthTurns();
 }
 
 void PlanetTimeline::SetReinforcer(bool is_reinforcer) {
