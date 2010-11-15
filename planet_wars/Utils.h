@@ -7,7 +7,7 @@
 #define PLANET_WARS_UTILS_H_
 
 //Various switches in the bot's logic.
-//#define WITH_TIMEOUTS
+#define WITH_TIMEOUTS
 #define ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 #define USE_SUPPORT_POTENTIALS_FOR_ATTACK
@@ -16,6 +16,7 @@
 //#define STATIC_CONST_HORIZON
 #define USE_SEPARATE_GAIN_CALCULATION_FOR_NEUTRALS
 #define ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
+#define LOSE_SHIPS_ONLY_TO_NEUTRALS
 
 //Switch between test environment and contest environment.
 //#define IS_SUBMISSION

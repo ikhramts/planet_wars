@@ -260,7 +260,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 15 == target_id && 8 == arrival_time) {
+            if (1 == picking_round_ && 11 == target_id && 7 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -493,6 +493,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     const double multiplier = (kEnemy == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
     const int ships_gained = target->ShipsGainedForActions(invasion_plan);
     const double return_ratio = ReturnRatio(ships_gained, ships_to_send);
+    const int my_arrivals = target->MyArrivalsAt(arrival_time);
 
     //Don't be as restrictive on the first turn.
     const int first_departure_time = invasion_plan[invasion_plan.size() - 1]->DepartureTime(); 
@@ -511,9 +512,19 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
     bool use_min_support = false;
-    if (target->OwnerAt(arrival_time - 1) == kNeutral) use_min_support = true;
+    const int was_neutral = (target->OwnerAt(arrival_time - 1) == kNeutral);
+    if (was_neutral) use_min_support = true;
 
-    const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target, use_min_support);
+#ifdef LOSE_SHIPS_ONLY_TO_NEUTRALS
+    const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
+    const int ships_permanently_lost = std::max(0, neutral_ships - my_arrivals);
+    const int returned_ships = ships_to_send - ships_permanently_lost;
+    pw_assert(returned_ships >= 0 && "Can't regain more ships than were spent");
+#else
+    const int returned_ships = 0;
+#endif
+
+    const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target, use_min_support) + returned_ships;
     
     int updated_ships_to_send = ships_to_send;
 
