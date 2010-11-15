@@ -524,9 +524,11 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     //pw_assert(returned_ships >= 0 && "Can't regain more ships than were spent");
 #else
     const int returned_ships = 0;
+    const int ships_permanently_lost = 0;
 #endif
 
-    const int updated_ships_gained = timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
+    const int updated_ships_gained = 
+        timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
     
     int updated_ships_to_send = ships_to_send;
 
