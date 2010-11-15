@@ -63,6 +63,8 @@ int main(int argc, char *argv[]) {
     std::string map_data;
     
     int turn = 0;
+    int max_turn_time = 0;
+    int total_time = 0;
 
     //Crash!
     //forceCrash();
@@ -94,8 +96,16 @@ int main(int argc, char *argv[]) {
                 DoTurn(&game_map);
 
 #ifndef IS_SUBMISSION
+                const int turn_time = MillisElapsed();
+                if (max_turn_time < turn_time) {
+                    max_turn_time = turn_time;
+                }
+                total_time += turn_time;
+
                 std::stringstream time_report;
-                time_report << "\nTurn time: " << MillisElapsed() << "ms";
+                time_report << "\nTurn time: " << turn_time << "ms";
+                time_report << "\nMax time: " << max_turn_time << "ms";
+                time_report << "\nTotal time: " << total_time << "ms";
                 std::cerr << time_report.str();
                 std::cerr.flush();
 #endif            
