@@ -568,65 +568,26 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     //Calculate the ships gained.
 #ifdef USE_PARTIAL_POTENTIAL_UPDATES
-    //First check whether there will be sufficient improvement in the target.
-    //PlanetTimelineList targets(1, target);
-    //timeline_->UpdatePotentialsFor(targets, sources_and_targets);
-    //const int target_ships_gained = 
-    //    timeline_->PotentialShipsGainedFor(targets, target, use_min_support) - ships_permanently_lost;
-    //
-    //const double target_return_ratio = ReturnRatio(target_ships_gained, updated_ships_to_send);
-
-    //if (best_return >= target_return_ratio) {
-    //    timeline_->ResetTimelinesToBase();
-    //    return target_return_ratio;
-    //}
-    //
-    ////Check how this will impact the sources.
-    //PlanetTimelineList sources = Action::Sources(invasion_plan);
-    //timeline_->UpdatePotentialsFor(sources, sources_and_targets);
-    //const int sources_and_target_ships_gained = 
-    //    timeline_->PotentialShipsGainedFor(sources, target, use_min_support) + target_ships_gained;
-
-    //if (best_return >= target_return_ratio) {
-    //    timeline_->ResetTimelinesToBase();
-    //    return target_return_ratio;
-    //}
-    //
-    ////Check how it impacts everything else.
+    //Update only the planets that will be mine or not enemy's.
     PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
-    //PlanetTimelineList planets_to_update;
-    //planets_to_update.reserve(my_planets.size());
 
-    //for (uint i = 0; i < my_planets.size(); ++i) {
-    //    int found = false;
-    //    PlanetTimeline* my_planet = my_planets[i];
+#ifdef CONSIDER_ENEMY_MOVES_VS_NEUTRALS
+    PlanetTimelineList planets_to_update = timeline_->AlwaysNeutralTimelines();
+    planets_to_update.insert(planets_to_update.end(), my_planets.begin(), my_planets.end());
 
-    //    for (uint j = 0; j < sources_and_targets.size(); ++j) {
-    //        if (sources_and_targets[j] == my_planet) {
-    //            found = true;
-    //            break;
-    //        }
-    //    }
+#else /* CONSIDER_ENEMY_MOVES_VS_NEUTRALS */
+    PlanetTimelist planets_to_update = my_planets;
+#endif /* CONSIDER_ENEMY_MOVES_VS_NEUTRALS */
 
-    //    if (!found) {
-    //        planets_to_update.push_back(my_planet);
-    //    }
-    //}
-
-    //timeline_->UpdatePotentialsFor(planets_to_update, sources_and_targets);
-    //const int updated_ships_gained = 
-    //    timeline_->PotentialShipsGainedFor(planets_to_update, target, use_min_support) + sources_and_target_ships_gained;
-    
-    timeline_->UpdatePotentialsFor(my_planets, sources_and_targets);
+    timeline_->UpdatePotentialsFor(planets_to_update, sources_and_targets);
     const int updated_ships_gained = 
         timeline_->PotentialShipsGainedFor(my_planets, target, use_min_support) - ships_permanently_lost;
     
-#else
+#else /* USE_PARTIAL_POTENTIAL_UPDATES */
     timeline_->UpdatePotentials(sources_and_targets);
     const int updated_ships_gained = 
         timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
-#endif
-
+#endif /* USE_PARTIAL_POTENTIAL_UPDATES */
 
     const double updated_return_ratio = ReturnRatio(updated_ships_gained, updated_ships_to_send) * multiplier;
     
@@ -636,6 +597,13 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         return updated_return_ratio;
     }
 
+#ifdef CONSIDER_ENEMY_MOVES_VS_NEUTRALS
+    //Check whether the enemy will get a nice juicy neutral because I sent all my ships away.
+    PlanetTimelineList potential_targets = timeline_->AlwaysNeutralTimelines();
+
+    //for (
+#endif
+    
     timeline_->ResetTimelinesToBase();
     return updated_return_ratio;
 }

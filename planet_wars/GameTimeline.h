@@ -57,6 +57,7 @@ public:
     
     PlanetTimelineList EverOwnedTimelines(int player);
     PlanetTimelineList EverNotOwnedTimelines(int owner);
+    PlanetTimelineList AlwaysNeutralTimelines();
     PlanetTimelineList EverNotOwnedNonReinforcerTimelines(int owner);
 	PlanetTimelineList EverOwnedTimelinesByDistance(int owner, PlanetTimeline* source);
     PlanetTimelineList OwnedTimelinesByDistance(int owner, PlanetTimeline* source, int when = 0);
@@ -177,6 +178,21 @@ public:
     int MaxSupportPotentialAt(int t) const                  {return max_support_potentials_[t];}
     void SetMaxSupportPotentialAt(int t, int potential)     {max_support_potentials_[t] = potential;}
 
+    std::vector<int>& EnemyDefensePotentials()                   {return enemy_defense_potentials_;}
+    int EnemyDefensePotentialAt(int t, int d) const              {return enemy_defense_potentials_[t*(t-1)/2 + d - 1];}
+    void SetEnemyDefensePotentialAt(int t, int d, int potential) {enemy_defense_potentials_[t*(t-1)/2 + d - 1] = potential;}
+    int EnemyMaxDefensePotentialAt(int t) const                  {return enemy_max_defense_potentials_[t];}
+    void SetEnemyMaxDefensePotentialAt(int t, int potential)     {enemy_max_defense_potentials_[t] = potential;}
+    int EnemyMinDefensePotentialAt(int t) const                  {return enemy_min_defense_potentials_[t];}
+    void SetEnemyMinDefensePotentialAt(int t, int potential)     {enemy_min_defense_potentials_[t] = potential;}
+    
+    std::vector<int>& EnemySupportPotentials()                   {return enemy_support_potentials_;}
+    int EnemySupportPotentialAt(int t, int d) const              {return enemy_support_potentials_[t*(t-1)/2 + d - 1];}
+    int EnemyMinSupportPotentialAt(int t) const                  {return enemy_min_support_potentials_[t];}
+    void SetEnemyMinSupportPotentialAt(int t, int potential)     {enemy_min_support_potentials_[t] = potential;}
+    int EnemyMaxSupportPotentialAt(int t) const                  {return enemy_max_support_potentials_[t];}
+    void SetEnemyMaxSupportPotentialAt(int t, int potential)     {enemy_max_support_potentials_[t] = potential;}
+
     int PotentialOwnerAt(int t) const                       {return potential_owner_[t];}
     
     //Reset various data before starting full timeline recalculation.
@@ -197,6 +213,8 @@ public:
     //side.
     int NeutralPotentialAdjustmentAt(int when) const;
     int StartingPotentialAt(int when) const;
+    int EnemyStartingPotentialAt(int when) const;
+    int PlayerStartingPotentialAt(int when, int player) const;
 
 private:
     //Reserve ships for a departure or defense.
@@ -246,6 +264,14 @@ private:
     std::vector<int> support_potentials_;
     std::vector<int> min_support_potentials_;
     std::vector<int> max_support_potentials_;
+
+    std::vector<int> enemy_defense_potentials_;
+    std::vector<int> enemy_min_defense_potentials_;
+    std::vector<int> enemy_max_defense_potentials_;
+
+    std::vector<int> enemy_support_potentials_;
+    std::vector<int> enemy_min_support_potentials_;
+    std::vector<int> enemy_max_support_potentials_;
 
     std::vector<int> potential_owner_;
 

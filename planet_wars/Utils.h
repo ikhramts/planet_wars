@@ -29,6 +29,8 @@ static const int kEarliestLateSupportAction = 6;
 static const int kMaxMediumSupportAction = 10;
 static const int kEarliestLateMediumSupportAction = 12;
 
+#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
+
 //#define UPDATE_ADDITIONAL_GROWTH_TURNS
 
 //Switch between test environment and contest environment.
@@ -63,5 +65,17 @@ static const int kTurnsPerGame = 200;
 
 //Useful functions
 void forceCrash();
+
+inline void SetMax(int& target, int other) {
+    if (target < other) {
+        target = other;
+    }
+}
+
+inline void SetMin(int& target, int other) {
+    if (target > other) {
+        target = other;
+    }
+}
 
 #endif
