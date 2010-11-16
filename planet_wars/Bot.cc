@@ -332,10 +332,12 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     const int min_defense_potential = target->MinDefensePotentialAt(arrival_time);
     int remaining_ships_needed = 0;
     int max_ships_from_this_distance = 0;
-    const int was_my_planet = (target->OwnerAt(arrival_time - 1) == player);
+    const bool was_my_planet = (target->OwnerAt(arrival_time - 1) == player);
+    const bool is_my_planet = (target_owner == player);
+    const bool is_or_was_my_planet = (is_my_planet || was_my_planet);
     const int takeover_ship = (was_my_planet ? 0 : 1);
 
-    if ((player == target_owner || was_my_planet) && min_defense_potential < 0) {
+    if (is_or_was_my_planet && min_defense_potential < 0) {
         remaining_ships_needed = -min_defense_potential;
 
         //Find the minimum distances from which some of the ships need to be sent.
@@ -372,6 +374,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     //Compose the invasion plan.
 	int ships_to_send = 0;
     int current_distance = distances_to_sources[0];
+    int earliest_departure = arrival_time - distance_to_first_source;
 
     for (uint s = 0; s < sources.size(); ++s) {
         pw_assert(remaining_ships_needed > 0);
@@ -382,6 +385,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
 		//won't be reacheable from any of the remaining sources.
         const int distance_to_source = distances_to_sources[s];
         const int departure_time = arrival_time - distance_to_source;
+        earliest_departure = std::min(earliest_departure, departure_time);
 
 		//if (distance_to_source > (arrival_time - earliest_allowed_departure)) {
 		if (distance_to_source > (arrival_time)) {
@@ -467,6 +471,24 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         invasion_plan.clear();
     }
 
+#ifdef FORBID_SMALL_LATE_SUPPORT_ACTIONS
+    //Prohibit use small support actions that happen in a few moves, as they take up too
+    //much calculation time.
+    if (earliest_departure >= kEarliestLateSupportAction && ships_to_send <= kMaxSmallSupportAction && is_my_planet) {
+        Action::FreeActions(invasion_plan);
+        invasion_plan.clear();
+    }
+#endif
+
+#ifdef FORBID_MEDIUM_LATE_SUPPORT_ACTIONS
+    //Prohibit use small support actions that happen in a few moves, as they take up too
+    //much calculation time.
+    if (earliest_departure >= kEarliestLateMediumSupportAction && ships_to_send <= kMaxMediumSupportAction && is_my_planet) {
+        Action::FreeActions(invasion_plan);
+        invasion_plan.clear();
+    }
+#endif
+
     return invasion_plan;
 }
 
@@ -485,11 +507,12 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     //Find a rough upper limit of how good this move could be.
     PlanetTimeline* target = invasion_plan[0]->Target();
+    const int player = invasion_plan[0]->Owner();
+    const int opponetnt = OtherPlayer(player);
     const int arrival_time = invasion_plan[0]->DepartureTime() + invasion_plan[0]->Distance();
-    const double multiplier = (kEnemy == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
+    const double multiplier = (opponetnt == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
     const int ships_gained = target->ShipsGainedForActions(invasion_plan);
     const double return_ratio = ReturnRatio(ships_gained, ships_to_send);
-    const int my_arrivals = target->MyArrivalsAt(arrival_time);
 
     //Don't be as restrictive on the first turn.
     const int first_departure_time = invasion_plan[invasion_plan.size() - 1]->DepartureTime(); 
@@ -502,16 +525,9 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     //Perform a more thorough check of the move.  Apply it to the timeline, and see how it
     //impacts ship returns and strategic defense_potentials.
-    timeline_->ApplyTempActions(invasion_plan);
-    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
-    timeline_->UpdatePotentials(sources_and_targets);
-
-    //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
-    bool use_min_support = false;
-    const int was_neutral = (target->OwnerAt(arrival_time - 1) == kNeutral);
-    if (was_neutral) use_min_support = true;
-
+    //Do preliminary calcs.
 #ifdef LOSE_SHIPS_ONLY_TO_NEUTRALS
+    const int my_arrivals = target->MyArrivalsAt(arrival_time);
     const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
     const int ships_permanently_lost = std::max(0, neutral_ships - my_arrivals);
     //const int returned_ships = ships_to_send - ships_permanently_lost;
@@ -521,16 +537,23 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     const int ships_permanently_lost = 0;
 #endif
 
-    const int updated_ships_gained = 
-        timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
+    //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
+    bool use_min_support = false;
+    const int was_neutral = (target->OwnerAt(arrival_time - 1) == kNeutral);
+    if (was_neutral) use_min_support = true;
     
+    //Apply the actions.
+    timeline_->ApplyTempActions(invasion_plan);
+    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
+    
+    //Recalculate the ships to send.
     int updated_ships_to_send = ships_to_send;
 
 #ifdef ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
     int my_cumulative_arrivals = 0;
     
     for (int t = arrival_time + 1; t < horizon; ++t) {
-        if (target->PotentialOwnerAt(t) != kMe) {
+        if (target->PotentialOwnerAt(t) != player) {
             break;
         }
         
@@ -542,6 +565,68 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         updated_ships_to_send += enemies_to_deal_with;
     }
 #endif
+
+    //Calculate the ships gained.
+#ifdef USE_PARTIAL_POTENTIAL_UPDATES
+    //First check whether there will be sufficient improvement in the target.
+    //PlanetTimelineList targets(1, target);
+    //timeline_->UpdatePotentialsFor(targets, sources_and_targets);
+    //const int target_ships_gained = 
+    //    timeline_->PotentialShipsGainedFor(targets, target, use_min_support) - ships_permanently_lost;
+    //
+    //const double target_return_ratio = ReturnRatio(target_ships_gained, updated_ships_to_send);
+
+    //if (best_return >= target_return_ratio) {
+    //    timeline_->ResetTimelinesToBase();
+    //    return target_return_ratio;
+    //}
+    //
+    ////Check how this will impact the sources.
+    //PlanetTimelineList sources = Action::Sources(invasion_plan);
+    //timeline_->UpdatePotentialsFor(sources, sources_and_targets);
+    //const int sources_and_target_ships_gained = 
+    //    timeline_->PotentialShipsGainedFor(sources, target, use_min_support) + target_ships_gained;
+
+    //if (best_return >= target_return_ratio) {
+    //    timeline_->ResetTimelinesToBase();
+    //    return target_return_ratio;
+    //}
+    //
+    ////Check how it impacts everything else.
+    PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
+    //PlanetTimelineList planets_to_update;
+    //planets_to_update.reserve(my_planets.size());
+
+    //for (uint i = 0; i < my_planets.size(); ++i) {
+    //    int found = false;
+    //    PlanetTimeline* my_planet = my_planets[i];
+
+    //    for (uint j = 0; j < sources_and_targets.size(); ++j) {
+    //        if (sources_and_targets[j] == my_planet) {
+    //            found = true;
+    //            break;
+    //        }
+    //    }
+
+    //    if (!found) {
+    //        planets_to_update.push_back(my_planet);
+    //    }
+    //}
+
+    //timeline_->UpdatePotentialsFor(planets_to_update, sources_and_targets);
+    //const int updated_ships_gained = 
+    //    timeline_->PotentialShipsGainedFor(planets_to_update, target, use_min_support) + sources_and_target_ships_gained;
+    
+    timeline_->UpdatePotentialsFor(my_planets, sources_and_targets);
+    const int updated_ships_gained = 
+        timeline_->PotentialShipsGainedFor(my_planets, target, use_min_support) - ships_permanently_lost;
+    
+#else
+    timeline_->UpdatePotentials(sources_and_targets);
+    const int updated_ships_gained = 
+        timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
+#endif
+
 
     const double updated_return_ratio = ReturnRatio(updated_ships_gained, updated_ships_to_send) * multiplier;
     

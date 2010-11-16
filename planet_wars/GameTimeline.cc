@@ -84,16 +84,25 @@ int GameTimeline::ShipsGainedFromBase() const {
 }
 
 int GameTimeline::PotentialShipsGainedForTarget(PlanetTimeline* target, const bool use_defense_potential) {
+    const int ships_gained = this->PotentialShipsGainedFor(planet_timelines_, target, use_defense_potential);
+    return ships_gained;
+}
+
+int GameTimeline::PotentialShipsGainedFor(const PlanetTimelineList& planets, 
+                                          PlanetTimeline* target, 
+                                          const bool use_defense_potential) {
     int ships_gained = 0;
 
-    for (uint i = 0; i < planet_timelines_.size(); ++i) {
-        PlanetTimeline* planet = planet_timelines_[i];
+    for (uint i = 0; i < planets.size(); ++i) {
+        PlanetTimeline* planet = planets[i];
+        const int planet_id = planet->Id();
+        PlanetTimeline* base_planet = base_planet_timelines_[planet_id];
 
         if (planet != target) {
 #ifdef USE_DEFENSE_POTENTIAL_FOR_GAINS
-            ships_gained += (planet->PotentialShipsGained() - base_planet_timelines_[i]->PotentialShipsGained());
+            ships_gained += (planet->PotentialShipsGained() - base_planet->PotentialShipsGained());
 #else
-            ships_gained += (planet->ShipsGained() - base_planet_timelines_[i]->ShipsGained());
+            ships_gained += (planet->ShipsGained() - base_planet->ShipsGained());
 #endif
         
         } else {
@@ -110,7 +119,7 @@ int GameTimeline::PotentialShipsGainedForTarget(PlanetTimeline* target, const bo
 #endif
 #endif /* USE_DEFENSE_POTENTIAL_FOR_GAINS */
 
-            ships_gained += (planet->PotentialShipsGained() - base_planet_timelines_[i]->ShipsGained());
+            ships_gained += (planet->PotentialShipsGained() - base_planet->ShipsGained());
         }
     }
 

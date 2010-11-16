@@ -34,6 +34,7 @@ public:
 
     int ShipsGainedFromBase() const;
     int PotentialShipsGainedForTarget(PlanetTimeline* target, bool use_defense_potential = false);
+    int PotentialShipsGainedFor(const PlanetTimelineList& planets, PlanetTimeline* target, bool use_defense_potential = false);
 
     //Get the timeline that had the worst ship return in return from the base.
     //Return NULL if none.

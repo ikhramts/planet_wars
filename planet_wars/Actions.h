@@ -34,6 +34,7 @@ public:
     void Free();
 
     static void FreeActions(const ActionList& actions);
+    static PlanetTimelineList Sources(const ActionList& actions);
     static PlanetTimelineList SourcesAndTargets(const ActionList& actions);
     
     int Owner() const                       {return owner_;}

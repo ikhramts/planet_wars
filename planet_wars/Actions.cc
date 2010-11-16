@@ -35,6 +35,31 @@ void Action::FreeActions(const ActionList& actions) {
     }
 }
 
+PlanetTimelineList Action::Sources(const ActionList &actions) {
+    PlanetTimelineList sources;
+
+    for (uint i = 0; i < actions.size(); ++i) {
+        Action* action = actions[i];
+        PlanetTimeline* source = action->Source();
+        bool found_source = false;
+
+        for (uint j = 0; j < sources.size(); ++j) {
+            PlanetTimeline* planet = sources[j];
+            
+            if (source == planet) {
+                found_source = true;
+                break;
+            }
+        }
+
+        if (!found_source) {
+            sources.push_back(source);
+        }
+    }
+
+    return sources;
+}
+
 PlanetTimelineList Action::SourcesAndTargets(const ActionList &actions) {
     PlanetTimelineList sources_and_targets;
 
