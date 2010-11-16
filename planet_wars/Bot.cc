@@ -254,21 +254,10 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (2 == picking_round_ && 2 == target_id && 18 == arrival_time) {
+            if (4 == picking_round_ && 0 == target_id && 16 == arrival_time) {
                 int x = 2;
             }
 #endif
-
-#ifdef USE_POTENTIAL_FUTURE_GAINS
-            const int potential_ships_gained = target->PotentialGainsAfter(arrival_time);
-            const int base_ships_gained = target->ShipsGained();
-            bool was_permitted = true;
-            if (potential_ships_gained - base_ships_gained <= 0) {
-                //continue;
-                was_permitted = false;
-            }
-#endif
-
             invasion_plan = this->FindInvasionPlan(target, arrival_time, sources, distances_to_sources, player);            
 
             //Check whether this move is better than any other we've seen so far.
@@ -277,9 +266,6 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 //const double return_ratio = this->ReturnForMove2(invasion_plan, best_return, depth);
 
                 if (best_return < return_ratio) {
-#ifdef USE_POTENTIAL_FUTURE_GAINS
-                    pw_assert(was_permitted && "Didn't permit a good move to pass");
-#endif
                     best_return = return_ratio;
                     Action::FreeActions(best_actions);
                     best_actions = invasion_plan;

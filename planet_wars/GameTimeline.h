@@ -175,7 +175,6 @@ public:
     void SetMaxSupportPotentialAt(int t, int potential)     {max_support_potentials_[t] = potential;}
 
     int PotentialOwnerAt(int t) const                       {return potential_owner_[t];}
-    int PotentialGainsAfter(int t) const                    {return potential_gains_after_[t];}
     
     //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
@@ -205,7 +204,6 @@ private:
     void RemoveDepartingAction(uint departure_index);
     void RemoveDepartingActions(int turn, int player);
     void MarkAsChanged();
-    int CalculatePotentialGainsAfter(int starting_turn, int starting_owner) const;
     int CalculateGainsUntil(int end_turn) const;
 
     int id_;        //Should be same as planet_id.
@@ -247,7 +245,6 @@ private:
     std::vector<int> max_support_potentials_;
 
     std::vector<int> potential_owner_;
-    std::vector<int> potential_gains_after_;
 
 #ifndef IS_SUBMISSION
     std::vector<int> full_potentials_;
