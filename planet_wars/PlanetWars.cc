@@ -335,6 +335,12 @@ int GameMap::ClosestPlanet(const int source_id) const {
     return closest_planet_id;
 }
 
+int GameMap::DistanceToClosestPlanet(const int source_id) const {
+    const int closest_planet_id = this->ClosestPlanet(source_id);
+    const int distance_to_closest_planet = this->GetDistance(source_id, closest_planet_id);
+    return distance_to_closest_planet;
+}
+
 int GameMap::MapRadius() const {
     int max_distance = 0;
 

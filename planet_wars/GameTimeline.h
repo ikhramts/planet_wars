@@ -54,6 +54,7 @@ public:
     PlanetTimeline* Timeline(int id)                {return planet_timelines_[id];}
     PlanetTimelineList TimelinesOwnedBy(int owner, int when = 0) const;
     PlanetTimelineList TimelinesNotOwnedBy(int owner, int when = 0) const;
+    PlanetTimelineList BaseTimelines() const        {return base_planet_timelines_;}
     
     PlanetTimelineList EverOwnedTimelines(int player);
     PlanetTimelineList EverNotOwnedTimelines(int owner);
