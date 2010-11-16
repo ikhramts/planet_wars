@@ -90,9 +90,14 @@ int GameTimeline::PotentialShipsGainedForTarget(PlanetTimeline* target, const bo
         PlanetTimeline* planet = planet_timelines_[i];
 
         if (planet != target) {
+#ifdef USE_DEFENSE_POTENTIAL_FOR_GAINS
+            ships_gained += (planet->PotentialShipsGained() - base_planet_timelines_[i]->PotentialShipsGained());
+#else
             ships_gained += (planet->ShipsGained() - base_planet_timelines_[i]->ShipsGained());
+#endif
         
         } else {
+#ifndef USE_DEFENSE_POTENTIAL_FOR_GAINS
 #ifdef USE_SEPARATE_GAIN_CALCULATION_FOR_NEUTRALS
             if (use_defense_potential) {
                 planet->RecalculateDefensePotentialShipsGained();
@@ -103,6 +108,7 @@ int GameTimeline::PotentialShipsGainedForTarget(PlanetTimeline* target, const bo
 #ifdef USE_SEPARATE_GAIN_CALCULATION_FOR_NEUTRALS
             }
 #endif
+#endif /* USE_DEFENSE_POTENTIAL_FOR_GAINS */
 
             ships_gained += (planet->PotentialShipsGained() - base_planet_timelines_[i]->ShipsGained());
         }
@@ -462,7 +468,7 @@ bool GameTimeline::HasSupportWorsenedFor(PlanetTimeline* planet) {
     return false;
 }
 
-void GameTimeline::UpdatePotentials(const int depth) {
+void GameTimeline::UpdatePotentials() {
     //Calculate the strategic defense_potentials at each turn for each planet.
     //A strategic balance for turn t and distance d is the sum of my ships that can reach the planet
     //at t departing after turn (t-d) minus the enemy ships that can reach the planet on turn t 
@@ -577,27 +583,33 @@ void GameTimeline::UpdatePotentials(const int depth) {
     }
 }
 
-void GameTimeline::UpdatePotentials(const PlanetTimelineList& modified_planets, const int depth) {
+void GameTimeline::UpdatePotentials(const PlanetTimelineList& modified_planets) {
+    this->UpdatePotentialsFor(planet_timelines_, modified_planets);
+}
+
+void GameTimeline::UpdatePotentials(const ActionList& actions) {
+    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(actions);
+    this->UpdatePotentials(sources_and_targets);
+}
+
+void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, const PlanetTimelineList &modified_planets) {
     //Update defense_potentials.  Update only the effects of the planets whose timelines have been changed.
     const std::vector<int>& when_is_feeder_allowed_to_attack = *when_is_feeder_allowed_to_attack_;
     const int num_planets = game_->NumPlanets();
 
-    for (uint i = 0; i < planet_timelines_.size(); ++i) {
-        PlanetTimeline* planet = planet_timelines_[i];
-        PlanetTimeline* base_planet = base_planet_timelines_[i];
+    for (uint i = 0; i < planets_to_update.size(); ++i) {
+        PlanetTimeline* planet = planets_to_update[i];
+        const int planet_id = planet->Id();
+        PlanetTimeline* base_planet = base_planet_timelines_[planet_id];
         PlanetTimelineList planets_by_distance = this->TimelinesByDistance(planet);
         std::vector<int>& defense_potentials = planet->DefensePotentials();
         std::vector<int>& support_potentials = planet->SupportPotentials();
         const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
 
-#ifndef IS_SUBMISSION
-        const int id = planet->Id();
-#endif
-
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (22 == id && 23 == t) {
+            if (22 == planet_id && 23 == t) {
                 int x = 2;
             }
 #endif
@@ -731,10 +743,6 @@ void GameTimeline::UpdatePotentials(const PlanetTimelineList& modified_planets, 
     }
 }
 
-void GameTimeline::UpdatePotentials(const ActionList& actions) {
-    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(actions);
-    this->UpdatePotentials(sources_and_targets);
-}
 
 #ifndef IS_SUBMISSION
 void GameTimeline::AssertWorkingTimelinesAreEqualToBase() {
@@ -1554,7 +1562,7 @@ void PlanetTimeline::RecalculateShipsGained() {
     //}
     total_ships_gained_ = this->CalculateGainsUntil(horizon_);
 
-    //this->RecalculatePotentialShipsGained();
+    this->RecalculatePotentialShipsGained();
 }
 
 void PlanetTimeline::RecalculatePotentialShipsGained() {
