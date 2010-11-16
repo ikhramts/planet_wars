@@ -193,6 +193,7 @@ public:
 
     //Adjust the potential for any ships that the enemy or me would have to defeat to beat the other
     //side.
+    int NeutralPotentialAdjustmentAt(int when) const;
     int StartingPotentialAt(int when) const;
 
 private:
@@ -247,6 +248,10 @@ private:
 
     std::vector<int> potential_owner_;
     std::vector<int> potential_gains_after_;
+
+#ifndef IS_SUBMISSION
+    std::vector<int> full_potentials_;
+#endif
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.

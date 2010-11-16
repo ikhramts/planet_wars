@@ -163,6 +163,12 @@ ActionList Bot::FindActionsFor(const int player) {
             }
         }
 
+#ifndef IS_SUBMISSION
+        if (2 == picking_round_) {
+            int x = 2;
+        }
+#endif
+
         this->ApplyActions(best_actions);
         //timeline_->ApplyActions(best_actions);
     }
@@ -248,7 +254,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 11 == target_id && 7 == arrival_time) {
+            if (2 == picking_round_ && 2 == target_id && 18 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -271,7 +277,9 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
                 //const double return_ratio = this->ReturnForMove2(invasion_plan, best_return, depth);
 
                 if (best_return < return_ratio) {
+#ifdef USE_POTENTIAL_FUTURE_GAINS
                     pw_assert(was_permitted && "Didn't permit a good move to pass");
+#endif
                     best_return = return_ratio;
                     Action::FreeActions(best_actions);
                     best_actions = invasion_plan;
