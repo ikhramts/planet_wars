@@ -15,7 +15,7 @@
 /************************************************
                GameTimeline class
 ************************************************/
-const double Bot::kAggressionReturnMultiplier = 3;
+const double Bot::kAggressionReturnMultiplier = 1;
 
 Bot::Bot() 
 : game_(NULL),
@@ -292,7 +292,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 4 == target_id && 15 == arrival_time) {
+            if (2 == picking_round_ && 18 == target_id && 10 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -384,7 +384,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         //deal with possible additional fleets we'd have to face.
         int additional_ships_needed = 0;
         for (int t = 1; t < arrival_time; ++t) {
-            if (target->PotentialOwnerAt(t) != player) {
+            if (target->PotentialOwnerAt(t) != player && target->OwnerAt(t) == player) {
                 additional_ships_needed += growth_rate * 2;
             }
         }

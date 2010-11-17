@@ -559,7 +559,7 @@ void GameTimeline::UpdatePotentials() {
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (4 == id && 15 == t) {
+            if (18 == id && 11 == t) {
                 int x = 2;
             }
 #endif
