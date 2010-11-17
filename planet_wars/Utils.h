@@ -7,7 +7,7 @@
 #define PLANET_WARS_UTILS_H_
 
 //Various switches in the bot's logic.
-#define WITH_TIMEOUTS
+//#define WITH_TIMEOUTS
 #define ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 #define USE_SUPPORT_POTENTIALS_FOR_ATTACK
@@ -29,7 +29,8 @@ static const int kEarliestLateSupportAction = 6;
 static const int kMaxMediumSupportAction = 10;
 static const int kEarliestLateMediumSupportAction = 12;
 
-#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
+//#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
+#define ADD_PROVISIONAL_RECONQUERING_SHIP
 
 //#define UPDATE_ADDITIONAL_GROWTH_TURNS
 

@@ -247,14 +247,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 18 == target_id) {
+        if (1 == picking_round_ && 13 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (15 == picking_round_ && 18 == target_id && 7 == arrival_time) {
+            if (1 == picking_round_ && 13 == target_id && 15 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -340,11 +340,28 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     if (is_or_was_my_planet && min_defense_potential < 0) {
         remaining_ships_needed = -min_defense_potential;
 
+        //Check whether the planet might be lost on the preceding turn.
+#ifdef ADD_PROVISIONAL_RECONQUERING_SHIP
+        const bool might_reconquer = (was_my_planet && (target->MinSupportPotentialAt(arrival_time - 1) < 0));
+#else
+        const bool might_reconquer = false;
+#endif
+
+        remaining_ships_needed += 1;
+
         //Find the minimum distances from which some of the ships need to be sent.
         int ships_farther_than_this_distance = 0;
+        bool placed_recapturing_ship = !might_reconquer;
+
         for (int d = arrival_time; d >= distance_to_first_source; --d) {
-            const int ships_from_this_distance = 
+            int ships_from_this_distance = 
                 std::max(0, -defense_potentials[potentials_offset + d] - ships_farther_than_this_distance);
+            
+            if (!placed_recapturing_ship) {
+                ++ships_from_this_distance;
+                placed_recapturing_ship = true;
+            }
+
             ships_farther_than[d] = ships_from_this_distance;
             ships_farther_than_this_distance += ships_from_this_distance;
         }
@@ -576,7 +593,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     planets_to_update.insert(planets_to_update.end(), my_planets.begin(), my_planets.end());
 
 #else /* CONSIDER_ENEMY_MOVES_VS_NEUTRALS */
-    PlanetTimelist planets_to_update = my_planets;
+    PlanetTimelineList planets_to_update = my_planets;
 #endif /* CONSIDER_ENEMY_MOVES_VS_NEUTRALS */
 
     timeline_->UpdatePotentialsFor(planets_to_update, sources_and_targets);
