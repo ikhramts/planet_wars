@@ -38,7 +38,7 @@ void Bot::SetGame(GameMap* game) {
 
     const int num_planets = static_cast<uint>(game->NumPlanets());
     const int horizon = timeline_->Horizon();
-    const int u_horizon = static_cast<uint>(u_horizon);
+    const int u_horizon = static_cast<uint>(horizon);
     when_is_feeder_allowed_to_attack_.resize(num_planets * num_planets, -1);
     excess_support_sent_.resize(u_horizon * num_planets, 0);
 
@@ -196,13 +196,13 @@ ActionList Bot::FindActionsFor(const int player) {
             const int min_defense_potential = target->MinDefensePotentialAt(arrival_time);
             const int index = arrival_time * num_planets + target->Id();
             //const int present_excess_support_sent = excess_support_sent_[index];
-            const int excess_support_sent = std::max(0, ships_sent - min_defense_potential);
+            const int excess_support_sent = std::max(0, ships_sent + min_defense_potential);
 
             excess_support_sent_[index] = excess_support_sent;
         }
 
 #ifndef IS_SUBMISSION
-        if (2 == picking_round_) {
+        if (1 == picking_round_) {
             int x = 2;
         }
 #endif
@@ -387,6 +387,11 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
             if (target->PotentialOwnerAt(t) != player) {
                 additional_ships_needed += growth_rate * 2;
             }
+        }
+
+        if (additional_ships_needed > 0) {
+            //Put in the extra ship that will be needed to win the planet back.
+            ++additional_ships_needed;
         }
 
         const int excess_support_index = num_planets * arrival_time + target_id;
@@ -832,6 +837,10 @@ ActionList Bot::SendFleetsToFront(const int player) {
                 if (available_ships > fewer_ships) {
                     action->SetNumShips(fewer_ships);
                     timeline_->ApplyTempActions(temp_action_list);
+
+#ifdef USE_FEEDER_POTENTIAL_CHECK_FIX
+                    timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
+#endif
 
 #ifdef ADD_EXCESS_SUPPORT_SHIPS
                     if (timeline_->HasSupportMinusExcessWorsenedFor(ever_my_planets, excess_support_sent_)) {
