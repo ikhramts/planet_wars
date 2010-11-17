@@ -292,7 +292,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 13 == target_id && 15 == arrival_time) {
+            if (1 == picking_round_ && 4 == target_id && 15 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -597,6 +597,10 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     //Perform a more thorough check of the move.  Apply it to the timeline, and see how it
     //impacts ship returns and strategic defense_potentials.
     //Do preliminary calcs.
+    bool use_min_support = false;
+    const int was_neutral = (target->OwnerAt(arrival_time - 1) == kNeutral);
+    if (was_neutral) use_min_support = true;
+
 #ifdef LOSE_SHIPS_ONLY_TO_NEUTRALS
     const int my_arrivals = target->MyArrivalsAt(arrival_time);
     const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
@@ -609,9 +613,6 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 #endif
 
     //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
-    bool use_min_support = false;
-    const int was_neutral = (target->OwnerAt(arrival_time - 1) == kNeutral);
-    if (was_neutral) use_min_support = true;
     
     //Apply the actions.
     timeline_->ApplyTempActions(invasion_plan);
