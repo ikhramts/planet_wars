@@ -491,6 +491,43 @@ bool GameTimeline::HasSupportWorsenedFor(PlanetTimeline* planet) {
     return false;
 }
 
+bool GameTimeline::HasSupportMinusExcessWorsenedFor(PlanetTimelineList timelines, 
+                                                    const std::vector<int>& excess_support_sent) {
+    for (uint i = 0; i < timelines.size(); ++i) {
+        PlanetTimeline* timeline = timelines[i];
+
+        if (this->HasSupportMinusExcessWorsenedFor(timeline, excess_support_sent)) {
+            return true;
+        }
+    }
+
+    return false;
+
+}
+
+bool GameTimeline::HasSupportMinusExcessWorsenedFor(PlanetTimeline* planet, const std::vector<int>& excess_support_sent) {
+    PlanetTimeline* base_planet = base_planet_timelines_[planet->Id()];
+    const int num_planets = game_->NumPlanets();
+    const int planet_id = planet->Id();
+
+    for (int t = 0; t < horizon_; ++t) {
+        const int min_defense_potential = planet->MinDefensePotentialAt(t);
+        const int excess_support = excess_support_sent[t * num_planets + planet_id];
+        const int effective_defense_potential = min_defense_potential - excess_support;
+
+        const int base_min_defense_potential = base_planet->MinDefensePotentialAt(t);
+        const int base_effective_min_defense_potential = base_min_defense_potential - excess_support;
+        const int is_mine = (base_planet->OwnerAt(t) == kMe);
+
+        if (is_mine && effective_defense_potential < 0 && 
+          effective_defense_potential < base_effective_min_defense_potential) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void GameTimeline::UpdatePotentials() {
     //Calculate the strategic defense_potentials at each turn for each planet.
     //A strategic balance for turn t and distance d is the sum of my ships that can reach the planet

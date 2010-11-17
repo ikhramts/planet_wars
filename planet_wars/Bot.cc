@@ -36,8 +36,11 @@ void Bot::SetGame(GameMap* game) {
     counter_horizon_ = 20;
     defense_horizon_ = 4;
 
-    const int num_planets = game->NumPlanets();
+    const int num_planets = static_cast<uint>(game->NumPlanets());
+    const int horizon = timeline_->Horizon();
+    const int u_horizon = static_cast<uint>(u_horizon);
     when_is_feeder_allowed_to_attack_.resize(num_planets * num_planets, -1);
+    excess_support_sent_.resize(u_horizon * num_planets, 0);
 
     support_constraints_ = new SupportConstraints(game_->NumPlanets(), game_);
 }
@@ -57,12 +60,26 @@ ActionList Bot::MakeMoves() {
 #endif
 
     ActionList my_best_actions;
+    const int horizon = timeline_->Horizon();
+    const int num_planets = game_->NumPlanets();
     
     //Update feeder planet attack permissions.
     for (uint i = 0; i < when_is_feeder_allowed_to_attack_.size(); ++i) {
         if (when_is_feeder_allowed_to_attack_[i] > -1) {
             --when_is_feeder_allowed_to_attack_[i];
         }
+    }
+
+    //Update excess support sent.
+    const int last_turn_offset = (horizon - 1) * num_planets;
+    const int excess_support_end = horizon * num_planets;
+
+    for (int i = 0; i < last_turn_offset; ++i) {
+        excess_support_sent_[i] = excess_support_sent_[i + num_planets];
+    }
+
+    for (int i = last_turn_offset; i < excess_support_end; ++i) {
+        excess_support_sent_[i] = 0;
     }
 
     support_constraints_->ClearConstraints();
@@ -125,6 +142,7 @@ ActionList Bot::FindActionsFor(const int player) {
     const int depth = 0;
     
     picking_round_ = 1;
+    const int num_planets = game_->NumPlanets();
 
     while (invadeable_planets.size() != 0) {
 #ifdef PRE_APPLY_SUPPORT_ACTIONS
@@ -161,6 +179,26 @@ ActionList Bot::FindActionsFor(const int player) {
                 const int target_id = action->Target()->Id();
                 when_is_feeder_allowed_to_attack_[source_id * num_planets + target_id] = action->DepartureTime();
             }
+        }
+
+        //If we've sent any excess support, record that.
+        Action* first_action = best_actions[0];
+        PlanetTimeline* target = first_action->Target();
+        const int arrival_time = first_action->DepartureTime() + first_action->Distance();
+
+        if (target->OwnerAt(arrival_time) == kMe) {
+            int ships_sent = 0;
+
+            for (uint i = 0; i < best_actions.size(); ++i) {
+                ships_sent += best_actions[i]->NumShips();
+            }
+
+            const int min_defense_potential = target->MinDefensePotentialAt(arrival_time);
+            const int index = arrival_time * num_planets + target->Id();
+            //const int present_excess_support_sent = excess_support_sent_[index];
+            const int excess_support_sent = std::max(0, ships_sent - min_defense_potential);
+
+            excess_support_sent_[index] = excess_support_sent;
         }
 
 #ifndef IS_SUBMISSION
@@ -318,6 +356,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     const int opponent = OtherPlayer(player);
     const int distance_to_first_source = distances_to_sources[0];
     std::vector<int> ships_farther_than(u_horizon, 0);
+    const int growth_rate = target->GetPlanet()->GrowthRate();
 
     //Possible adjustment for neutral planets in case of an opponent.
     const int neutral_adjustment = 
@@ -340,25 +379,35 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     if (is_or_was_my_planet && min_defense_potential < 0) {
         remaining_ships_needed = -min_defense_potential;
 
-        //Check whether the planet might be lost on the preceding turn.
-#ifdef ADD_PROVISIONAL_RECONQUERING_SHIP
-        const bool might_reconquer = (was_my_planet && (target->MinSupportPotentialAt(arrival_time - 1) < 0));
+#ifdef ADD_EXCESS_SUPPORT_SHIPS
+        //Check whether the planet might be lost on the preceding turn.  If so, add ships to
+        //deal with possible additional fleets we'd have to face.
+        int additional_ships_needed = 0;
+        for (int t = 1; t < arrival_time; ++t) {
+            if (target->PotentialOwnerAt(t) != player) {
+                additional_ships_needed += growth_rate * 2;
+            }
+        }
+
+        const int excess_support_index = num_planets * arrival_time + target_id;
+        const int existing_excess_support = excess_support_sent_[excess_support_index];
+        const int recapturing_ships = std::max(0, additional_ships_needed - existing_excess_support);
 #else
-        const bool might_reconquer = false;
+        const int recapturing_ships = 0;
 #endif
 
-        remaining_ships_needed += 1;
+        remaining_ships_needed += recapturing_ships;
 
         //Find the minimum distances from which some of the ships need to be sent.
         int ships_farther_than_this_distance = 0;
-        bool placed_recapturing_ship = !might_reconquer;
+        bool placed_recapturing_ship = (recapturing_ships == 0);
 
         for (int d = arrival_time; d >= distance_to_first_source; --d) {
             int ships_from_this_distance = 
                 std::max(0, -defense_potentials[potentials_offset + d] - ships_farther_than_this_distance);
             
             if (!placed_recapturing_ship) {
-                ++ships_from_this_distance;
+                ships_from_this_distance += recapturing_ships;
                 placed_recapturing_ship = true;
             }
 
@@ -662,6 +711,7 @@ ActionList Bot::SendFleetsToFront(const int player) {
     PlanetTimelineList timelines = timeline_->Timelines();
     PlanetTimelineList sources = timeline_->TimelinesOwnedBy(player, 0 /*current turn*/);
     PlanetTimelineList opponent_planets = timeline_->TimelinesOwnedBy(opponent, 0);
+    PlanetTimelineList ever_my_planets = timeline_->EverOwnedTimelines(player);
 
     for (uint i = 0; i < sources.size(); ++i) {
         PlanetTimeline* source = sources[i];
@@ -763,16 +813,35 @@ ActionList Bot::SendFleetsToFront(const int player) {
 
             timeline_->ApplyTempActions(temp_action_list);
 
+#ifdef USE_FEEDER_POTENTIAL_CHECK_FIX
+            PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(temp_action_list);
+            timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
+#endif
             bool was_action_accepted = true;
 
-            if (timeline_->HasSupportWorsenedFor(sources)) {
-                //Try the same thing, but with only 2x the source's growth rate.
+#ifdef ADD_EXCESS_SUPPORT_SHIPS
+            if (timeline_->HasSupportMinusExcessWorsenedFor(ever_my_planets, excess_support_sent_)) {
+#else
+            if (timeline_->HasSupportWorsenedFor(ever_my_planets)) {
+#endif /* ADD_EXCESS_SUPPORT_SHIPS */
                 timeline_->ResetTimelinesToBase();
-                const int ships_to_send = source->GetPlanet()->GrowthRate() * 2;
-                action->SetNumShips(ships_to_send);
-                timeline_->ApplyTempActions(temp_action_list);
+                
+                //Try the same thing, but with fewer ships.
+                const int fewer_ships = source->GetPlanet()->GrowthRate() * 2;
+                
+                if (available_ships > fewer_ships) {
+                    action->SetNumShips(fewer_ships);
+                    timeline_->ApplyTempActions(temp_action_list);
 
-                if (timeline_->HasSupportWorsenedFor(sources)) {
+#ifdef ADD_EXCESS_SUPPORT_SHIPS
+                    if (timeline_->HasSupportMinusExcessWorsenedFor(ever_my_planets, excess_support_sent_)) {
+#else
+                    if (timeline_->HasSupportWorsenedFor(ever_my_planets)) {
+#endif /* ADD_EXCESS_SUPPORT_SHIPS */
+                        was_action_accepted = false;
+                    }
+                
+                } else {
                     was_action_accepted = false;
                 }
             }

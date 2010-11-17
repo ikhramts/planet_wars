@@ -30,8 +30,8 @@ static const int kMaxMediumSupportAction = 10;
 static const int kEarliestLateMediumSupportAction = 12;
 
 //#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
-#define ADD_PROVISIONAL_RECONQUERING_SHIP
-
+#define ADD_EXCESS_SUPPORT_SHIPS
+#define USE_FEEDER_POTENTIAL_CHECK_FIX
 //#define UPDATE_ADDITIONAL_GROWTH_TURNS
 
 //Switch between test environment and contest environment.
