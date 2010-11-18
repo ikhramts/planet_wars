@@ -292,7 +292,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (3 == picking_round_ && 15 == target_id && 20 == arrival_time) {
+            if (1 == picking_round_ && 13 == target_id && 8 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -371,9 +371,11 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
     const int min_defense_potential = target->MinDefensePotentialAt(arrival_time);
     int remaining_ships_needed = 0;
     int max_ships_from_this_distance = 0;
-    const bool was_my_planet = (target->OwnerAt(arrival_time - 1) == player);
+    const int prev_owner = target->OwnerAt(arrival_time - 1);
+    const bool was_my_planet = (prev_owner == player);
     const bool is_my_planet = (target_owner == player);
     const bool is_or_was_my_planet = (is_my_planet || was_my_planet);
+    const bool was_enemy_planet = (prev_owner == opponent);
     const int takeover_ship = (was_my_planet ? 0 : 1);
 
     if (is_or_was_my_planet && min_defense_potential < 0) {
@@ -396,7 +398,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
             }
         }
 
-        if (additional_ships_needed > 0) {
+        if (additional_ships_needed > 0 || !was_my_planet) {
             //Put in the extra ship that will be needed to win the planet back.
             ++additional_ships_needed;
         }
@@ -405,7 +407,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         const int existing_excess_support = excess_support_sent_[excess_support_index];
         const int recapturing_ships = std::max(0, additional_ships_needed - existing_excess_support);
 #else
-        const int recapturing_ships = 0;
+        const int recapturing_ships = takeover_ship;
 #endif
 
         remaining_ships_needed += recapturing_ships;
@@ -430,7 +432,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         ships_farther_than[distance_to_first_source] += (remaining_ships_needed - ships_farther_than_this_distance);
         max_ships_from_this_distance = ships_farther_than[distance_to_first_source];
 
-    } else if (player == target_owner && 0 == min_defense_potential && kEnemy == target->OwnerAt(arrival_time -1 )) {
+    } else if (is_my_planet && was_enemy_planet && 0 == min_defense_potential) {
         remaining_ships_needed = 1;
         max_ships_from_this_distance = 1;
 

@@ -588,7 +588,11 @@ void GameTimeline::UpdatePotentials() {
             const int enemy_starting_potential = planet->EnemyStartingPotentialAt(t);
             const int offset = t * (t - 1) / 2 - 1;
 
+#ifdef CALCULATE_ALL_DEFENSE_POTENTIALS
+            const bool update_defense_potentials = true;
+#else
             const bool update_defense_potentials = (planet_owner == kMe);
+#endif
 
             if (update_defense_potentials) {
                 for (int d = 1; d <= t; ++d) {
@@ -804,7 +808,12 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
             const int enemy_starting_potential_diff = enemy_starting_potential - base_enemy_starting_potential;
 
             const int offset = t * (t - 1) / 2 - 1;
+
+#ifdef CALCULATE_ALL_DEFENSE_POTENTIALS
+            const bool update_defense_potentials = true;
+#else
             const int update_defense_potentials = (kMe == planet_owner || kMe == base_planet_owner);
+#endif
 
             if (starting_potential_diff != 0) {
                 if (update_defense_potentials) {
