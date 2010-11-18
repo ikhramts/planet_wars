@@ -61,6 +61,7 @@ public:
     PlanetTimelineList AlwaysNeutralTimelines();
     PlanetTimelineList EverNotOwnedNonReinforcerTimelines(int owner);
 	PlanetTimelineList EverOwnedTimelinesByDistance(int owner, PlanetTimeline* source);
+	PlanetTimelineList EverNotNeutralTimelinesByDistance(PlanetTimeline* source);
     PlanetTimelineList OwnedTimelinesByDistance(int owner, PlanetTimeline* source, int when = 0);
     PlanetTimelineList TimelinesByDistance(PlanetTimeline* source);
 	
@@ -169,8 +170,10 @@ public:
     std::vector<int>& DefensePotentials()                   {return defense_potentials_;}
     int DefensePotentialAt(int t, int d) const              {return defense_potentials_[t*(t-1)/2 + d - 1];}
     void SetDefensePotentialAt(int t, int d, int potential) {defense_potentials_[t*(t-1)/2 + d - 1] = potential;}
+#ifdef USE_MAX_DEFENCE_POTENTIALS
     int MaxDefensePotentialAt(int t) const                  {return max_defense_potentials_[t];}
     void SetMaxDefensePotentialAt(int t, int potential)     {max_defense_potentials_[t] = potential;}
+#endif
     int MinDefensePotentialAt(int t) const                  {return min_defense_potentials_[t];}
     void SetMinDefensePotentialAt(int t, int potential)     {min_defense_potentials_[t] = potential;}
     
@@ -262,7 +265,10 @@ private:
     //Strategic defense_potentials.
     std::vector<int> defense_potentials_;
     std::vector<int> min_defense_potentials_;
+
+#ifdef USE_MAX_DEFENCE_POTENTIALS
     std::vector<int> max_defense_potentials_;
+#endif
 
     std::vector<int> support_potentials_;
     std::vector<int> min_support_potentials_;

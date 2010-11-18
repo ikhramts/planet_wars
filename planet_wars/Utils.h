@@ -33,17 +33,20 @@ static const int kEarliestLateSupportAction = 5;
 static const int kMaxMediumSupportAction = 10;
 static const int kEarliestLateMediumSupportAction = 10;
 
-//#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
 #define ADD_EXCESS_SUPPORT_SHIPS
 #define USE_DEFENSE_POTENTIAL_FOR_EXCESS_SUPPORT_CALCULATIONS
 
 #define USE_FEEDER_POTENTIAL_CHECK_FIX
+//#define USE_MAX_DEFENCE_POTENTIALS
+
 //#define UPDATE_ADDITIONAL_GROWTH_TURNS
+static const int kTurnsPerGame = 200;
+
+//#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
 
 //Switch between test environment and contest environment.
 //#define IS_SUBMISSION
 
-static const int kTurnsPerGame = 200;
 
 //Define assertions.
 #ifdef IS_SUBMISSION
