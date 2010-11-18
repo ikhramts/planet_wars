@@ -493,7 +493,16 @@ bool GameTimeline::HasSupportWorsenedFor(PlanetTimelineList timelines) {
 bool GameTimeline::HasSupportWorsenedFor(PlanetTimeline* planet) {
     PlanetTimeline* base_planet = base_planet_timelines_[planet->Id()];
 
-    for (int t = 0; t < horizon_; ++t) {
+    for (int t = 1; t < horizon_; ++t) {
+#ifdef USE_FULL_POTENTIAL_FOR_SUPPORT_WORSENING
+        const int full_support = planet->SupportPotentialAt(t, t);
+        const int base_full_support = base_planet->SupportPotentialAt(t, t);
+        const int is_mine = (base_planet->OwnerAt(t) == kMe);
+
+        if (is_mine && full_support < 0 && full_support < base_full_support) {
+            return true;
+        }
+#else
         const int min_defense_potential = planet->MinDefensePotentialAt(t);
         const int base_min_defense_potential = base_planet->MinDefensePotentialAt(t);
         const int is_mine = (base_planet->OwnerAt(t) == kMe);
@@ -501,6 +510,7 @@ bool GameTimeline::HasSupportWorsenedFor(PlanetTimeline* planet) {
         if (is_mine && min_defense_potential < 0 && min_defense_potential < base_min_defense_potential) {
             return true;
         }
+#endif
     }
 
     return false;

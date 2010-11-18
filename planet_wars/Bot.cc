@@ -192,7 +192,7 @@ ActionList Bot::FindActionsFor(const int player) {
             for (uint i = 0; i < best_actions.size(); ++i) {
                 ships_sent += best_actions[i]->NumShips();
             }
-
+            
             const int min_defense_potential = target->MinDefensePotentialAt(arrival_time);
             const int index = arrival_time * num_planets + target->Id();
             //const int present_excess_support_sent = excess_support_sent_[index];
@@ -285,14 +285,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 15 == target_id) {
+        if (1 == picking_round_ && 13 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 13 == target_id && 8 == arrival_time) {
+            if (1 == picking_round_ && 14 == target_id && 19 == arrival_time) {
                 int x = 2;
             }
 #endif
