@@ -11,26 +11,32 @@
 #define ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 #define USE_SUPPORT_POTENTIALS_FOR_ATTACK
-//#define USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
-//#define PRE_APPLY_SUPPORT_ACTIONS
+#define USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
+#define PRE_APPLY_SUPPORT_ACTIONS
 //#define STATIC_CONST_HORIZON
 #define USE_SUPPORT_CONSTRAINTS
 //#define USE_SEPARATE_GAIN_CALCULATION_FOR_NEUTRALS
 //#define ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
-//#define LOSE_SHIPS_ONLY_TO_NEUTRALS
+#define LOSE_SHIPS_ONLY_TO_NEUTRALS
 #define USE_DEFENSE_POTENTIAL_FOR_GAINS
 #define USE_PARTIAL_POTENTIAL_UPDATES
 
+#define FORBID_TINY_LATE_SUPPORT_ACTIONS
+static const int kMaxTinySupportAction = 1;
+static const int kEarliestLateTinySupportAction = 2;
+
 #define FORBID_SMALL_LATE_SUPPORT_ACTIONS
 static const int kMaxSmallSupportAction = 5;
-static const int kEarliestLateSupportAction = 6;
+static const int kEarliestLateSupportAction = 5;
 
 #define FORBID_MEDIUM_LATE_SUPPORT_ACTIONS
 static const int kMaxMediumSupportAction = 10;
-static const int kEarliestLateMediumSupportAction = 12;
+static const int kEarliestLateMediumSupportAction = 10;
 
 //#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
 #define ADD_EXCESS_SUPPORT_SHIPS
+#define USE_DEFENSE_POTENTIAL_FOR_EXCESS_SUPPORT_CALCULATIONS
+
 #define USE_FEEDER_POTENTIAL_CHECK_FIX
 //#define UPDATE_ADDITIONAL_GROWTH_TURNS
 

@@ -285,14 +285,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 17 == target_id) {
+        if (1 == picking_round_ && 15 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (10 == picking_round_ && 17 == target_id && 9 == arrival_time) {
+            if (3 == picking_round_ && 15 == target_id && 20 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -384,7 +384,14 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         //deal with possible additional fleets we'd have to face.
         int additional_ships_needed = 0;
         for (int t = 1; t < arrival_time; ++t) {
+#ifdef USE_DEFENSE_POTENTIAL_FOR_EXCESS_SUPPORT_CALCULATIONS
+            const int min_defense_at_t = target->MinDefensePotentialAt(t);
+
+            if (target->OwnerAt(t) == player && 
+              (min_defense_at_t < 0 || (additional_ships_needed > 0 && min_defense_at_t <= 0))) {
+#else
             if (target->PotentialOwnerAt(t) != player && target->OwnerAt(t) == player) {
+#endif
                 additional_ships_needed += growth_rate * 2;
             }
         }
@@ -541,6 +548,15 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         Action::FreeActions(invasion_plan);
         invasion_plan.clear();
     }
+
+#ifdef FORBID_TINY_LATE_SUPPORT_ACTIONS
+    //Prohibit use small support actions that happen in a few moves, as they take up too
+    //much calculation time.
+    if (earliest_departure >= kEarliestLateTinySupportAction && ships_to_send <= kMaxTinySupportAction && is_my_planet) {
+        Action::FreeActions(invasion_plan);
+        invasion_plan.clear();
+    }
+#endif
 
 #ifdef FORBID_SMALL_LATE_SUPPORT_ACTIONS
     //Prohibit use small support actions that happen in a few moves, as they take up too

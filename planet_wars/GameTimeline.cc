@@ -549,9 +549,12 @@ void GameTimeline::UpdatePotentials() {
 
         //Check whether we'll need to update enemy's numbers.
         bool update_enemy_potentials = false;
-        if (planet->WillNotBeEnemys() || planet->WillNotBeMine()) {
+
+#ifdef CONSIDER_ENEMY_MOVES_VS_NEUTRALS
+        if (planet->WillNotBeEnemys() && planet->WillNotBeMine()) {
             update_enemy_potentials = true;
         }
+#endif
 
 #ifndef IS_SUBMISSION
         const int id = planet->Id();
@@ -732,11 +735,16 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
         const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
 
+        this->MarkTimelineAsModified(planet_id);
+
         //Check whether we'll need to update enemy's numbers.
         bool update_enemy_potentials = false;
+
+#ifdef CONSIDER_ENEMY_MOVES_VS_NEUTRALS
         if (planet->WillNotBeEnemys() || planet->WillNotBeMine()) {
             update_enemy_potentials = true;
         }
+#endif
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
@@ -928,8 +936,8 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
     }
     
     //Update the timelines' ships gained.
-    for (uint i = 0; i < planet_timelines_.size(); ++i) {
-        planet_timelines_[i]->RecalculateShipsGained();
+    for (uint i = 0; i < planets_to_update.size(); ++i) {
+        planets_to_update[i]->RecalculateShipsGained();
     }
 }
 
@@ -1108,6 +1116,10 @@ void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
     enemy_min_support_potentials_ = other->enemy_min_support_potentials_;
     enemy_max_support_potentials_ = other->enemy_max_support_potentials_;
 
+#ifndef IS_SUBMISSION
+    full_potentials_ = other->full_potentials_;
+#endif;
+
     potential_owner_ = other->potential_owner_;
 }
 
@@ -1156,6 +1168,9 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
         are_equal &= (enemy_min_support_potentials_[t] == other->enemy_min_support_potentials_[t]);
         are_equal &= (enemy_max_support_potentials_[t] == other->enemy_max_support_potentials_[t]);
 
+#ifndef IS_SUBMISSION
+        are_equal &= (full_potentials_[t] == other->full_potentials_[t]);
+#endif;
         if (!are_equal) {
             return false;
         }
