@@ -82,6 +82,8 @@ public:
     std::vector<int> TurnsSupportHasWorsenedAt(PlanetTimeline* timeline);
     bool HasSupportMinusExcessWorsenedFor(PlanetTimelineList timelines, const std::vector<int>& excess_support_sent);
     bool HasSupportMinusExcessWorsenedFor(PlanetTimeline* timeline, const std::vector<int>& excess_support_sent);
+    bool HasPotentialGainWorsenedFor(PlanetTimelineList timelines);
+
     void UpdatePotentials();
     void UpdatePotentials(const PlanetTimelineList& modified_planets);
     void UpdatePotentials(const ActionList& actions);
@@ -210,7 +212,6 @@ public:
     void RecalculateShipsGained();
     void RecalculatePotentialShipsGained();
     void RecalculateDefensePotentialShipsGained();
-    void RecalculatePotentialGains();
 
     //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
     void SetReinforcer(bool is_reinforcer);

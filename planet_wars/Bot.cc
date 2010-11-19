@@ -99,8 +99,12 @@ ActionList Bot::MakeMoves() {
     ActionList found_actions = this->FindActionsFor(kMe); 
     my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
     
-    ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
-    my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
+#ifdef DO_NOT_FEED_ON_FIRST_TURN
+    if (1 != turn_) {
+        ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
+        my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
+    }
+#endif
 
     return my_best_actions;
 }
@@ -144,7 +148,13 @@ ActionList Bot::FindActionsFor(const int player) {
     picking_round_ = 1;
     const int num_planets = game_->NumPlanets();
 
-    while (invadeable_planets.size() != 0) {
+#ifndef IS_SUBMISSION
+        if (102 == turn_) {
+            int x = 2;
+        }
+#endif
+
+        while (invadeable_planets.size() != 0) {
 #ifdef PRE_APPLY_SUPPORT_ACTIONS
         ActionList support_actions = this->SendSupportFleets(kMe);
         player_actions.insert(player_actions.end(), support_actions.begin(), support_actions.end());
@@ -210,6 +220,12 @@ ActionList Bot::FindActionsFor(const int player) {
         this->ApplyActions(best_actions);
         //timeline_->ApplyActions(best_actions);
     }
+
+#ifndef IS_SUBMISSION
+        if (102 == turn_) {
+            int x = 2;
+        }
+#endif
 
     return player_actions;
 }
@@ -285,14 +301,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 13 == target_id) {
+        if (2 == picking_round_ && 7 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (2 == picking_round_ && 9 == target_id && 10 == arrival_time) {
+            if (2 == picking_round_ && 3 == target_id && 18 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -623,25 +639,32 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     const int was_neutral = (target->OwnerAt(arrival_time - 1) == kNeutral);
     if (was_neutral) use_min_support = true;
 
-#ifdef LOSE_SHIPS_ONLY_TO_NEUTRALS
-    //const int my_arrivals = target->MyArrivalsAt(arrival_time);
-    //const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
-    //const int ships_permanently_lost = std::max(0, neutral_ships - my_arrivals);
-    //int my_arrivals = 0;
-    int ships_permanently_lost = 0;
+#ifdef LOSE_ALL_SHIPS_SPENT_ON_NEUTRALS
+    //Calculate the number of additional ships lost permanently to fights vs.
+    //neutral forces due to this move.
+    int future_ships_lost = 0;
 
-    for (int t = 1; t <= arrival_time; ++t) {
-        const int my_arrivals = target->MyArrivalsAt(t);
+    for (int t = arrival_time; t < horizon; ++t) {
+        const int my_future_arrivals = target->MyArrivalsAt(t);
         
         if (target->OwnerAt(t - 1) == kNeutral) {
-            const int neutral_ships = target->ShipsAt(t - 1);
-            const int ships_lost = std::min(my_arrivals, neutral_ships);
-            ships_permanently_lost += ships_lost;
+            const int future_neutral_ships = target->ShipsAt(t - 1);
+            const int future_ships_lost_at_t = std::min(my_future_arrivals, future_neutral_ships);
+            future_ships_lost += future_ships_lost_at_t;
         
         } else {
             break;
         }
     }
+
+    const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
+    const int ships_permanently_lost = std::max(0, neutral_ships - future_ships_lost);
+
+#else
+#ifdef LOSE_SHIPS_ONLY_TO_NEUTRALS
+    const int my_arrivals = target->MyArrivalsAt(arrival_time);
+    const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
+    const int ships_permanently_lost = std::max(0, neutral_ships - my_arrivals);
 
     //const int ships_permanently_lost = neutral_ships;
     //const int returned_ships = ships_to_send - ships_permanently_lost;
@@ -649,16 +672,36 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 #else
     const int returned_ships = 0;
     const int ships_permanently_lost = 0;
-#endif
-
+#endif /* LOSE_SHIPS_ONLY_TO_NEUTRALS */
+#endif /* LOSE_ALL_SHIPS_SPENT_ON_NEUTRALS */
     //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
     
+    //Recalculate the ships to send.
+    int updated_ships_to_send = ships_to_send;
+
+#ifdef SUBTRACT_FUTURE_ATTACK_ARRIVALS_FROM_SHIPS_SENT
+    //Subtract all my future arrivals to the planet if the planet belongs to an enemy.
+    //Put a floor of 1 below the ships to send to make sure that the math works out later.
+    for (int t = arrival_time + 1; t < horizon; ++t) {
+        if (target->OwnerAt(t) == kEnemy) {
+            updated_ships_to_send -= target->MyArrivalsAt(t);
+
+        } else {
+            break;
+        }
+
+        if (updated_ships_to_send <= 1) {
+            break;
+        }
+    }
+
+    updated_ships_to_send = std::max(updated_ships_to_send, 1);
+#endif
+
     //Apply the actions.
     timeline_->ApplyTempActions(invasion_plan);
     PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
     
-    //Recalculate the ships to send.
-    int updated_ships_to_send = ships_to_send;
 
 #ifdef ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
     int my_cumulative_arrivals = 0;
@@ -893,11 +936,15 @@ ActionList Bot::SendFleetsToFront(const int player) {
 #endif
             bool was_action_accepted = true;
 
+#ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
+            if (timeline_->HasPotentialGainWorsenedFor(ever_my_planets)) {
+#else
 #ifdef ADD_EXCESS_SUPPORT_SHIPS
             if (timeline_->HasSupportMinusExcessWorsenedFor(ever_my_planets, excess_support_sent_)) {
 #else
             if (timeline_->HasSupportWorsenedFor(ever_my_planets)) {
 #endif /* ADD_EXCESS_SUPPORT_SHIPS */
+#endif /* USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS */
                 timeline_->ResetTimelinesToBase();
                 
                 //Try the same thing, but with fewer ships.
@@ -911,11 +958,15 @@ ActionList Bot::SendFleetsToFront(const int player) {
                     timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
 #endif
 
+#ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
+                    if (timeline_->HasPotentialGainWorsenedFor(ever_my_planets)) {
+#else
 #ifdef ADD_EXCESS_SUPPORT_SHIPS
                     if (timeline_->HasSupportMinusExcessWorsenedFor(ever_my_planets, excess_support_sent_)) {
 #else
                     if (timeline_->HasSupportWorsenedFor(ever_my_planets)) {
 #endif /* ADD_EXCESS_SUPPORT_SHIPS */
+#endif /* USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS */
                         was_action_accepted = false;
                     }
                 

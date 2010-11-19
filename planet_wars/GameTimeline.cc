@@ -580,6 +580,20 @@ bool GameTimeline::HasSupportMinusExcessWorsenedFor(PlanetTimeline* planet, cons
     return false;
 }
 
+bool GameTimeline::HasPotentialGainWorsenedFor(PlanetTimelineList timelines) {
+    for (uint i = 0; i < timelines.size(); ++i) {
+        PlanetTimeline* planet = timelines[i];
+        const int potential_gains = planet->PotentialShipsGained();
+        const int base_potential_gains = base_planet_timelines_[planet->Id()]->PotentialShipsGained();
+
+        if (potential_gains < base_potential_gains) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void GameTimeline::UpdatePotentials() {
     //Calculate the strategic defense_potentials at each turn for each planet.
     //A strategic balance for turn t and distance d is the sum of my ships that can reach the planet
@@ -598,6 +612,7 @@ void GameTimeline::UpdatePotentials() {
         std::vector<int>& enemy_support_potentials = planet->EnemySupportPotentials();
         const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
+        const int growth_rate = planet->GetPlanet()->GrowthRate();
 
         //Check whether we'll need to update enemy's numbers.
         bool update_enemy_potentials = false;
@@ -684,7 +699,14 @@ void GameTimeline::UpdatePotentials() {
                 }
 
                 //Add this planet's effect on the defense and support potentials.
-                const int ships = source->ShipsFree(t - distance_to_source, owner);
+                int ships = source->ShipsFree(t - distance_to_source, owner);
+
+#ifdef USE_TOTAL_SHIPS_FOR_POTENTIAL_FROM_SMALLER_ENEMIES
+                if (owner == kEnemy && source->GetPlanet()->GrowthRate() < growth_rate) {
+                    ships = source->ShipsAt(t - distance_to_source);
+                }
+#endif
+
                 const int ships_from_source = OwnerMultiplier(owner) * ships;
                 
                 if (update_defense_potentials) {
@@ -812,6 +834,7 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
         std::vector<int>& enemy_support_potentials = planet->EnemySupportPotentials();
         const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
+        const int growth_rate = planet->GetPlanet()->GrowthRate();
 
         this->MarkTimelineAsModified(planet_id);
 
@@ -929,9 +952,17 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                     }
                 }
 
-                const int ships = source->ShipsFree(t - distance_to_source, owner);
+                int ships = source->ShipsFree(t - distance_to_source, owner);
+                int base_ships = base_source->ShipsFree(t - distance_to_source, base_owner);
+
+#ifdef USE_TOTAL_SHIPS_FOR_POTENTIAL_FROM_SMALLER_ENEMIES
+                if (owner == kEnemy && source->GetPlanet()->GrowthRate() < growth_rate) {
+                    ships = source->ShipsAt(t - distance_to_source);
+                    base_ships = base_source->ShipsAt(t - distance_to_source);
+                }
+#endif
+
                 const int ships_from_source = OwnerMultiplier(owner) * ships * source_effect;
-                const int base_ships = base_source->ShipsFree(t - distance_to_source, base_owner);
                 const int base_ships_from_source = OwnerMultiplier(base_owner) * base_ships * base_source_effect;
                 const int defense_potential_change = ships_from_source - base_ships_from_source;
 
