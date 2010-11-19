@@ -292,7 +292,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 14 == target_id && 19 == arrival_time) {
+            if (2 == picking_round_ && 9 == target_id && 10 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -503,10 +503,14 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
 
         //Check whether the source is allowed to send ships to the target.
 #ifdef USE_SUPPORT_CONSTRAINTS
+#ifdef USE_BETTER_CONSTRAINTS
+        if (target_owner == player && !support_constraints_->MaySupport(source, target, arrival_time)) {
+#else
         if (target_owner == player && !support_constraints_->MaySupport(source, target)) {
+#endif /* USE_BETTER_CONSTRAINTS */
             continue;
         }
-#endif
+#endif /* USE_SUPPORT_CONSTRAINTS */
         
         //Check whether the source has any ships to send.
         const int available_ships = source->ShipsFree(arrival_time - distance_to_source, player);
@@ -597,9 +601,9 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     //Find a rough upper limit of how good this move could be.
     PlanetTimeline* target = invasion_plan[0]->Target();
     const int player = invasion_plan[0]->Owner();
-    const int opponetnt = OtherPlayer(player);
+    const int opponent = OtherPlayer(player);
     const int arrival_time = invasion_plan[0]->DepartureTime() + invasion_plan[0]->Distance();
-    const double multiplier = (opponetnt == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
+    const double multiplier = (opponent == target->OwnerAt(arrival_time) ? kAggressionReturnMultiplier : 1);
     const int ships_gained = target->ShipsGainedForActions(invasion_plan);
     const double return_ratio = ReturnRatio(ships_gained, ships_to_send);
 
@@ -620,9 +624,26 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     if (was_neutral) use_min_support = true;
 
 #ifdef LOSE_SHIPS_ONLY_TO_NEUTRALS
-    const int my_arrivals = target->MyArrivalsAt(arrival_time);
-    const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
-    const int ships_permanently_lost = std::max(0, neutral_ships - my_arrivals);
+    //const int my_arrivals = target->MyArrivalsAt(arrival_time);
+    //const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
+    //const int ships_permanently_lost = std::max(0, neutral_ships - my_arrivals);
+    //int my_arrivals = 0;
+    int ships_permanently_lost = 0;
+
+    for (int t = 1; t <= arrival_time; ++t) {
+        const int my_arrivals = target->MyArrivalsAt(t);
+        
+        if (target->OwnerAt(t - 1) == kNeutral) {
+            const int neutral_ships = target->ShipsAt(t - 1);
+            const int ships_lost = std::min(my_arrivals, neutral_ships);
+            ships_permanently_lost += ships_lost;
+        
+        } else {
+            break;
+        }
+    }
+
+    //const int ships_permanently_lost = neutral_ships;
     //const int returned_ships = ships_to_send - ships_permanently_lost;
     //pw_assert(returned_ships >= 0 && "Can't regain more ships than were spent");
 #else
@@ -654,6 +675,35 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         
         updated_ships_to_send += enemies_to_deal_with;
     }
+#endif
+
+#ifdef ADD_DEFENSE_SHIPS_TO_SHIPS_SENT
+    //Add the ship required to defend the planet in the future against attackers.
+    int min_min_defense_potential = 0;
+    int potential_lost = 0;
+    const int target_growth_rate = target->GetPlanet()->GrowthRate();
+    int potential_owner = target->OwnerAt(arrival_time);
+    int prev_potential_owner = 0;
+
+    for (int t = arrival_time + 1; t < horizon; ++t) {
+        prev_potential_owner = potential_owner;
+        potential_owner = target->PotentialOwnerAt(t);
+        const int prev_owner = target->OwnerAt(t);
+
+        //Update the potential loss due to possibly opponent holding the planet.
+        if (player == prev_owner && opponent == prev_potential_owner) {
+            potential_lost -= target_growth_rate * 2;
+        }
+
+        const int min_defense_potential = target->MinDefensePotentialAt(t);
+        const int effective_min_defense_potential = min_defense_potential - potential_lost;
+
+        if (player == potential_owner && min_min_defense_potential > effective_min_defense_potential) {
+            min_min_defense_potential = effective_min_defense_potential;
+        }
+    }
+
+    updated_ships_to_send += min_min_defense_potential;
 #endif
 
     //Calculate the ships gained.
@@ -1072,9 +1122,17 @@ void Bot::AddSupportConstraints(const ActionList &actions) {
     for (uint i = 0; i < my_planets.size(); ++i) {
         PlanetTimeline* planet = my_planets[i];
 
+#ifdef USE_BETTER_CONSTRAINTS
+        std::vector<int> turns_support_worsened_at = timeline_->TurnsSupportHasWorsenedAt(planet);
+
+        if (!turns_support_worsened_at.empty()) {
+            support_constraints_->AddConstraint(planet, target, turns_support_worsened_at);
+        }
+#else
         if (timeline_->HasSupportWorsenedFor(planet)) {
             support_constraints_->AddConstraint(planet, target);
         }
+#endif
     }
 }
 
@@ -1085,28 +1143,61 @@ SupportConstraints::SupportConstraints(const int num_planets, GameMap* game) {
     const uint u_num_planets = static_cast<uint>(num_planets);
     constraint_centers_.resize(u_num_planets);
     constraint_radii_.resize(u_num_planets);
+
+#ifdef USE_BETTER_CONSTRAINTS
+    constraint_turns_.resize(u_num_planets);
+#endif
+
     game_ = game;
 }
 
+#ifdef USE_BETTER_CONSTRAINTS
+void SupportConstraints::AddConstraint(PlanetTimeline *constrained_planet, 
+                                       PlanetTimeline *constraint_center, 
+                                       std::vector<int> turns) {
+   if (turns.empty()) {
+       return;
+   }
+#else
 void SupportConstraints::AddConstraint(PlanetTimeline *constrained_planet, PlanetTimeline *constraint_center) {
+#endif
     const int constrainee_id = constrained_planet->Id();
     const int center_id = constraint_center->Id();
     const int radius = game_->GetDistance(center_id, constrainee_id);
 
     constraint_centers_[constrainee_id].push_back(center_id);
     constraint_radii_[constrainee_id].push_back(radius);
+
+#ifdef USE_BETTER_CONSTRAINTS
+    constraint_turns_[constrainee_id].push_back(turns);
+#endif
 }
 
+#ifdef USE_BETTER_CONSTRAINTS
+bool SupportConstraints::MaySupport(PlanetTimeline* source, PlanetTimeline* target, const int turn) {
+#else
 bool SupportConstraints::MaySupport(PlanetTimeline *source, PlanetTimeline *target) {
+#endif
     const int source_id = source->Id();
     const int target_id = target->Id();
 
     for(uint i = 0; i < constraint_centers_[target_id].size(); ++i) {
         const int distance_from_center = game_->GetDistance(constraint_centers_[target_id][i], source_id);
         const int minimum_distance = constraint_radii_[target_id][i];
-
+#ifdef USE_BETTER_CONSTRAINTS
+        const std::vector<int>& constraint_turns = constraint_turns_[target_id][i];
+#endif
         if (distance_from_center <= minimum_distance) {
+#ifdef USE_BETTER_CONSTRAINTS
+            //Check whether planet is constrained from being supported on this turn.
+            for (uint j = 0; j < constraint_turns.size(); ++j) {
+                if (constraint_turns[j] == turn) {
+                    return false;
+                }
+            }
+#else       
             return false;
+#endif /* USE_BETTER_CONSTRAINTS */
         }
     }
 

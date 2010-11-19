@@ -79,6 +79,7 @@ public:
 
     bool HasSupportWorsenedFor(PlanetTimelineList timelines);
     bool HasSupportWorsenedFor(PlanetTimeline* timeline);
+    std::vector<int> TurnsSupportHasWorsenedAt(PlanetTimeline* timeline);
     bool HasSupportMinusExcessWorsenedFor(PlanetTimelineList timelines, const std::vector<int>& excess_support_sent);
     bool HasSupportMinusExcessWorsenedFor(PlanetTimeline* timeline, const std::vector<int>& excess_support_sent);
     void UpdatePotentials();

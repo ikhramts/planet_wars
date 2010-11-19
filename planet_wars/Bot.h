@@ -83,13 +83,25 @@ public:
 class SupportConstraints {
 public:
     SupportConstraints(int num_planets, GameMap* game);
+
+#ifdef USE_BETTER_CONSTRAINTS
+    void AddConstraint(PlanetTimeline* constrained_planet, PlanetTimeline* constraint_center, std::vector<int> turns);
+    bool MaySupport(PlanetTimeline* source, PlanetTimeline* target, int turn);
+#else
     void AddConstraint(PlanetTimeline* constrained_planet, PlanetTimeline* constraint_center);
     bool MaySupport(PlanetTimeline* source, PlanetTimeline* target);
+#endif
+
     void ClearConstraints();
 
 private:
     std::vector<std::vector<int> > constraint_centers_;
     std::vector<std::vector<int> > constraint_radii_;
+
+#ifdef USE_BETTER_CONSTRAINTS
+    std::vector<std::vector<std::vector<int> > > constraint_turns_;
+#endif
+
     GameMap* game_;
 };
 

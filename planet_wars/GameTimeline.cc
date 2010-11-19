@@ -516,6 +516,33 @@ bool GameTimeline::HasSupportWorsenedFor(PlanetTimeline* planet) {
     return false;
 }
 
+std::vector<int> GameTimeline::TurnsSupportHasWorsenedAt(PlanetTimeline *planet) {
+    PlanetTimeline* base_planet = base_planet_timelines_[planet->Id()];
+    std::vector<int> turns_support_worsened_at;
+
+    for (int t = 1; t < horizon_; ++t) {
+#ifdef USE_FULL_POTENTIAL_FOR_SUPPORT_WORSENING
+        const int full_support = planet->SupportPotentialAt(t, t);
+        const int base_full_support = base_planet->SupportPotentialAt(t, t);
+        const int is_mine = (base_planet->OwnerAt(t) == kMe);
+
+        if (is_mine && full_support < 0 && full_support < base_full_support) {
+            turns_support_worsened_at.push_back(t);
+        }
+#else
+        const int min_defense_potential = planet->MinDefensePotentialAt(t);
+        const int base_min_defense_potential = base_planet->MinDefensePotentialAt(t);
+        const int is_mine = (base_planet->OwnerAt(t) == kMe);
+
+        if (is_mine && min_defense_potential < 0 && min_defense_potential < base_min_defense_potential) {
+            turns_support_worsened_at.push_back(t);
+        }
+#endif
+    }
+
+    return turns_support_worsened_at;
+}
+
 bool GameTimeline::HasSupportMinusExcessWorsenedFor(PlanetTimelineList timelines, 
                                                     const std::vector<int>& excess_support_sent) {
     for (uint i = 0; i < timelines.size(); ++i) {
