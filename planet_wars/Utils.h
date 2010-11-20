@@ -6,8 +6,11 @@
 #ifndef PLANET_WARS_UTILS_H_
 #define PLANET_WARS_UTILS_H_
 
+//Switch between test environment and contest environment.
+//#define IS_SUBMISSION
+
 //Various switches in the bot's logic.
-//#define WITH_TIMEOUTS
+#define WITH_TIMEOUTS
 #define ENEMY_RESERVES_SHIPS_AGAINST_ARRIVALS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 #define USE_SUPPORT_POTENTIALS_FOR_ATTACK
@@ -61,12 +64,7 @@ static const int kEarliestLateMediumSupportAction = 10;
 #define USE_FULL_POTENTIAL_FOR_SUPPORT_WORSENING
 #define DO_NOT_FEED_ON_FIRST_TURN
 
-
 //#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
-
-//Switch between test environment and contest environment.
-//#define IS_SUBMISSION
-
 
 //Define assertions.
 #ifdef IS_SUBMISSION
