@@ -1264,7 +1264,7 @@ void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
 
 #ifndef IS_SUBMISSION
     full_potentials_ = other->full_potentials_;
-#endif;
+#endif
 
     potential_owner_ = other->potential_owner_;
 }
@@ -1318,7 +1318,7 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
 
 #ifndef IS_SUBMISSION
         are_equal &= (full_potentials_[t] == other->full_potentials_[t]);
-#endif;
+#endif
         if (!are_equal) {
             return false;
         }
