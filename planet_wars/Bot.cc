@@ -452,11 +452,7 @@ ActionList Bot::FindInvasionPlan(PlanetTimeline* target,
         remaining_ships_needed = 1;
         max_ships_from_this_distance = 1;
 
-#ifdef USE_SUPPORT_POTENTIALS_FOR_ATTACK
     } else if (player != target_owner && target->MaxSupportPotentialAt(arrival_time) > 0) {
-#else
-    } else if (player != target_owner && target->MaxDefensePotentialAt(arrival_time + 1) > 0) {
-#endif
         const int ships_from_balance = 
             -defense_potentials[potentials_offset + distance_to_first_source] + neutral_adjustment + takeover_ship;
         remaining_ships_needed = std::max(ships_from_balance, remaining_ships_to_take_over);
@@ -639,7 +635,6 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     const int was_neutral = (target->OwnerAt(arrival_time - 1) == kNeutral);
     if (was_neutral) use_min_support = true;
 
-#ifdef LOSE_ALL_SHIPS_SPENT_ON_NEUTRALS
     //Calculate the number of additional ships lost permanently to fights vs.
     //neutral forces due to this move.
     int future_ships_lost = 0;
@@ -659,21 +654,6 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
     const int ships_permanently_lost = std::max(0, neutral_ships - future_ships_lost);
-
-#else
-#ifdef LOSE_SHIPS_ONLY_TO_NEUTRALS
-    const int my_arrivals = target->MyArrivalsAt(arrival_time);
-    const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
-    const int ships_permanently_lost = std::max(0, neutral_ships - my_arrivals);
-
-    //const int ships_permanently_lost = neutral_ships;
-    //const int returned_ships = ships_to_send - ships_permanently_lost;
-    //pw_assert(returned_ships >= 0 && "Can't regain more ships than were spent");
-#else
-    const int returned_ships = 0;
-    const int ships_permanently_lost = 0;
-#endif /* LOSE_SHIPS_ONLY_TO_NEUTRALS */
-#endif /* LOSE_ALL_SHIPS_SPENT_ON_NEUTRALS */
     //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
     
     //Recalculate the ships to send.
@@ -718,35 +698,6 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         
         updated_ships_to_send += enemies_to_deal_with;
     }
-#endif
-
-#ifdef ADD_DEFENSE_SHIPS_TO_SHIPS_SENT
-    //Add the ship required to defend the planet in the future against attackers.
-    int min_min_defense_potential = 0;
-    int potential_lost = 0;
-    const int target_growth_rate = target->GetPlanet()->GrowthRate();
-    int potential_owner = target->OwnerAt(arrival_time);
-    int prev_potential_owner = 0;
-
-    for (int t = arrival_time + 1; t < horizon; ++t) {
-        prev_potential_owner = potential_owner;
-        potential_owner = target->PotentialOwnerAt(t);
-        const int prev_owner = target->OwnerAt(t);
-
-        //Update the potential loss due to possibly opponent holding the planet.
-        if (player == prev_owner && opponent == prev_potential_owner) {
-            potential_lost -= target_growth_rate * 2;
-        }
-
-        const int min_defense_potential = target->MinDefensePotentialAt(t);
-        const int effective_min_defense_potential = min_defense_potential - potential_lost;
-
-        if (player == potential_owner && min_min_defense_potential > effective_min_defense_potential) {
-            min_min_defense_potential = effective_min_defense_potential;
-        }
-    }
-
-    updated_ships_to_send += min_min_defense_potential;
 #endif
 
     //Calculate the ships gained.
@@ -930,10 +881,8 @@ ActionList Bot::SendFleetsToFront(const int player) {
 
             timeline_->ApplyTempActions(temp_action_list);
 
-#ifdef USE_FEEDER_POTENTIAL_CHECK_FIX
             PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(temp_action_list);
             timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
-#endif
             bool was_action_accepted = true;
 
 #ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
@@ -954,9 +903,7 @@ ActionList Bot::SendFleetsToFront(const int player) {
                     action->SetNumShips(fewer_ships);
                     timeline_->ApplyTempActions(temp_action_list);
 
-#ifdef USE_FEEDER_POTENTIAL_CHECK_FIX
                     timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
-#endif
 
 #ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
                     if (timeline_->HasPotentialGainWorsenedFor(ever_my_planets)) {
