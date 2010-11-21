@@ -45,7 +45,7 @@ const long int SECONDS_PER_DAY = 86400;
         }
         
         //The logic below isn't used and has been commented out.
-        //This can be uncommented if there's a particular need for
+        //This can be uncommented if there is a particular need for
         //time zone info.  Note that it may generate warnings in some
         //compilers.
         //if (NULL != tz) {
