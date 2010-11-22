@@ -10,7 +10,7 @@
 //#define IS_SUBMISSION
 
 //Various switches in the bot's logic.
-#define WITH_TIMEOUTS
+//#define WITH_TIMEOUTS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 //#define STATIC_CONST_HORIZON
 
@@ -18,7 +18,8 @@
 //#define ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
 
 #define SUBTRACT_FUTURE_ATTACK_ARRIVALS_FROM_SHIPS_SENT
-#define USE_PARTIAL_POTENTIAL_UPDATES
+//#define USE_PARTIAL_POTENTIAL_UPDATES
+//#define USE_EXTENDED_POTENTIAL_GAINS
 
 //#define UPDATE_ADDITIONAL_GROWTH_TURNS
 static const int kTurnsPerGame = 200;
@@ -50,6 +51,8 @@ static const int kEarliestLateMediumSupportAction = 10;
 /***** Feeder Planet Settings *****/
 //#define USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
 #define DO_NOT_FEED_ON_FIRST_TURN
+
+const int kMaxNumPlanets = 30;
 
 //Define assertions.
 #ifdef IS_SUBMISSION

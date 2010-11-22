@@ -133,6 +133,7 @@ public:
 
     int ShipsGained() const                 {return total_ships_gained_;}
     int PotentialShipsGained() const        {return potential_ships_gained_;}
+    int PotentialShipsGainedFor(int player) const;
 
     Planet* GetPlanet() const               {return planet_;}
     int Id() const                          {return id_;}
@@ -190,8 +191,6 @@ public:
     std::vector<int>& EnemyDefensePotentials()                   {return enemy_defense_potentials_;}
     int EnemyDefensePotentialAt(int t, int d) const              {return enemy_defense_potentials_[t*(t-1)/2 + d - 1];}
     void SetEnemyDefensePotentialAt(int t, int d, int potential) {enemy_defense_potentials_[t*(t-1)/2 + d - 1] = potential;}
-    int EnemyMaxDefensePotentialAt(int t) const                  {return enemy_max_defense_potentials_[t];}
-    void SetEnemyMaxDefensePotentialAt(int t, int potential)     {enemy_max_defense_potentials_[t] = potential;}
     int EnemyMinDefensePotentialAt(int t) const                  {return enemy_min_defense_potentials_[t];}
     void SetEnemyMinDefensePotentialAt(int t, int potential)     {enemy_min_defense_potentials_[t] = potential;}
     
@@ -202,8 +201,11 @@ public:
     int EnemyMaxSupportPotentialAt(int t) const                  {return enemy_max_support_potentials_[t];}
     void SetEnemyMaxSupportPotentialAt(int t, int potential)     {enemy_max_support_potentials_[t] = potential;}
 
-    int PotentialOwnerAt(int t) const                       {return potential_owner_[t];}
+    int PotentialOwnerAt(int t) const                            {return potential_owner_[t];}
     
+    int DefensePotentialAt(int t, int d, int player) const;
+    int SupportPotentialAt(int t, int d, int player) const;
+
     //Reset various data before starting full timeline recalculation.
     void ResetStartingData();
 
@@ -262,8 +264,6 @@ private:
     int total_ships_gained_;
     int potential_ships_gained_;
 
-    std::vector<int> potential_ships_gained_at_;
-
     ActionList departing_actions_;
 
     //Strategic defense_potentials.
@@ -280,7 +280,6 @@ private:
 
     std::vector<int> enemy_defense_potentials_;
     std::vector<int> enemy_min_defense_potentials_;
-    std::vector<int> enemy_max_defense_potentials_;
 
     std::vector<int> enemy_support_potentials_;
     std::vector<int> enemy_min_support_potentials_;
@@ -291,6 +290,9 @@ private:
 #ifndef IS_SUBMISSION
     std::vector<int> full_potentials_;
 #endif
+
+    std::vector<int> potential_ships_gained_at_;
+    std::vector<int> enemy_potential_ships_gained_at_;
 
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.

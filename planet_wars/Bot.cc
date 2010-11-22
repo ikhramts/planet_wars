@@ -301,7 +301,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (2 == picking_round_ && 7 == target_id) {
+        if (1 == picking_round_ && 5 == target_id) {
             int x = 2;
         }
 #endif
@@ -712,8 +712,15 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     
 #else /* USE_PARTIAL_POTENTIAL_UPDATES */
     timeline_->UpdatePotentials(sources_and_targets);
+
+#ifdef USE_EXTENDED_POTENTIAL_GAINS
+    PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
+    const int updated_ships_gained = 
+        this->PotentialShipsGained(target, my_planets) - ships_permanently_lost;
+#else /* USE_EXTENDED_POTENTIAL_GAINS */
     const int updated_ships_gained = 
         timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
+#endif /* USE_EXTENDED_POTENTIAL_GAINS */
 #endif /* USE_PARTIAL_POTENTIAL_UPDATES */
 
     const double updated_return_ratio = ReturnRatio(updated_ships_gained, updated_ships_to_send) * multiplier;
@@ -1097,6 +1104,68 @@ void Bot::AddSupportConstraints(const ActionList &actions) {
         }
 #endif
     }
+}
+
+int Bot::PotentialShipsGained(PlanetTimeline* target, const PlanetTimelineList& base_calculation_planets) {
+    const int ships_gained_on_my_planets = timeline_->PotentialShipsGainedFor(base_calculation_planets, target);
+    
+    std::bitset<kMaxNumPlanets> planets_to_exclude;
+
+    for (uint i = 0; i < base_calculation_planets.size(); ++i) {
+        planets_to_exclude[base_calculation_planets[i]->Id()] = true;
+    }
+
+    const int my_additional_potential_gains = 
+        this->PotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
+    const int base_my_additional_potential_gains = 
+        this->PotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
+    const int my_net_additional_gains = my_additional_potential_gains - base_my_additional_potential_gains;
+
+    const int enemy_additional_potential_gains = 
+        this->PotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
+    const int base_enemy_additional_potential_gains = 
+        this->BasePotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
+    const int enemy_net_additional_gains = enemy_additional_potential_gains - base_enemy_additional_potential_gains;
+
+    //const int total_potential_ships_gained = ships_gained_on_my_planets + my_net_additional_gains - 
+    //    enemy_net_additional_gains;
+
+    const int total_potential_ships_gained = ships_gained_on_my_planets; 
+
+
+    return total_potential_ships_gained;
+}
+
+int Bot::PotentialAdditionalShipsGainedForPlayer(const int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude) {
+    int potential_ships_gained = 0;
+    PlanetTimelineList planets = timeline_->Timelines();
+
+    for (uint i = 0; i < planets.size(); ++i) {
+        if (planets_to_exclude[i]) {
+            continue;
+        }
+
+        PlanetTimeline* planet = planets[i];
+        potential_ships_gained += planet->PotentialShipsGainedFor(player);
+    }
+
+    return potential_ships_gained;
+}
+
+int Bot::BasePotentialAdditionalShipsGainedForPlayer(const int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude) {
+    int potential_ships_gained = 0;
+    PlanetTimelineList planets = timeline_->BaseTimelines();
+
+    for (uint i = 0; i < planets.size(); ++i) {
+        if (planets_to_exclude[i]) {
+            continue;
+        }
+
+        PlanetTimeline* planet = planets[i];
+        potential_ships_gained += planet->PotentialShipsGainedFor(player);
+    }
+
+    return potential_ships_gained;
 }
 
 /************************************************

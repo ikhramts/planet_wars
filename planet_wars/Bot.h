@@ -6,6 +6,8 @@
 #ifndef PLANET_WARS_BOT_H_
 #define PLANET_WARS_BOT_H_
 
+#include <bitset>
+#include "Utils.h"
 #include "PlanetWars.h"
 #include "GameTimeline.h"
 #include "Actions.h"
@@ -56,6 +58,10 @@ private:
     //Check which planets lost support due to the actions, and add appropriate
     //prohibitions on sending support fleets to those planets.
     void AddSupportConstraints(const ActionList& actions);
+
+    int PotentialShipsGained(PlanetTimeline* target, const PlanetTimelineList& base_calculation_planets);
+    int PotentialAdditionalShipsGainedForPlayer(int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude);
+    int BasePotentialAdditionalShipsGainedForPlayer(int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude);
     
     GameMap* game_;
     GameTimeline* timeline_;
