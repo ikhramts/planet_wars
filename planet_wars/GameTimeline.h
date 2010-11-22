@@ -211,7 +211,7 @@ public:
     void RecalculateTimeline(int starting_at);
     void RecalculateShipsGained();
     void RecalculatePotentialShipsGained();
-    void RecalculateDefensePotentialShipsGained();
+    void RecalculatePotentialGainsForArrivalTurns(int player);
 
     //Set the planet as a reinforcer.  Reinforcers will never supply ships for an attack.
     void SetReinforcer(bool is_reinforcer);
@@ -261,6 +261,8 @@ private:
 
     int total_ships_gained_;
     int potential_ships_gained_;
+
+    std::vector<int> potential_ships_gained_at_;
 
     ActionList departing_actions_;
 

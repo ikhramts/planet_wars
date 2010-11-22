@@ -1082,6 +1082,8 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     full_potentials_.resize(u_horizon, 0);
 #endif
 
+    potential_ships_gained_at_.resize(u_horizon, 0);
+
     will_not_be_mine_ = false;
 	will_be_mine_ = false;
 	will_be_enemys_ = false;
@@ -1192,6 +1194,7 @@ void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
 #ifndef IS_SUBMISSION
     full_potentials_ = other->full_potentials_;
 #endif
+    potential_ships_gained_at_ = other->potential_ships_gained_at_;
 
     potential_owner_ = other->potential_owner_;
 }
@@ -1246,6 +1249,9 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
 #ifndef IS_SUBMISSION
         are_equal &= (full_potentials_[t] == other->full_potentials_[t]);
 #endif
+
+        are_equal &= (potential_ships_gained_at_[t] == other->potential_ships_gained_at_[t]);
+
         if (!are_equal) {
             return false;
         }
@@ -1861,6 +1867,7 @@ void PlanetTimeline::RecalculateShipsGained() {
     total_ships_gained_ = this->CalculateGainsUntil(horizon_);
 
     this->RecalculatePotentialShipsGained();
+    this->RecalculatePotentialGainsForArrivalTurns(kMe);
 }
 
 void PlanetTimeline::RecalculatePotentialShipsGained() {
@@ -1917,58 +1924,166 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
         OwnerMultiplier(prev_potential_owner) * growth_rate * (game_timeline_->AdditionalGrowthTurns());
 }
 
-void PlanetTimeline::RecalculateDefensePotentialShipsGained() {
-    //Calculate the number of ships that can be potentially earned from this planet
-    //given the current support potentials.
-    int prev_potential_owner = this->OwnerAt(0);
-    int potential_owner = -1;
-    int potential_adjustment = 0;
+void PlanetTimeline::RecalculatePotentialGainsForArrivalTurns(const int player) {
     const int growth_rate = planet_->GrowthRate();
+    const int opponent = OtherPlayer(player);
+    int ships_gained_before_arrival = 0;
+    int potential_ships_gained_after_arrival = 0;
+    int owner_before_arrival = this->OwnerAt(0);
+    int owner_without_arrival = owner_before_arrival;
+    int owner_after_arrival = owner_before_arrival;
+    int prev_owner_after_arrival = owner_after_arrival;
+    int prev_full_support = 0;
+    int support_adjustment_before_arrival = 0;
+    bool has_lost_planet = false;
 
-    potential_ships_gained_ = 0;
-    
-    for (int t = 1; t < horizon_; ++t) {
-        potential_ships_gained_ += OwnerMultiplier(prev_potential_owner) * growth_rate;
-        //const int full_potential = this->SupportPotentialAt(t, t) + potential_adjustment;
-        const int actual_owner = this->OwnerAt(t);
-        
-        //Check whether the owner has changed.
-        if (actual_owner == kEnemy && (this->MaxSupportPotentialAt(t) + potential_adjustment) > 0) {
-            potential_owner = kMe;
+    int cur_ships = this->ShipsAt(0);
 
-        } else if (actual_owner == kMe && (this->MinSupportPotentialAt(t) + potential_adjustment) < 0) {
-            potential_owner = kEnemy;
-        
-        } else {
-            potential_owner = actual_owner;
-        }
+    const std::vector<int>& player_arrivals = my_arrivals_;
+    const std::vector<int>& opponent_arrivals = enemy_arrivals_;
+    const std::vector<int>& player_min_defense = min_defense_potentials_;
+    const std::vector<int>& player_departures = my_departures_;
+    const std::vector<int>& opponent_departures = enemy_departures_;
 
-        prev_potential_owner = potential_owner;
+    for (int arrival_time = 1; arrival_time < horizon_; ++arrival_time) {
+        //Update the ships gained and owner to turn t if no ships are sent to the planet until t.
+        owner_before_arrival = owner_without_arrival;
+        ships_gained_before_arrival += growth_rate * OwnerMultiplier(owner_before_arrival);
 
         //Update the potential adjustment.
-
-        if (actual_owner == kMe && kEnemy == potential_owner) {
-            potential_adjustment -= growth_rate * 2;
-
-        } else if (kEnemy == actual_owner && kMe == potential_owner) {
-            potential_adjustment += growth_rate * 2;
-
-        } else if (kNeutral == actual_owner) {
-            if (kMe == potential_owner) {
-                potential_adjustment += growth_rate;
-         
-            } else if (kEnemy == potential_owner) {
-                potential_adjustment -= growth_rate;
-            }
+        if (player == this->OwnerAt(arrival_time - 1) && opponent == owner_before_arrival) {
+            support_adjustment_before_arrival -= growth_rate * 2;
         }
 
-        potential_owner_[t] = potential_owner;
-    } //End iterating over turns.
+        const int prev_ships = cur_ships;
+        const int base_ships = prev_ships + (kNeutral == owner_before_arrival ? 0 : growth_rate);
+        const int min_defense = player_min_defense[arrival_time] + support_adjustment_before_arrival;
 
-    potential_ships_gained_ += 
-        OwnerMultiplier(prev_potential_owner) * growth_rate * (game_timeline_->AdditionalGrowthTurns() + 1);
+        //Check whether there will be a battle on the planet in this turn.
+        if (0 == player_arrivals[arrival_time] && 0 == opponent_arrivals[arrival_time]) {
+            //Ships don't arrive.  Check whether a player-owned planet could be lost anyway.
+            if (player == owner_before_arrival && min_defense < 0) {
+                //Enemy would likely invade the planet and it would be lost.
+                cur_ships = 1;
+                owner_without_arrival = opponent;
+
+            } else {
+                owner_without_arrival = owner_before_arrival;
+                cur_ships = base_ships;
+                pw_assert(cur_ships >= 0 && "The number of ships must be non-negative");
+            }
+
+        } else {
+            //A fleet has arrived.  Resolve the battle.
+            const int neutral_ships = (kNeutral == owner_before_arrival ? base_ships : 0);
+            const int player_ships = player_arrivals[arrival_time] + (player == owner_before_arrival ? base_ships : 0);
+            const int opponent_ships = opponent_arrivals[arrival_time] + (opponent == owner_before_arrival ? base_ships : 0);
+
+            BattleOutcome outcome = ResolveBattle(owner_before_arrival, neutral_ships, player_ships, opponent_ships);
+            owner_without_arrival = outcome.owner;
+            cur_ships = outcome.ships_remaining;
+
+            //Check whether the opponent has capability to win regardless of the battle outcome.
+            if (opponent == owner_before_arrival && owner_without_arrival == player && min_defense <= 0) {
+                cur_ships = 0;
+                owner_without_arrival = opponent;
+            
+            } else if (player == owner_before_arrival && min_defense < 0) {
+                cur_ships = 1;
+                owner_without_arrival = opponent;
+            }
+        }
+        
+        //Account for departures.
+        if (owner_without_arrival == player && player_departures[arrival_time] > 0) {
+            cur_ships = std::max(0, cur_ships - player_departures[arrival_time]);
+
+        } else if (owner_without_arrival == opponent && opponent_departures[arrival_time] > 0) {
+            cur_ships = std::max(0, cur_ships - opponent_departures[arrival_time]);
+        }
+        
+        //Update the potential ships gained from the planet if ships
+        //would be sent to conquer the planet at arrival_time.
+        const int full_support = this->SupportPotentialAt(arrival_time, arrival_time) - support_adjustment_before_arrival;
+        const int max_support = this->MaxSupportPotentialAt(arrival_time) - support_adjustment_before_arrival;
+
+        prev_owner_after_arrival = owner_after_arrival;
+        
+        //Resolve the battle that would theoretically occur if I sent the ships to the planet.
+        if ((player != owner_before_arrival && full_support > 0) || (player == owner_before_arrival && full_support >= 0)) {
+            owner_after_arrival = player;
+
+        } else {
+            owner_after_arrival = owner_without_arrival;
+        }
+        
+        //Recalculate the potential ship gains after the ships arrive.
+        if (player == owner_without_arrival && 1 != arrival_time) {
+            potential_ships_gained_after_arrival -= growth_rate * OwnerMultiplier(owner_before_arrival);
+
+        } else if (opponent == prev_owner_after_arrival && opponent == owner_after_arrival && 1 != arrival_time) {
+            potential_ships_gained_after_arrival += growth_rate;
+
+        } else {
+            pw_assert((player != owner_without_arrival || 1 == arrival_time) && "Player is expected to be the owner at this point.");
+
+            //Need to recalculate the potential ships gained.
+            int prev_potential_owner = owner_after_arrival;
+            int potential_owner = owner_after_arrival;
+            int support_adjustment = support_adjustment_before_arrival;
+            const int growth_rate = planet_->GrowthRate();
+
+            potential_ships_gained_after_arrival = 0;
+
+            for (int t = arrival_time + 1; t < horizon_; ++t) {
+                potential_ships_gained_after_arrival += OwnerMultiplier(prev_potential_owner) * growth_rate;
+                const int max_support = this->MaxSupportPotentialAt(t) + support_adjustment;
+                const int full_support = this->SupportPotentialAt(t, t) + support_adjustment;
+                const int actual_owner = this->OwnerAt(t);
+                
+                //Check whether the owner has changed.
+                if (prev_potential_owner == opponent && actual_owner == opponent && max_support > 0) {
+                    potential_owner = player;
+
+                } else if (prev_potential_owner == opponent && full_support > 0) {
+                    potential_owner = player;
+
+                } else if (prev_potential_owner == player && full_support < 0) {
+                    potential_owner = opponent;
+                
+                } else {
+                    //potential_owner = actual_owner;
+                    potential_owner = prev_potential_owner;
+                }
+
+                prev_potential_owner = potential_owner;
+
+                //Update the potential adjustment.
+
+                if (actual_owner == player && opponent == potential_owner) {
+                    support_adjustment -= growth_rate * 2;
+
+                } else if (opponent == actual_owner && player == potential_owner) {
+                    support_adjustment += growth_rate * 2;
+
+                } else if (kNeutral == actual_owner) {
+                    if (player == potential_owner) {
+                        support_adjustment += growth_rate;
+                 
+                    } else if (opponent == potential_owner) {
+                        support_adjustment -= growth_rate;
+                    }
+                }
+            } //End iterating over turns.
+
+            potential_ships_gained_after_arrival += 
+                OwnerMultiplier(prev_potential_owner) * growth_rate * game_timeline_->AdditionalGrowthTurns();
+        } //End updating potential_ships_gained_after_t
+        
+        const int potential_gains_given_arrival = ships_gained_before_arrival + potential_ships_gained_after_arrival;
+        potential_ships_gained_at_[arrival_time] = potential_gains_given_arrival;
+    } //End iterating over arrival times.
 }
-
 
 int PlanetTimeline::CalculateGainsUntil(int end_turn) const {
     bool would_planet_be_lost = false;
