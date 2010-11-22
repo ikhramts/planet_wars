@@ -704,14 +704,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 #ifdef USE_PARTIAL_POTENTIAL_UPDATES
     //Update only the planets that will be mine or not enemy's.
     PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
-
-#ifdef CONSIDER_ENEMY_MOVES_VS_NEUTRALS
-    PlanetTimelineList planets_to_update = timeline_->AlwaysNeutralTimelines();
-    planets_to_update.insert(planets_to_update.end(), my_planets.begin(), my_planets.end());
-
-#else /* CONSIDER_ENEMY_MOVES_VS_NEUTRALS */
     PlanetTimelineList planets_to_update = my_planets;
-#endif /* CONSIDER_ENEMY_MOVES_VS_NEUTRALS */
 
     timeline_->UpdatePotentialsFor(planets_to_update, sources_and_targets);
     const int updated_ships_gained = 
@@ -730,34 +723,6 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         timeline_->ResetTimelinesToBase();
         return updated_return_ratio;
     }
-
-#ifdef CONSIDER_ENEMY_MOVES_VS_NEUTRALS
-    //Check whether the enemy will get a nice juicy neutral because I sent all my ships away.
-    //First, find any planets that enemy consider taking now due to the move.
-    PlanetTimelineList potential_targets = timeline_->AlwaysNeutralTimelines();
-    PlanetTimelineList base_planets = timeline_->BaseTimelines();
-    PlanetTimelineList new_targets;
-    std::vector<int> new_target_arrival_times;
-
-    for (uint i = 0; i < potential_targets; ++i) {
-        PlanetTimeline* potential_target = potential_targets[i];
-        const int potential_target_id = potential_target->Id();
-        PlanetTimeline* base_potential_target = base_planets[potential_target_id];
-        const int distance_to_closest_planet = game_->DistanceToClosestPlanet(potential_target_id);
-
-        for (int t = distance_to_closest_planet; t < horizon; ++t) {
-            max_enemy_support = potential_target->EnemyMaxSupportPotentialAt(t);
-            base_max_enemy_support = base_potential_target->EnemyMaxSupportPotentialAt(t);
-
-            if (max_enemy_support < 0 && max_enemy_support < base_max_enemy_support) {
-                new_targets.push_back(potential_target);
-                new_target_arrival_times.push_back(t);
-            }
-        }
-    }
-
-    //Find out how much per ship spent can the enemy actually earn from these planets.
-#endif
     
     timeline_->ResetTimelinesToBase();
     return updated_return_ratio;

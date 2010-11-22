@@ -580,11 +580,9 @@ void GameTimeline::UpdatePotentials() {
         //Check whether we'll need to update enemy's numbers.
         bool update_enemy_potentials = false;
 
-#ifdef CONSIDER_ENEMY_MOVES_VS_NEUTRALS
         if (planet->WillNotBeEnemys() && planet->WillNotBeMine()) {
             update_enemy_potentials = true;
         }
-#endif
 
 #ifndef IS_SUBMISSION
         const int id = planet->Id();
@@ -787,11 +785,9 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
         //Check whether we'll need to update enemy's numbers.
         bool update_enemy_potentials = false;
 
-#ifdef CONSIDER_ENEMY_MOVES_VS_NEUTRALS
         if (planet->WillNotBeEnemys() || planet->WillNotBeMine()) {
             update_enemy_potentials = true;
         }
-#endif
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION

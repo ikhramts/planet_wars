@@ -51,8 +51,6 @@ static const int kEarliestLateMediumSupportAction = 10;
 //#define USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
 #define DO_NOT_FEED_ON_FIRST_TURN
 
-//#define CONSIDER_ENEMY_MOVES_VS_NEUTRALS
-
 //Define assertions.
 #ifdef IS_SUBMISSION
 
