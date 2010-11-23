@@ -101,10 +101,18 @@ ActionList Bot::MakeMoves() {
     
 #ifdef DO_NOT_FEED_ON_FIRST_TURN
     if (1 != turn_) {
+#endif /* DO_NOT_FEED_ON_FIRST_TURN */
+
+#ifdef USE_IMPROVED_FEEDING
+        ActionList fleet_reinforcements = this->SendFleetsToFront2(kMe);
+#else /* USE_IMPROVED_FEEDING */
         ActionList fleet_reinforcements = this->SendFleetsToFront(kMe);
+#endif /* USE_IMPROVED_FEEDING */
         my_best_actions.insert(my_best_actions.end(), fleet_reinforcements.begin(), fleet_reinforcements.end());
+
+#ifdef DO_NOT_FEED_ON_FIRST_TURN
     }
-#endif
+#endif /* DO_NOT_FEED_ON_FIRST_TURN */
 
     return my_best_actions;
 }
@@ -911,6 +919,190 @@ ActionList Bot::SendFleetsToFront(const int player) {
     timeline_->SaveTimelinesToBase();
 
 
+    return reinforcing_fleets;
+}
+
+ActionList Bot::SendFleetsToFront2(const int player) {
+    ActionList reinforcing_fleets;
+    ActionList temp_action_list;
+    temp_action_list.push_back(NULL);
+
+    const int horizon = timeline_->Horizon();
+    const int distance_threshold = 1;
+    const int opponent = OtherPlayer(player);
+    const int num_planets = game_->NumPlanets();
+    
+    if (game_->PlanetsOwnedBy(opponent).empty()) {
+        return reinforcing_fleets;
+    }
+
+    PlanetTimelineList timelines = timeline_->Timelines();
+    PlanetTimelineList sources = timeline_->TimelinesOwnedBy(player, 0 /*current turn*/);
+    PlanetTimelineList opponent_planets = timeline_->TimelinesOwnedBy(opponent, 0);
+    PlanetTimelineList ever_my_planets = timeline_->EverOwnedTimelines(player);
+
+    PlanetTimelineList targets_by_proximity;
+    targets_by_proximity.reserve(static_cast<uint>(num_planets));
+
+    for (uint i = 0; i < sources.size(); ++i) {
+        PlanetTimeline* source = sources[i];
+        const int free_ships = source->ShipsFree(0, player);
+        const int source_id = source->Id();
+        
+#ifndef IS_SUBMISSION
+        if (6 == source_id) {
+            int x = 2;
+        }
+#endif
+        //Work only with those reinforcement targets that are actually owned by the
+        //player at the time of feeder fleet arrivals.
+        PlanetTimelineList possible_feeding_targets = timeline_->EverOwnedTimelinesByDistance(player, source);
+        PlanetTimelineList feeding_targets;
+        feeding_targets.reserve(possible_feeding_targets.size());
+
+        for (uint j = 0; j < possible_feeding_targets.size(); ++j) {
+            PlanetTimeline* possible_target = possible_feeding_targets[j];
+            const int distance_to_target = game_->GetDistance(source_id, possible_target->Id());
+
+            if (possible_target->OwnerAt(distance_to_target) == player) {
+                feeding_targets.push_back(possible_target);
+            }
+        }
+
+        //Check whether the player owns any planets closer to enemy
+        //planets than this one.
+        //PlanetList player_planets_by_distance = game_->PlayerPlanetsByDistance(player, planet);
+        PlanetList opponents_by_distance = game_->PlayerPlanetsByDistance(opponent, source_id);
+        //PlanetList targets_by_distance = game_->NotPlayerPlanetsByDistance(player, planet);
+
+        pw_assert(!opponents_by_distance.empty());
+
+        //Find the closest non-zero growth planet owned by the opponent.
+        Planet* closest_opponent = NULL;
+        for (uint j = 0; j < opponents_by_distance.size(); ++j) {
+            if (opponents_by_distance[j]->GrowthRate() > 0) {
+                closest_opponent = opponents_by_distance[j];
+                break;
+            }
+        }
+
+        if (NULL == closest_opponent) {
+            break;
+        }
+
+        const int distance_to_opponent = game_->GetDistance(source_id, closest_opponent->Id());
+        const int closest_opponent_id = closest_opponent->Id();
+
+        //Find the best allied planet to reinforce.
+        int shortest_distance_to_opponent = distance_to_opponent;
+        int distance_to_target = 0;
+
+        targets_by_proximity.clear();
+
+        for (uint p = 0; p < feeding_targets.size(); ++p) {
+            PlanetTimeline* possible_target = feeding_targets[p];
+            const int possible_target_id = possible_target->Id();
+            const int target_distance_to_opponent = game_->GetDistance(possible_target_id, closest_opponent_id);
+            const int target_distance_to_source = game_->GetDistance(possible_target_id, source_id);
+
+            if (target_distance_to_opponent < shortest_distance_to_opponent
+              && (distance_to_opponent - distance_threshold) > target_distance_to_source) {
+                shortest_distance_to_opponent = target_distance_to_opponent;
+                distance_to_target = target_distance_to_source;
+                targets_by_proximity.push_back(possible_target);
+            }
+        }
+        
+
+        if (targets_by_proximity.empty()) {
+            //This is not a reinforcer.
+            continue;
+        }
+
+        const int available_ships = source->ShipsFree(0, player);
+
+        if (0 == available_ships) {
+            //No ships to send, nothing else to do.
+            source->SetReinforcer(true);
+            continue;
+        }
+
+        pw_assert(0 <= available_ships && "Cannot have negative number of available ships.");
+
+        //Try to send the ships to every possible target in order from the farthest to
+        //the closest.
+        Action* action = Action::Get();
+        action->SetOwner(player);
+        action->SetSource(source);
+        action->SetDepartureTime(0);
+        action->SetDistance(distance_to_target);
+        action->SetNumShips(available_ships);
+        temp_action_list[0] = action;
+
+        bool found_good_move = false;
+        int target_index = static_cast<int>(targets_by_proximity.size()) - 1;
+        
+        do {
+            PlanetTimeline* target = targets_by_proximity[target_index];
+            action->SetTarget(target);
+            timeline_->ApplyTempActions(temp_action_list);
+    
+            PlanetSelection sources_and_targets = Action::SourcesAndTargets(temp_action_list);
+            timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
+            
+#ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
+            found_good_move = !timeline_->HasPotentialGainWorsenedFor(ever_my_planets);
+#else
+#ifdef ADD_EXCESS_SUPPORT_SHIPS
+            found_good_move = !timeline_->HasSupportMinusExcessWorsenedFor(ever_my_planets, excess_support_sent_);
+#else
+            found_good_move = !timeline_->HasSupportWorsenedFor(ever_my_planets);
+#endif /* ADD_EXCESS_SUPPORT_SHIPS */
+#endif /* USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS */
+
+            if (found_good_move) {
+                timeline_->SaveTimelinesToBase();
+                reinforcing_fleets.push_back(action);
+
+            } else {
+                timeline_->ResetTimelinesToBase();
+            }
+
+            --target_index;
+        } while (!found_good_move && target_index >= 0);
+
+        //If no good move was found, try sending fewer ships to the closest good target.
+        const int fewer_ships = targets_by_proximity[0]->GetPlanet()->GrowthRate() + 1;
+        
+        if (!found_good_move && fewer_ships < available_ships) {
+            action->SetNumShips(fewer_ships);
+
+            timeline_->ApplyTempActions(temp_action_list);
+    
+            PlanetSelection sources_and_targets = Action::SourcesAndTargets(temp_action_list);
+            timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
+            
+#ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
+            found_good_move = !timeline_->HasPotentialGainWorsenedFor(ever_my_planets);
+#else
+#ifdef ADD_EXCESS_SUPPORT_SHIPS
+            found_good_move = !timeline_->HasSupportMinusExcessWorsenedFor(ever_my_planets, excess_support_sent_);
+#else
+            found_good_move = !timeline_->HasSupportWorsenedFor(ever_my_planets);
+#endif /* ADD_EXCESS_SUPPORT_SHIPS */
+#endif /* USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS */
+
+            if (found_good_move) {
+                timeline_->SaveTimelinesToBase();
+                reinforcing_fleets.push_back(action);
+
+            } else {
+                action->Free();
+                timeline_->ResetTimelinesToBase();
+            }
+        }
+    } // End iterating over sources.
+    
     return reinforcing_fleets;
 }
 

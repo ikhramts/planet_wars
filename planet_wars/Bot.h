@@ -46,6 +46,7 @@ private:
     double ReturnForMove(const ActionList& invasion_plan, double best_return);
 
     ActionList SendFleetsToFront(int player);
+    ActionList SendFleetsToFront2(int player);
 
     //Mark feeder planets as such.
     void MarkReinforcers(int player);

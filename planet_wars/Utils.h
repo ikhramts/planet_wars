@@ -20,7 +20,7 @@
 #define SUBTRACT_FUTURE_ATTACK_ARRIVALS_FROM_SHIPS_SENT
 //#define USE_PARTIAL_POTENTIAL_UPDATES
 #define USE_EXTENDED_POTENTIAL_GAINS
-#define USE_MAX_POTENTIAL_SHIPS_GAINED_FOR_EXTENDED_GAINS
+//#define USE_MAX_POTENTIAL_SHIPS_GAINED_FOR_EXTENDED_GAINS
 
 //#define UPDATE_ADDITIONAL_GROWTH_TURNS
 static const int kTurnsPerGame = 200;
@@ -53,6 +53,7 @@ static const int kEarliestLateMediumSupportAction = 10;
 /***** Feeder Planet Settings *****/
 //#define USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
 #define DO_NOT_FEED_ON_FIRST_TURN
+#define USE_IMPROVED_FEEDING
 
 //Number of planets and planet flags.
 #include <bitset>
