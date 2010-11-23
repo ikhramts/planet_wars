@@ -1431,6 +1431,22 @@ int PlanetTimeline::PotentialShipsGainedFor(const int player) const {
     }
 }
 
+int PlanetTimeline::MaxPotentialShipsGainedFor(const int player) const {
+    //Find the maximum ships that a player can gain from this planet given an
+    //invasion at any point in time up to the horizon.
+    int max_potential_ships_gained = -99999;
+    const std::vector<int>& potential_ships_gained_at = 
+        (kMe == player? potential_ships_gained_at_ : enemy_potential_ships_gained_at_);
+
+    for (int t = 1; t < horizon_; ++t) {
+        if (max_potential_ships_gained < potential_ships_gained_at[t]) {
+            max_potential_ships_gained = potential_ships_gained_at[t];
+        }
+    }
+
+    return max_potential_ships_gained;
+}
+
 int PlanetTimeline::ShipsRequredToPosess(int arrival_time, int by_whom) const {
     int ships_required = 0;
 

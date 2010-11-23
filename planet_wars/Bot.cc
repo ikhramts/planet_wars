@@ -301,7 +301,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 5 == target_id) {
+        if (1 == picking_round_ && 3 == target_id) {
             int x = 2;
         }
 #endif
@@ -990,7 +990,11 @@ ActionList Bot::SendSupportFleets(const int player) {
         return support_actions;
     }
 
+#ifdef CHECK_SUPPORT_DECLINE_ON_ALL_MY_PLANETS
+    PlanetTimelineList test_planets = timeline_->EverOwnedTimelines(player);
+#else
     PlanetTimelineList test_planets = timeline_->TimelinesOwnedBy(player, 0);
+#endif
 
     for (uint i = 0; i < targets.size(); ++i) {
         PlanetTimeline* target = targets[i];
@@ -1127,10 +1131,12 @@ int Bot::PotentialShipsGained(PlanetTimeline* target, const PlanetTimelineList& 
         this->BasePotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
     const int enemy_net_additional_gains = enemy_additional_potential_gains - base_enemy_additional_potential_gains;
 
-    //const int total_potential_ships_gained = ships_gained_on_my_planets + my_net_additional_gains - 
-    //    enemy_net_additional_gains;
+    const int total_potential_ships_gained = ships_gained_on_my_planets + my_net_additional_gains - 
+        enemy_net_additional_gains;
+    //const int total_potential_ships_gained = ships_gained_on_my_planets + my_additional_potential_gains - 
+    //    enemy_additional_potential_gains;
 
-    const int total_potential_ships_gained = ships_gained_on_my_planets; 
+    //const int total_potential_ships_gained = ships_gained_on_my_planets; 
 
 
     return total_potential_ships_gained;
@@ -1146,7 +1152,11 @@ int Bot::PotentialAdditionalShipsGainedForPlayer(const int player, const std::bi
         }
 
         PlanetTimeline* planet = planets[i];
+#ifdef USE_MAX_POTENTIAL_SHIPS_GAINED_FOR_EXTENDED_GAINS
+        potential_ships_gained += planet->MaxPotentialShipsGainedFor(player);
+#else
         potential_ships_gained += planet->PotentialShipsGainedFor(player);
+#endif
     }
 
     return potential_ships_gained;
@@ -1162,7 +1172,11 @@ int Bot::BasePotentialAdditionalShipsGainedForPlayer(const int player, const std
         }
 
         PlanetTimeline* planet = planets[i];
+#ifdef USE_MAX_POTENTIAL_SHIPS_GAINED_FOR_EXTENDED_GAINS
+        potential_ships_gained += planet->MaxPotentialShipsGainedFor(player);
+#else
         potential_ships_gained += planet->PotentialShipsGainedFor(player);
+#endif
     }
 
     return potential_ships_gained;

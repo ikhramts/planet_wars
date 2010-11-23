@@ -134,6 +134,7 @@ public:
     int ShipsGained() const                 {return total_ships_gained_;}
     int PotentialShipsGained() const        {return potential_ships_gained_;}
     int PotentialShipsGainedFor(int player) const;
+    int MaxPotentialShipsGainedFor(int player) const;
 
     Planet* GetPlanet() const               {return planet_;}
     int Id() const                          {return id_;}
