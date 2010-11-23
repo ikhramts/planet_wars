@@ -1431,12 +1431,6 @@ int PlanetTimeline::ShipsGainedForActions(const ActionList& actions) const {
     return ships_gained_by_action_owner;
 }
 
-#ifdef USE_NEW_POTENTIAL_SHIPS_GAINED_FOR_POTENTIAL_GAINS
-int PlanetTimeline::PotentialShipsGained() const {
-    return this->PotentialShipsGainedFor(kMe);
-}
-#endif
-
 int PlanetTimeline::PotentialShipsGainedFor(const int player) const {
     if (player == kMe) {
         return potential_ships_gained_at_[1];
@@ -1923,7 +1917,11 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
         const int actual_owner = this->OwnerAt(t);
         
         //Check whether the owner has changed.
+#ifdef USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
+        if (actual_owner == kEnemy && (this->SupportPotentialAt(t, t) + potential_adjustment) > 0) {
+#else
         if (actual_owner == kEnemy && (this->MaxSupportPotentialAt(t) + potential_adjustment) > 0) {
+#endif
             potential_owner = kMe;
 
         } else if (actual_owner == kMe && (this->SupportPotentialAt(t, t) + potential_adjustment) < 0) {
@@ -2096,10 +2094,14 @@ void PlanetTimeline::RecalculatePotentialGainsForArrivalTurns(const int player) 
                 const int actual_owner = this->OwnerAt(t);
                 
                 //Check whether the owner has changed.
+#ifdef USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
+                if (prev_potential_owner == opponent && full_support > 0) {
+#else
                 if (prev_potential_owner == opponent && actual_owner == opponent && max_support > 0) {
                     potential_owner = player;
 
                 } else if (prev_potential_owner == opponent && full_support > 0) {
+#endif
                     potential_owner = player;
 
                 } else if (prev_potential_owner == player && full_support < 0) {

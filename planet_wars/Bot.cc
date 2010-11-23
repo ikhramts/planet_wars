@@ -310,14 +310,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 3 == target_id) {
+        if (1 == picking_round_ && 15 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (2 == picking_round_ && 3 == target_id && 7 == arrival_time) {
+            if (1 == picking_round_ && 22 == target_id && 13 == arrival_time) {
                 int x = 2;
             }
 #endif
