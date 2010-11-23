@@ -295,6 +295,9 @@ private:
     std::vector<int> potential_ships_gained_at_;
     std::vector<int> enemy_potential_ships_gained_at_;
 
+    int max_potential_ships_gained_;
+    int enemy_max_potential_ships_gained_;
+
     //Indicates whether the planet will not be mine at any point
     //in the evaluated time frame.
     bool will_not_be_enemys_;

@@ -309,13 +309,14 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 
     this->ApplyTempActions(actions);
     PlanetSelection sources_and_targets = Action::SourcesAndTargets(actions);
-    this->UpdatePotentials();
-    this->SaveTimelinesToBase();
+    //this->UpdatePotentials();
+    //this->SaveTimelinesToBase();
 
-#ifndef IS_SUBMISSION
-    this->AssertWorkingTimelinesAreEqualToBase();
-#endif
-    //this->UpdatePotentials(sources_and_targets);
+//#ifndef IS_SUBMISSION
+//    this->AssertWorkingTimelinesAreEqualToBase();
+//#endif
+    this->UpdatePotentials(sources_and_targets);
+    this->SaveTimelinesToBase();
     //this->UpdatePotentials();
 #ifndef IS_SUBMISSION
     this->AssertWorkingTimelinesAreEqualToBase();
@@ -1177,6 +1178,9 @@ void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
     potential_ships_gained_at_ = other->potential_ships_gained_at_;
     enemy_potential_ships_gained_at_ = other->enemy_potential_ships_gained_at_;
 
+    max_potential_ships_gained_ = other->max_potential_ships_gained_;
+    enemy_max_potential_ships_gained_ = other->enemy_max_potential_ships_gained_;
+
     potential_owner_ = other->potential_owner_;
 }
 
@@ -1268,6 +1272,8 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
 
     are_equal &= (total_ships_gained_ == other->total_ships_gained_);
     are_equal &= (potential_ships_gained_ == other->potential_ships_gained_);
+    are_equal &= (max_potential_ships_gained_ == other->max_potential_ships_gained_);
+    are_equal &= (enemy_max_potential_ships_gained_ == other->enemy_max_potential_ships_gained_);
 
     are_equal &= (will_not_be_enemys_ == other->will_not_be_enemys_);
     are_equal &= (will_not_be_mine_ == other->will_not_be_mine_);
@@ -1437,17 +1443,12 @@ int PlanetTimeline::PotentialShipsGainedFor(const int player) const {
 int PlanetTimeline::MaxPotentialShipsGainedFor(const int player) const {
     //Find the maximum ships that a player can gain from this planet given an
     //invasion at any point in time up to the horizon.
-    int max_potential_ships_gained = -99999;
-    const std::vector<int>& potential_ships_gained_at = 
-        (kMe == player? potential_ships_gained_at_ : enemy_potential_ships_gained_at_);
+    if (kMe == player) {
+        return max_potential_ships_gained_;
 
-    for (int t = 1; t < horizon_; ++t) {
-        if (max_potential_ships_gained < potential_ships_gained_at[t]) {
-            max_potential_ships_gained = potential_ships_gained_at[t];
-        }
     }
 
-    return max_potential_ships_gained;
+    return enemy_max_potential_ships_gained_;
 }
 
 int PlanetTimeline::ShipsRequredToPosess(int arrival_time, int by_whom) const {
@@ -1968,6 +1969,9 @@ void PlanetTimeline::RecalculatePotentialGainsForArrivalTurns(const int player) 
     const int player_multiplier = OwnerMultiplier(player);
 
     int cur_ships = this->ShipsAt(0);
+    
+    int& max_potential_ships_gained = (kMe == player ? max_potential_ships_gained_ : enemy_max_potential_ships_gained_);
+    max_potential_ships_gained = -9999;
 
     const std::vector<int>& player_arrivals = (player == kMe ? my_arrivals_ : enemy_arrivals_);
     const std::vector<int>& opponent_arrivals = (player == kMe ? enemy_arrivals_ : my_arrivals_);
@@ -2125,6 +2129,10 @@ void PlanetTimeline::RecalculatePotentialGainsForArrivalTurns(const int player) 
         
         const int potential_gains_given_arrival = ships_gained_before_arrival + potential_ships_gained_after_arrival;
         potential_ships_gained[arrival_time] = potential_gains_given_arrival;
+
+        if (max_potential_ships_gained < potential_gains_given_arrival) {
+            max_potential_ships_gained = potential_gains_given_arrival;
+        }
     } //End iterating over arrival times.
 }
 
