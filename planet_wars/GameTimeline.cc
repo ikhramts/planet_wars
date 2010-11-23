@@ -1431,6 +1431,12 @@ int PlanetTimeline::ShipsGainedForActions(const ActionList& actions) const {
     return ships_gained_by_action_owner;
 }
 
+#ifdef USE_NEW_POTENTIAL_SHIPS_GAINED_FOR_POTENTIAL_GAINS
+int PlanetTimeline::PotentialShipsGained() const {
+    return this->PotentialShipsGainedFor(kMe);
+}
+#endif
+
 int PlanetTimeline::PotentialShipsGainedFor(const int player) const {
     if (player == kMe) {
         return potential_ships_gained_at_[1];

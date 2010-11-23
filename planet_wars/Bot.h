@@ -72,6 +72,7 @@ private:
     int picking_round_;
     std::vector<int> when_is_feeder_allowed_to_attack_;
     std::vector<int> excess_support_sent_;
+    int num_return_on_move_;
 
     ActionList committed_actions_;
     SupportConstraints* support_constraints_;

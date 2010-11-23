@@ -132,7 +132,11 @@ public:
     int ShipsGainedForActions(const ActionList& actions) const;
 
     int ShipsGained() const                 {return total_ships_gained_;}
+#ifdef USE_NEW_POTENTIAL_SHIPS_GAINED_FOR_POTENTIAL_GAINS
+    int PotentialShipsGained() const;
+#else
     int PotentialShipsGained() const        {return potential_ships_gained_;}
+#endif
     int PotentialShipsGainedFor(int player) const;
     int MaxPotentialShipsGainedFor(int player) const;
 
