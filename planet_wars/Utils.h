@@ -10,9 +10,12 @@
 //#define IS_SUBMISSION
 
 //Various switches in the bot's logic.
-//#define WITH_TIMEOUTS
+#define WITH_TIMEOUTS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 //#define STATIC_CONST_HORIZON
+
+/***** Basic Mechanics *****/
+#define RESERVE_ENEMY_ARRIVALS
 
 /***** Return Calculation Settings *****/
 //#define ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT

@@ -1695,8 +1695,9 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
 
             //Figure out how many ships were necessary to keep the planet.
             if (kMe == prev_owner && enemy_ships > 0) {
+#ifdef RESERVE_ENEMY_ARRIVALS
                 this->ReserveShips(kMe, i, enemy_ships);
-            
+#endif
             } else if (kEnemy == prev_owner && my_ships > 0) {
                 const int ships_to_reserve = my_ships - my_unreserved_arrivals_[i];
 
