@@ -308,7 +308,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (2 == picking_round_ && 3 == target_id && 18 == arrival_time) {
+            if (2 == picking_round_ && 12 == target_id && 11 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -680,7 +680,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     //Apply the actions.
     timeline_->ApplyTempActions(invasion_plan);
-    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(invasion_plan);
+    std::bitset<kMaxNumPlanets> sources_and_targets = Action::SourcesAndTargets(invasion_plan);
     
 
 #ifdef ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
@@ -853,7 +853,7 @@ ActionList Bot::SendFleetsToFront(const int player) {
 
             timeline_->ApplyTempActions(temp_action_list);
 
-            PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(temp_action_list);
+            PlanetSelection sources_and_targets = Action::SourcesAndTargets(temp_action_list);
             timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
             bool was_action_accepted = true;
 

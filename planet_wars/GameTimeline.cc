@@ -1,6 +1,7 @@
 //Available under GPLv3.
 //Author: Iouri Khramtsov.
 
+#include <bitset>
 #include "GameTimeline.h"
 #include "Utils.h"
 
@@ -307,7 +308,7 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 	}
 
     this->ApplyTempActions(actions);
-    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(actions);
+    PlanetSelection sources_and_targets = Action::SourcesAndTargets(actions);
     this->UpdatePotentials();
     this->SaveTimelinesToBase();
 
@@ -744,16 +745,16 @@ void GameTimeline::UpdatePotentials() {
     }
 }
 
-void GameTimeline::UpdatePotentials(const PlanetTimelineList& modified_planets) {
+void GameTimeline::UpdatePotentials(PlanetSelection modified_planets) {
     this->UpdatePotentialsFor(planet_timelines_, modified_planets);
 }
 
 void GameTimeline::UpdatePotentials(const ActionList& actions) {
-    PlanetTimelineList sources_and_targets = Action::SourcesAndTargets(actions);
+    PlanetSelection sources_and_targets = Action::SourcesAndTargets(actions);
     this->UpdatePotentials(sources_and_targets);
 }
 
-void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, const PlanetTimelineList &modified_planets) {
+void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, const PlanetSelection modified_planets) {
     //Update defense_potentials.  Update only the effects of the planets whose timelines have been changed.
     const std::vector<int>& when_is_feeder_allowed_to_attack = *when_is_feeder_allowed_to_attack_;
     const int num_planets = game_->NumPlanets();
@@ -828,7 +829,6 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
             for (uint s = 0; s < planets_by_distance.size(); ++s) {
                 PlanetTimeline* source = planets_by_distance[s];
                 const int source_id = source->Id();
-                
                 const int distance_to_source = game_->GetDistance(source->Id(), planet->Id());
                 
                 if (distance_to_source > t) {
@@ -836,17 +836,20 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                 }
 
                 //Use only the sources from the provided list.
-                bool found_source = false;
-                for (uint j = 0; j < modified_planets.size(); ++j) {
-                    if (modified_planets[j]->Id() == source_id) {
-                        found_source = true;
-                        break;
-                    }
-                }
-
-                if (!found_source) {
+                if (!modified_planets[source_id]) {
                     continue;
                 }
+                //bool found_source = false;
+                //for (uint j = 0; j < modified_planets.size(); ++j) {
+                //    if (modified_planets[j]->Id() == source_id) {
+                //        found_source = true;
+                //        break;
+                //    }
+                //}
+
+                //if (!found_source) {
+                //    continue;
+                //}
 
                 //Calculate how much has the effect of this source changed.
                 PlanetTimeline* base_source = base_planet_timelines_[source->Id()];

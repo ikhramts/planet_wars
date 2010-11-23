@@ -54,7 +54,10 @@ static const int kEarliestLateMediumSupportAction = 10;
 //#define USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
 #define DO_NOT_FEED_ON_FIRST_TURN
 
+//Number of planets and planet flags.
+#include <bitset>
 const int kMaxNumPlanets = 30;
+typedef std::bitset<kMaxNumPlanets> PlanetSelection;
 
 //Define assertions.
 #ifdef IS_SUBMISSION

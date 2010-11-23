@@ -8,8 +8,10 @@
 #ifndef PLANET_WARS_ACTIONS_H_
 #define PLANET_WARS_ACTIONS_H_
 
+#include <bitset>
 #include <string>
 #include <vector>
+#include "Utils.h"
 
 class Action;
 class ActionPool;
@@ -35,7 +37,7 @@ public:
 
     static void FreeActions(const ActionList& actions);
     static PlanetTimelineList Sources(const ActionList& actions);
-    static PlanetTimelineList SourcesAndTargets(const ActionList& actions);
+    static PlanetSelection SourcesAndTargets(const ActionList& actions);
     
     int Owner() const                       {return owner_;}
     PlanetTimeline* Source() const        {return source_;}

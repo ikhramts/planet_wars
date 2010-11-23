@@ -85,10 +85,10 @@ public:
     bool HasPotentialGainWorsenedFor(PlanetTimelineList timelines);
 
     void UpdatePotentials();
-    void UpdatePotentials(const PlanetTimelineList& modified_planets);
+    void UpdatePotentials(PlanetSelection modified_planets);
     void UpdatePotentials(const ActionList& actions);
 
-    void UpdatePotentialsFor(PlanetTimelineList& planets_to_update, const PlanetTimelineList& modified_planets);
+    void UpdatePotentialsFor(PlanetTimelineList& planets_to_update, PlanetSelection modified_planets);
 
     void SetFeederAttackPermissions(std::vector<int>* permissions) {when_is_feeder_allowed_to_attack_ = permissions;}
 
