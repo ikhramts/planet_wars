@@ -522,6 +522,32 @@ bool GameTimeline::HasSupportMinusExcessWorsenedFor(PlanetTimelineList timelines
 
 }
 
+bool GameTimeline::HasDefenseWorsenedFor(PlanetTimelineList timelines) {
+    for (uint i = 0; i < timelines.size(); ++i) {
+        if (this->HasSupportWorsenedFor(timelines[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool GameTimeline::HasDefenseWorsenedFor(PlanetTimeline *planet) {
+    PlanetTimeline* base_planet = base_planet_timelines_[planet->Id()];
+
+    for (int t = 1; t < horizon_; ++t) {
+        const int min_defense = planet->MinDefensePotentialAt(t);
+        const int base_min_defense = base_planet->MinDefensePotentialAt(t);
+        const int is_mine = (base_planet->OwnerAt(t) == kMe);
+
+        if (is_mine && min_defense < 0 && min_defense < base_min_defense) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool GameTimeline::HasSupportMinusExcessWorsenedFor(PlanetTimeline* planet, const std::vector<int>& excess_support_sent) {
     PlanetTimeline* base_planet = base_planet_timelines_[planet->Id()];
     const int num_planets = game_->NumPlanets();

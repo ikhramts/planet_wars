@@ -1237,7 +1237,11 @@ ActionList Bot::SendSupportFleets(const int player) {
             timeline_->ApplyTempActions(support_plan);
             timeline_->UpdatePotentials(support_plan);
 
+#ifdef USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS
+            if (timeline_->HasDefenseWorsenedFor(test_planets)) {
+#else
             if (timeline_->HasSupportWorsenedFor(test_planets)) {
+#endif
             //if (this->ReturnForMove(support_plan, 0) <= 0) {
                 //Bad plan, don't do it.
                 Action::FreeActions(support_plan);
@@ -1296,7 +1300,11 @@ void Bot::AddSupportConstraints(const ActionList &actions) {
             support_constraints_->AddConstraint(planet, target, turns_support_worsened_at);
         }
 #else
+#ifdef USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS
+        if (timeline_->HasDefenseWorsenedFor(planet)) {
+#else
         if (timeline_->HasSupportWorsenedFor(planet)) {
+#endif
             support_constraints_->AddConstraint(planet, target);
         }
 #endif
