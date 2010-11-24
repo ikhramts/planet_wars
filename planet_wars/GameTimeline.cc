@@ -66,6 +66,28 @@ void GameTimeline::Update() {
 
     this->UpdatePotentials();
     this->SaveTimelinesToBase();
+
+#ifdef FREE_SHIPS_ON_HOPELESS_PLANETS
+    //Check whether any planets will be hopelessly lost and irrecoverable.
+    //In that case, recalculate the hopeless timelines and update all
+    //potentials.
+    PlanetSelection hopeless_planets;
+    
+    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        PlanetTimeline* planet = planet_timelines_[i];
+
+        if (planet->IsHopeless()) {
+            hopeless_planets[i] = true;
+            planet->ResetStartingData();
+            planet->RecalculateTimeline(1);
+        }
+    }
+
+    if (hopeless_planets.any()) {
+        this->UpdatePotentials(hopeless_planets);
+        this->SaveTimelinesToBase();
+    }
+#endif
 }
 
 int GameTimeline::ShipsGainedForActions(const ActionList& actions, Planet *planet) const {
@@ -1143,6 +1165,8 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     will_be_enemys_ = (kEnemy == starting_owner);
 
     is_recalculating_ = false;
+    is_hopeless_ = false;
+    check_for_hopelessness_ = false;
 
     this->RecalculateTimeline(1);
 }
@@ -1195,6 +1219,8 @@ void PlanetTimeline::CopyTimeline(PlanetTimeline* other) {
 	will_be_mine_ = other->will_be_mine_;
 
     is_reinforcer_ = other->is_reinforcer_;
+    is_hopeless_ = other->is_hopeless_;
+    check_for_hopelessness_ = other->check_for_hopelessness_;
 }
 
 void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
@@ -1323,13 +1349,14 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
     are_equal &= (will_be_enemys_ == other->will_be_enemys_);
     are_equal &= (will_be_mine_ == other->will_be_mine_);
 
-
     are_equal &= (game_ == other->game_);
     are_equal &= (planet_ == other->planet_);
     are_equal &= (game_timeline_ == other->game_timeline_);
 
     are_equal &= (is_reinforcer_ == other->is_reinforcer_);
     are_equal &= (is_recalculating_ == other->is_recalculating_);
+    are_equal &= (is_hopeless_ == other->is_hopeless_);
+    are_equal &= (check_for_hopelessness_ == other->check_for_hopelessness_);
     
     if (!are_equal) {
         return false;
@@ -1393,6 +1420,9 @@ void PlanetTimeline::Update() {
     will_be_mine_ = (kMe == current_owner);
     will_not_be_enemys_ = (kEnemy != current_owner);
     will_be_enemys_ = (kEnemy == current_owner);
+
+    is_hopeless_ = false;
+    check_for_hopelessness_ = true;
 
     this->RecalculateTimeline(1);
 }
@@ -1739,7 +1769,13 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
             //Figure out how many ships were necessary to keep the planet.
             if (kMe == prev_owner && enemy_ships > 0) {
 #ifdef RESERVE_ENEMY_ARRIVALS
+ #ifdef FREE_SHIPS_ON_HOPELESS_PLANETS
+                if (is_hopeless_) {
+ #endif
                 this->ReserveShips(kMe, i, enemy_ships);
+ #ifdef FREE_SHIPS_ON_HOPELESS_PLANETS
+                }
+ #endif
 #endif
             } else if (kEnemy == prev_owner && my_ships > 0) {
                 const int ships_to_reserve = my_ships - my_unreserved_arrivals_[i];
@@ -1908,35 +1944,6 @@ void PlanetTimeline::RecalculateShipsGained() {
     }
 #endif
 
-    //Recalculate ships gained after a balance calculation.
-    //bool would_planet_be_lost = false;
-    //const int growth_rate = planet_->GrowthRate();
-    //total_ships_gained_ = ships_gained_[0];
-    //int balance_loss = 0;
-
-    //for (int t = 1; t < horizon_; ++t) {
-    //    if (would_planet_be_lost && this->OwnerAt(t) == kMe) {
-    //        total_ships_gained_ -= growth_rate;
-    //        balance_loss -= growth_rate * 2;
-    //    
-    //    } else {
-    //        total_ships_gained_ += ships_gained_[t];
-    //    }
-
-    //    if (owner_[t] == kMe && (min_support_potentials_[t] < 0 || (0 == min_defense_potentials_[t] && kEnemy == owner_[t-1]))) {
-    //        would_planet_be_lost = true;
-    //    
-    //    } else if (would_planet_be_lost && (min_support_potentials_[t] + balance_loss > 0)) {
-    //        would_planet_be_lost = false;
-    //    }
-    //}
-
-    //if (would_planet_be_lost) {
-    //    total_ships_gained_ -= game_timeline_->AdditionalGrowthTurns() * growth_rate;
-    //
-    //} else {
-    //    total_ships_gained_ += OwnerMultiplier(owner_[horizon_ - 1]) * game_timeline_->AdditionalGrowthTurns() * growth_rate;
-    //}
     total_ships_gained_ = this->CalculateGainsUntil(horizon_);
 
     this->RecalculatePotentialShipsGained();
@@ -1951,6 +1958,7 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
     int potential_owner = -1;
     int potential_adjustment = 0;
     const int growth_rate = planet_->GrowthRate();
+    bool was_mine_at_some_point = (kMe == prev_potential_owner);
 
     potential_ships_gained_ = 0;
 
@@ -1958,6 +1966,7 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
         potential_ships_gained_ += OwnerMultiplier(prev_potential_owner) * growth_rate;
         //const int full_potential = this->SupportPotentialAt(t, t) + potential_adjustment;
         const int actual_owner = this->OwnerAt(t);
+        was_mine_at_some_point |= (kMe == actual_owner);
         
         //Check whether the owner has changed.
 #ifdef USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
@@ -1969,10 +1978,22 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
 
         } else if (actual_owner == kMe && (this->SupportPotentialAt(t, t) + potential_adjustment) < 0) {
             potential_owner = kEnemy;
-        
+
         } else {
             potential_owner = actual_owner;
         }
+
+#ifdef FREE_SHIPS_ON_HOPELESS_PLANETS
+        //Check whether the planet will be lost and never recovered.
+        if (check_for_hopelessness_) {
+            if (was_mine_at_some_point && potential_owner == kEnemy && t <= kLatestPermanentLossForHopelessness) {
+                is_hopeless_ = true;
+
+            } else if (potential_owner == kMe) {
+                is_hopeless_ = false;
+            }
+        }
+#endif
 
         prev_potential_owner = potential_owner;
 
@@ -2000,6 +2021,8 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
     //    OwnerMultiplier(prev_potential_owner) * growth_rate * (game_timeline_->AdditionalGrowthTurns() + 1);
     potential_ships_gained_ += 
         OwnerMultiplier(prev_potential_owner) * growth_rate * (game_timeline_->AdditionalGrowthTurns());
+
+    check_for_hopelessness_ = false;
 }
 
 void PlanetTimeline::RecalculatePotentialGainsForArrivalTurns(const int player) {

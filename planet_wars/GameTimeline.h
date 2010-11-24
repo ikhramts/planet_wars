@@ -230,6 +230,9 @@ public:
     int EnemyStartingPotentialAt(int when) const;
     int PlayerStartingPotentialAt(int when, int player) const;
 
+    bool IsHopeless() const                 {return is_hopeless_;}
+    bool SetCheckForHopelessess(bool check) {check_for_hopelessness_ = check;}
+
 private:
     //Reserve ships for a departure or defense.
     void ReserveShips(int owner, int key_time, int num_ships);
@@ -317,6 +320,8 @@ private:
 
     bool is_reinforcer_;
     bool is_recalculating_;
+    bool is_hopeless_;
+    bool check_for_hopelessness_;
 };
 
 #endif
