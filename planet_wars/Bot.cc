@@ -310,14 +310,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 15 == target_id) {
+        if (1 == picking_round_ && 9 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 22 == target_id && 13 == arrival_time) {
+            if (2 == picking_round_ && 19 == target_id && 10 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -1312,17 +1312,23 @@ int Bot::PotentialShipsGained(PlanetTimeline* target, const PlanetTimelineList& 
         planets_to_exclude[base_calculation_planets[i]->Id()] = true;
     }
 
-    const int my_additional_potential_gains = 
-        this->PotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
-    const int base_my_additional_potential_gains = 
-        this->PotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
-    const int my_net_additional_gains = my_additional_potential_gains - base_my_additional_potential_gains;
+#ifdef CONSIDER_MY_EXTENDED_POTENTIAL_GAINS
+    //const int my_additional_potential_gains = 
+    //    this->PotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
+    //const int base_my_additional_potential_gains = 
+    //    this->BasePotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
+    //const int my_net_additional_gains = my_additional_potential_gains - base_my_additional_potential_gains;
+    const int my_net_additional_gains = this->NetPotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
+#else
+    const int my_net_additional_gains = 0;
+#endif
 
-    const int enemy_additional_potential_gains = 
-        this->PotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
-    const int base_enemy_additional_potential_gains = 
-        this->BasePotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
-    const int enemy_net_additional_gains = enemy_additional_potential_gains - base_enemy_additional_potential_gains;
+    //const int enemy_additional_potential_gains = 
+    //    this->PotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
+    //const int base_enemy_additional_potential_gains = 
+    //    this->BasePotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
+    //const int enemy_net_additional_gains = enemy_additional_potential_gains - base_enemy_additional_potential_gains;
+    const int enemy_net_additional_gains = this->NetPotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
 
     const int total_potential_ships_gained = ships_gained_on_my_planets + my_net_additional_gains - 
         enemy_net_additional_gains;
@@ -1370,6 +1376,33 @@ int Bot::BasePotentialAdditionalShipsGainedForPlayer(const int player, const std
 #else
         potential_ships_gained += planet->PotentialShipsGainedFor(player);
 #endif
+    }
+
+    return potential_ships_gained;
+}
+
+int Bot::NetPotentialAdditionalShipsGainedForPlayer(int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude) {
+    int potential_ships_gained = 0;
+    PlanetTimelineList planets = timeline_->Timelines();
+    PlanetTimelineList base_planets = timeline_->BaseTimelines();
+
+    for (uint i = 0; i < planets.size(); ++i) {
+        if (planets_to_exclude[i]) {
+            continue;
+        }
+
+        PlanetTimeline* planet = planets[i];
+        PlanetTimeline* base_planet = base_planets[i];
+
+#ifdef USE_MAX_POTENTIAL_SHIPS_GAINED_FOR_EXTENDED_GAINS
+        const int ships_gained = planet->MaxPotentialShipsGainedFor(player);
+        const int base_ships_gained = base_planet->MaxPotentialShipsGainedFor(player);
+#else
+        const int ships_gained = planet->PotentialShipsGainedFor(player);
+        const int base_ships_gained = base_planet->PotentialShipsGainedFor(player);
+#endif
+        potential_ships_gained += (ships_gained - base_ships_gained);
+
     }
 
     return potential_ships_gained;

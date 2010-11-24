@@ -63,6 +63,7 @@ private:
     int PotentialShipsGained(PlanetTimeline* target, const PlanetTimelineList& base_calculation_planets);
     int PotentialAdditionalShipsGainedForPlayer(int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude);
     int BasePotentialAdditionalShipsGainedForPlayer(int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude);
+    int NetPotentialAdditionalShipsGainedForPlayer(int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude);
     
     GameMap* game_;
     GameTimeline* timeline_;
