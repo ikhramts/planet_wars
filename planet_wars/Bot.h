@@ -91,24 +91,27 @@ public:
 
 class SupportConstraints {
 public:
-    SupportConstraints(int num_planets, GameMap* game);
-
 #ifdef USE_BETTER_CONSTRAINTS
+    SupportConstraints(int num_planets, GameMap* game, int horizon);
     void AddConstraint(PlanetTimeline* constrained_planet, PlanetTimeline* constraint_center, std::vector<int> turns);
     bool MaySupport(PlanetTimeline* source, PlanetTimeline* target, int turn);
 #else
+    SupportConstraints(int num_planets, GameMap* game);
     void AddConstraint(PlanetTimeline* constrained_planet, PlanetTimeline* constraint_center);
     bool MaySupport(PlanetTimeline* source, PlanetTimeline* target);
 #endif
 
-    void ClearConstraints();
+    void NextTurn();
 
 private:
+#ifdef USE_BETTER_CONSTRAINTS
+    //A num_planets x num_planets x horizon vector containing the radius of a
+    //support constraint for each constrainee/constrainer/turn.
+    std::vector<int> constraint_radii_;
+    int horizon_;
+#else
     std::vector<std::vector<int> > constraint_centers_;
     std::vector<std::vector<int> > constraint_radii_;
-
-#ifdef USE_BETTER_CONSTRAINTS
-    std::vector<std::vector<std::vector<int> > > constraint_turns_;
 #endif
 
     GameMap* game_;

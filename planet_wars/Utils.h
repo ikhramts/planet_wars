@@ -10,7 +10,7 @@
 //#define IS_SUBMISSION
 
 //Various switches in the bot's logic.
-//#define WITH_TIMEOUTS
+#define WITH_TIMEOUTS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 //#define STATIC_CONST_HORIZON
 
@@ -50,15 +50,15 @@ static const int kEarliestLateMediumSupportAction = 10;
 /***** Support Settings *****/
 #define PRE_APPLY_SUPPORT_ACTIONS
 #define USE_SUPPORT_CONSTRAINTS
-//#define USE_BETTER_CONSTRAINTS
-//#define USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS
+#define USE_BETTER_CONSTRAINTS
+#define USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS
 #define ADD_EXCESS_SUPPORT_SHIPS
 #define USE_DEFENSE_POTENTIAL_FOR_EXCESS_SUPPORT_CALCULATIONS
 //#define CHECK_SUPPORT_DECLINE_ON_ALL_MY_PLANETS
 
 /***** Feeder Planet Settings *****/
 //#define USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
-//#define DO_NOT_FEED_ON_FIRST_TURN
+#define DO_NOT_FEED_ON_FIRST_TURN
 #define USE_IMPROVED_FEEDING
 
 //Number of planets and planet flags.

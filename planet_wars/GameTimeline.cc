@@ -532,6 +532,23 @@ bool GameTimeline::HasDefenseWorsenedFor(PlanetTimelineList timelines) {
     return false;
 }
 
+std::vector<int> GameTimeline::TurnsDefenseHasWorsenedAt(PlanetTimeline* planet) {
+    PlanetTimeline* base_planet = base_planet_timelines_[planet->Id()];
+    std::vector<int> turns_defense_worsened_at;
+
+    for (int t = 1; t < horizon_; ++t) {
+        const int min_defense = planet->MinDefensePotentialAt(t);
+        const int base_min_defense = base_planet->MinDefensePotentialAt(t);
+        const int is_mine = (base_planet->OwnerAt(t) == kMe);
+
+        if (is_mine && min_defense < 0 && min_defense < base_min_defense) {
+            turns_defense_worsened_at.push_back(t);
+        }
+    }
+
+    return turns_defense_worsened_at;
+}
+
 bool GameTimeline::HasDefenseWorsenedFor(PlanetTimeline *planet) {
     PlanetTimeline* base_planet = base_planet_timelines_[planet->Id()];
 

@@ -42,7 +42,11 @@ void Bot::SetGame(GameMap* game) {
     when_is_feeder_allowed_to_attack_.resize(num_planets * num_planets, -1);
     excess_support_sent_.resize(u_horizon * num_planets, 0);
 
+#ifdef USE_BETTER_CONSTRAINTS
+    support_constraints_ = new SupportConstraints(game_->NumPlanets(), game_, horizon);
+#else
     support_constraints_ = new SupportConstraints(game_->NumPlanets(), game_);
+#endif
 }
 
 ActionList Bot::MakeMoves() {
@@ -83,7 +87,7 @@ ActionList Bot::MakeMoves() {
         excess_support_sent_[i] = 0;
     }
 
-    support_constraints_->ClearConstraints();
+    support_constraints_->NextTurn();
 
     timeline_->SetFeederAttackPermissions(&when_is_feeder_allowed_to_attack_);
 
@@ -310,14 +314,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 9 == target_id) {
+        if (1 == picking_round_ && 20 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (2 == picking_round_ && 19 == target_id && 10 == arrival_time) {
+            if (1 == picking_round_ && 20 == target_id && 8 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -951,7 +955,7 @@ ActionList Bot::SendFleetsToFront2(const int player) {
         const int source_id = source->Id();
         
 #ifndef IS_SUBMISSION
-        if (6 == source_id) {
+        if (7 == source_id) {
             int x = 2;
         }
 #endif
@@ -1036,7 +1040,6 @@ ActionList Bot::SendFleetsToFront2(const int player) {
         action->SetOwner(player);
         action->SetSource(source);
         action->SetDepartureTime(0);
-        action->SetDistance(distance_to_target);
         action->SetNumShips(available_ships);
         temp_action_list[0] = action;
 
@@ -1045,7 +1048,9 @@ ActionList Bot::SendFleetsToFront2(const int player) {
         
         do {
             PlanetTimeline* target = targets_by_proximity[target_index];
+            const int travel_distance = game_->GetDistance(source_id, target->Id());
             action->SetTarget(target);
+            action->SetDistance(travel_distance);
             timeline_->ApplyTempActions(temp_action_list);
     
             PlanetSelection sources_and_targets = Action::SourcesAndTargets(temp_action_list);
@@ -1294,20 +1299,23 @@ void Bot::AddSupportConstraints(const ActionList &actions) {
         PlanetTimeline* planet = my_planets[i];
 
 #ifdef USE_BETTER_CONSTRAINTS
+ #ifdef USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS
+        std::vector<int> turns_support_worsened_at = timeline_->TurnsDefenseHasWorsenedAt(planet);
+ #else /* USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS */
         std::vector<int> turns_support_worsened_at = timeline_->TurnsSupportHasWorsenedAt(planet);
-
+ #endif /* USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS */
         if (!turns_support_worsened_at.empty()) {
             support_constraints_->AddConstraint(planet, target, turns_support_worsened_at);
         }
-#else
-#ifdef USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS
+#else /* USE_BETTER_CONSTRAINTS */
+ #ifdef USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS
         if (timeline_->HasDefenseWorsenedFor(planet)) {
-#else
+ #else /* USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS */
         if (timeline_->HasSupportWorsenedFor(planet)) {
-#endif
+ #endif /* USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS */
             support_constraints_->AddConstraint(planet, target);
         }
-#endif
+#endif /* USE_BETTER_CONSTRAINTS */
     }
 }
 
@@ -1419,74 +1427,115 @@ int Bot::NetPotentialAdditionalShipsGainedForPlayer(int player, const std::bitse
 /************************************************
             SupportConstraints class
 ************************************************/
+#ifdef USE_BETTER_CONSTRAINTS
+SupportConstraints::SupportConstraints(const int num_planets, GameMap* game, const int horizon) {
+    const uint u_num_planets = static_cast<uint>(num_planets);
+    const uint u_horizon = static_cast<uint>(horizon);
+
+    constraint_radii_.resize(u_num_planets * u_num_planets * u_horizon, 0);
+    game_ = game;
+    horizon_ = horizon;
+}
+#else
 SupportConstraints::SupportConstraints(const int num_planets, GameMap* game) {
     const uint u_num_planets = static_cast<uint>(num_planets);
     constraint_centers_.resize(u_num_planets);
     constraint_radii_.resize(u_num_planets);
-
-#ifdef USE_BETTER_CONSTRAINTS
-    constraint_turns_.resize(u_num_planets);
-#endif
-
     game_ = game;
 }
+#endif
 
 #ifdef USE_BETTER_CONSTRAINTS
 void SupportConstraints::AddConstraint(PlanetTimeline *constrained_planet, 
                                        PlanetTimeline *constraint_center, 
                                        std::vector<int> turns) {
-   if (turns.empty()) {
-       return;
-   }
+    if (turns.empty()) {
+        return;
+    }
+
+    const int constrainee_id = constrained_planet->Id();
+    const int center_id = constraint_center->Id();
+    const int radius = game_->GetDistance(center_id, constrainee_id);
+    const int num_planets = game_->NumPlanets();
+
+    const int num_planets_sq = num_planets * num_planets;
+    const int center_offset = constrainee_id * num_planets + center_id;
+
+    for (uint i = 0; i < turns.size(); ++i) {
+        const int turn = turns[i];
+        const int index = num_planets_sq * turn + center_offset;
+        const int existing_constraint_radius = constraint_radii_[index];
+        const int new_constraint_radius = std::max(existing_constraint_radius, radius);
+        constraint_radii_[index] = new_constraint_radius;
+    }
+}
 #else
 void SupportConstraints::AddConstraint(PlanetTimeline *constrained_planet, PlanetTimeline *constraint_center) {
-#endif
     const int constrainee_id = constrained_planet->Id();
     const int center_id = constraint_center->Id();
     const int radius = game_->GetDistance(center_id, constrainee_id);
 
     constraint_centers_[constrainee_id].push_back(center_id);
     constraint_radii_[constrainee_id].push_back(radius);
-
-#ifdef USE_BETTER_CONSTRAINTS
-    constraint_turns_[constrainee_id].push_back(turns);
-#endif
 }
+#endif
 
 #ifdef USE_BETTER_CONSTRAINTS
 bool SupportConstraints::MaySupport(PlanetTimeline* source, PlanetTimeline* target, const int turn) {
+    const int source_id = source->Id();
+    const int target_id = target->Id();
+    const int num_planets = game_->NumPlanets();
+    const int constrainee_offset = num_planets * num_planets * turn + num_planets * target_id;
+
+    for (int constrainer_id = 0; constrainer_id < num_planets; ++constrainer_id) {
+        const int radius_index = constrainee_offset + constrainer_id;
+        const int constraint_radius = constraint_radii_[radius_index];
+
+        if (radius_index > 0) {
+            //Chech whether the constraint applies to this source.
+            const int source_distance_to_constrainer = game_->GetDistance(source_id, constrainer_id);
+
+            if (source_distance_to_constrainer <= constraint_radius) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
 #else
 bool SupportConstraints::MaySupport(PlanetTimeline *source, PlanetTimeline *target) {
-#endif
     const int source_id = source->Id();
     const int target_id = target->Id();
 
     for(uint i = 0; i < constraint_centers_[target_id].size(); ++i) {
         const int distance_from_center = game_->GetDistance(constraint_centers_[target_id][i], source_id);
         const int minimum_distance = constraint_radii_[target_id][i];
-#ifdef USE_BETTER_CONSTRAINTS
-        const std::vector<int>& constraint_turns = constraint_turns_[target_id][i];
-#endif
         if (distance_from_center <= minimum_distance) {
-#ifdef USE_BETTER_CONSTRAINTS
-            //Check whether planet is constrained from being supported on this turn.
-            for (uint j = 0; j < constraint_turns.size(); ++j) {
-                if (constraint_turns[j] == turn) {
-                    return false;
-                }
-            }
-#else       
             return false;
-#endif /* USE_BETTER_CONSTRAINTS */
         }
     }
 
     return true;
 }
+#endif
 
-void SupportConstraints::ClearConstraints() {
+void SupportConstraints::NextTurn() {
+#ifdef USE_BETTER_CONSTRAINTS
+    //As the game has advanced, decrement all constraint turns by one.  If the constraint turn
+    //has approached 0, it will be removed.
+    const int num_planets = game_->NumPlanets();
+    const int num_planets_sq = num_planets * num_planets;
+    const int last_turn_constraints_start = num_planets_sq * (horizon_ - 1);
+
+    for (int t = num_planets_sq; t < last_turn_constraints_start; ++t) {
+        constraint_radii_[t] = constraint_radii_[t + num_planets_sq];
+    }
+
+#else
     for (uint i = 0; i < constraint_centers_.size(); ++i) {
         constraint_centers_[i].clear();
         constraint_radii_[i].clear();
     }
+#endif
 }
