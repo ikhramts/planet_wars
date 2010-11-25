@@ -198,8 +198,10 @@ public:
     
     std::vector<int>& SupportPotentials()                   {return support_potentials_;}
     int SupportPotentialAt(int t, int d) const              {return support_potentials_[t*(t-1)/2 + d - 1];}
+#ifdef USE_MIN_SUPPORT_POTENTIALS
     int MinSupportPotentialAt(int t) const                  {return min_support_potentials_[t];}
     void SetMinSupportPotentialAt(int t, int potential)     {min_support_potentials_[t] = potential;}
+#endif
     int MaxSupportPotentialAt(int t) const                  {return max_support_potentials_[t];}
     void SetMaxSupportPotentialAt(int t, int potential)     {max_support_potentials_[t] = potential;}
 
@@ -211,8 +213,10 @@ public:
     
     std::vector<int>& EnemySupportPotentials()                   {return enemy_support_potentials_;}
     int EnemySupportPotentialAt(int t, int d) const              {return enemy_support_potentials_[t*(t-1)/2 + d - 1];}
+#ifdef USE_MIN_SUPPORT_POTENTIALS
     int EnemyMinSupportPotentialAt(int t) const                  {return enemy_min_support_potentials_[t];}
     void SetEnemyMinSupportPotentialAt(int t, int potential)     {enemy_min_support_potentials_[t] = potential;}
+#endif
     int EnemyMaxSupportPotentialAt(int t) const                  {return enemy_max_support_potentials_[t];}
     void SetEnemyMaxSupportPotentialAt(int t, int potential)     {enemy_max_support_potentials_[t] = potential;}
 
@@ -293,19 +297,23 @@ private:
 #endif
 
     std::vector<int> support_potentials_;
+#ifdef USE_MIN_SUPPORT_POTENTIALS
     std::vector<int> min_support_potentials_;
+#endif
     std::vector<int> max_support_potentials_;
 
     std::vector<int> enemy_defense_potentials_;
     std::vector<int> enemy_min_defense_potentials_;
 
     std::vector<int> enemy_support_potentials_;
+#ifdef USE_MIN_SUPPORT_POTENTIALS
     std::vector<int> enemy_min_support_potentials_;
+#endif
     std::vector<int> enemy_max_support_potentials_;
 
     std::vector<int> potential_owner_;
 
-#ifndef IS_SUBMISSION
+#ifdef CALCULATE_FULL_POTENTIALS
     std::vector<int> full_potentials_;
     std::vector<int> enemy_full_potentials_;
 #endif

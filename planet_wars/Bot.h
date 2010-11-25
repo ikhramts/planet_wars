@@ -29,6 +29,7 @@ public:
 
     //Decide which fleets to send.  This is the main move logic function.
     ActionList MakeMoves();
+    int GetNumReturnOnMove() const          {return num_return_on_move_;}
 
 private:
     ActionList FindActionsFor(int player);

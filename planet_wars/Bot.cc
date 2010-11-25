@@ -665,6 +665,12 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         }
     }
 
+#ifndef IS_SUBMISSION
+ #ifdef CALCULATE_NUM_INVOKES_OF_RETURN_ON_MOVE
+    ++num_return_on_move_;
+ #endif
+#endif
+
     const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
     const int ships_permanently_lost = std::max(0, neutral_ships - future_ships_lost);
     //const int updated_ships_gained = timeline_->ShipsGainedFromBase();

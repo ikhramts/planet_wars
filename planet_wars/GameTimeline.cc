@@ -360,26 +360,18 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 	}
 
     this->ApplyTempActions(actions);
-    PlanetSelection sources_and_targets = Action::SourcesAndTargets(actions);
-    //this->UpdatePotentials();
-    //this->SaveTimelinesToBase();
 
-//#ifndef IS_SUBMISSION
-//    this->AssertWorkingTimelinesAreEqualToBase();
-//#endif
 #ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
+    PlanetSelection sources_and_targets = Action::SourcesAndTargets(actions);
     this->UpdatePotentials(sources_and_targets);
 #else 
     this->UpdatePotentials();
 #endif
     this->SaveTimelinesToBase();
-#ifndef IS_SUBMISSION
-    this->AssertWorkingTimelinesAreEqualToBase();
-#endif
+//#ifndef IS_SUBMISSION
+//    this->AssertWorkingTimelinesAreEqualToBase();
+//#endif
 
-    //this->UpdatePotentials(sources_and_targets);
-
-    
     //for (uint i = 0; i < are_working_timelines_different_.size(); ++i) {
     //    if (are_working_timelines_different_[i]) {
     //        base_planet_timelines_[i]->CopyTimeline(planet_timelines_[i]);
@@ -388,10 +380,6 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 
     //    base_planet_timelines_[i]->CopyPotentials(planet_timelines_[i]);
     //}
-
-#ifndef IS_SUBMISSION
-    this->AssertWorkingTimelinesAreEqualToBase();
-#endif
 }
 
 void GameTimeline::ApplyTempActions(const ActionList& actions) {
@@ -705,7 +693,10 @@ void GameTimeline::UpdatePotentials() {
 
         //Check whether we'll need to update enemy's numbers.
         bool update_enemy_potentials = false;
-        update_enemy_potentials = true;
+
+        if (!planet->WillBeMine()) {
+            update_enemy_potentials = true;
+        }
 
 #ifndef IS_SUBMISSION
         const int id = planet->Id();
@@ -741,10 +732,12 @@ void GameTimeline::UpdatePotentials() {
 #ifdef USE_MAX_DEFENCE_POTENTIALS
             int max_defense_potential = starting_potential;
 #endif
+#ifdef USE_MIN_SUPPORT_POTENTIALS
             int min_support_potential = starting_potential;
+            int enemy_min_support_potential = enemy_starting_potential;
+#endif
             int max_support_potential = starting_potential;
             int enemy_min_defense_potential = enemy_starting_potential;
-            int enemy_min_support_potential = enemy_starting_potential;
             int enemy_max_support_potential = enemy_starting_potential;
             
             //Calculate the neighbours' contributions to the defense_potentials.
@@ -819,11 +812,11 @@ void GameTimeline::UpdatePotentials() {
                     max_defense_potential = defense_potentials[index];
                 }
 #endif
-
+#ifdef USE_MIN_SUPPORT_POTENTIALS
                 if (min_support_potential > support_potentials[index]) {
                     min_support_potential = support_potentials[index];
                 }
-
+#endif
                 if (max_support_potential < support_potentials[index]) {
                     max_support_potential = support_potentials[index];
                 }
@@ -834,8 +827,9 @@ void GameTimeline::UpdatePotentials() {
 #ifdef USE_MAX_DEFENCE_POTENTIALS
             planet->SetMaxDefensePotentialAt(t, max_defense_potential);
 #endif
-
+#ifdef USE_MIN_SUPPORT_POTENTIALS
             planet->SetMinSupportPotentialAt(t, min_support_potential);
+#endif
             planet->SetMaxSupportPotentialAt(t, max_support_potential);
 
             if (update_enemy_potentials) {
@@ -846,10 +840,11 @@ void GameTimeline::UpdatePotentials() {
                         enemy_min_defense_potential = enemy_defense_potentials[index];
                     }
 
+#ifdef USE_MIN_SUPPORT_POTENTIALS
                     if (enemy_min_support_potential > enemy_support_potentials[index]) {
                         enemy_min_support_potential = enemy_support_potentials[index];
                     }
-
+#endif
                     if (enemy_max_support_potential < enemy_support_potentials[index]) {
                         enemy_max_support_potential = enemy_support_potentials[index];
                     }
@@ -857,7 +852,9 @@ void GameTimeline::UpdatePotentials() {
             
                 //Update min/max defense_potentials at each turn.
                 planet->SetEnemyMinDefensePotentialAt(t, enemy_min_defense_potential);
+#ifdef USE_MIN_SUPPORT_POTENTIALS
                 planet->SetEnemyMinSupportPotentialAt(t, enemy_min_support_potential);
+#endif
                 planet->SetEnemyMaxSupportPotentialAt(t, enemy_max_support_potential);
 
             } /* End updating enemy min/max potentials. */
@@ -902,7 +899,9 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 
         //Check whether we'll need to update enemy's numbers.
         bool update_enemy_potentials = false;
-        update_enemy_potentials = true;
+        if (!planet->WillBeMine()) {
+            update_enemy_potentials = true;
+        }
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
@@ -945,10 +944,12 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 #ifdef USE_MAX_DEFENCE_POTENTIALS
             int max_defense_potential = starting_potential;
 #endif
+#ifdef USE_MIN_SUPPORT_POTENTIALS
             int min_support_potential = starting_potential;
+            int enemy_min_support_potential = enemy_starting_potential;
+#endif
             int max_support_potential = starting_potential;
             int enemy_min_defense_potential = enemy_starting_potential;
-            int enemy_min_support_potential = enemy_starting_potential;
             int enemy_max_support_potential = enemy_starting_potential;
             
             //Calculate the neighbours' contributions to the defense_potentials.
@@ -1074,11 +1075,11 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                     max_defense_potential = defense_potentials[index];
                 }
 #endif
-
+#ifdef USE_MIN_SUPPORT_POTENTIALS
                 if (min_support_potential > support_potentials[index]) {
                     min_support_potential = support_potentials[index];
                 }
-
+#endif
                 if (max_support_potential < support_potentials[index]) {
                     max_support_potential = support_potentials[index];
                 }
@@ -1089,8 +1090,9 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 #ifdef USE_MAX_DEFENCE_POTENTIALS
             planet->SetMaxDefensePotentialAt(t, max_defense_potential);
 #endif
-
+#ifdef USE_MIN_SUPPORT_POTENTIALS
             planet->SetMinSupportPotentialAt(t, min_support_potential);
+#endif
             planet->SetMaxSupportPotentialAt(t, max_support_potential);
             
             if (update_enemy_potentials) {
@@ -1101,9 +1103,11 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                         enemy_min_defense_potential = enemy_defense_potentials[index];
                     }
 
+#ifdef USE_MIN_SUPPORT_POTENTIALS
                     if (enemy_min_support_potential > enemy_support_potentials[index]) {
                         enemy_min_support_potential = enemy_support_potentials[index];
                     }
+#endif
 
                     if (enemy_max_support_potential < enemy_support_potentials[index]) {
                         enemy_max_support_potential = enemy_support_potentials[index];
@@ -1112,7 +1116,9 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
             
                 //Update min/max defense_potentials at each turn.
                 planet->SetEnemyMinDefensePotentialAt(t, enemy_min_defense_potential);
+#ifdef USE_MIN_SUPPORT_POTENTIALS
                 planet->SetEnemyMinSupportPotentialAt(t, enemy_min_support_potential);
+#endif
                 planet->SetEnemyMaxSupportPotentialAt(t, enemy_max_support_potential);
             }
         }
@@ -1190,18 +1196,22 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
     max_defense_potentials_.resize(u_horizon, 0);
 #endif
     support_potentials_.resize(u_horizon*(u_horizon + 1)/2, 0);
+#ifdef USE_MIN_SUPPORT_POTENTIALS
     min_support_potentials_.resize(u_horizon, 0);
+#endif
     max_support_potentials_.resize(u_horizon, 0);
 
     enemy_defense_potentials_.resize(u_horizon*(u_horizon + 1)/2, 0);
     enemy_min_defense_potentials_.resize(u_horizon, 0);
     enemy_support_potentials_.resize(u_horizon*(u_horizon + 1)/2, 0);
+#ifdef USE_MIN_SUPPORT_POTENTIALS
     enemy_min_support_potentials_.resize(u_horizon, 0);
+#endif
     enemy_max_support_potentials_.resize(u_horizon, 0);
     
     potential_owner_.resize(u_horizon, 0);
 
-#ifndef IS_SUBMISSION
+#ifdef CALCULATE_FULL_POTENTIALS
     full_potentials_.resize(u_horizon, 0);
     enemy_full_potentials_.resize(u_horizon, 0);
 #endif
@@ -1310,16 +1320,20 @@ void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
     total_ships_gained_ = other->total_ships_gained_;
     potential_ships_gained_ = other->potential_ships_gained_;
     support_potentials_ = other->support_potentials_;
+#ifdef USE_MIN_SUPPORT_POTENTIALS
     min_support_potentials_ = other->min_support_potentials_;
+#endif
     max_support_potentials_ = other->max_support_potentials_;
 
     enemy_defense_potentials_ = other->enemy_defense_potentials_;
     enemy_min_defense_potentials_ = other->enemy_min_defense_potentials_;
     enemy_support_potentials_ = other->enemy_support_potentials_;
+#ifdef USE_MIN_SUPPORT_POTENTIALS
     enemy_min_support_potentials_ = other->enemy_min_support_potentials_;
+#endif
     enemy_max_support_potentials_ = other->enemy_max_support_potentials_;
 
-#ifndef IS_SUBMISSION
+#ifdef CALCULATE_FULL_POTENTIALS
     full_potentials_ = other->full_potentials_;
     enemy_full_potentials_ = other->enemy_full_potentials_;
 #endif
@@ -1369,16 +1383,20 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
 #ifdef USE_MAX_DEFENCE_POTENTIALS
         are_equal &= (max_defense_potentials_[t] == other->max_defense_potentials_[t]);
 #endif
+#ifdef USE_MIN_SUPPORT_POTENTIALS
         are_equal &= (min_support_potentials_[t] == other->min_support_potentials_[t]);
+#endif
         are_equal &= (max_support_potentials_[t] == other->max_support_potentials_[t]);
 
         are_equal &= (potential_owner_[t] == other->potential_owner_[t]);
 
         are_equal &= (enemy_min_defense_potentials_[t] == other->enemy_min_defense_potentials_[t]);
+#ifdef USE_MIN_SUPPORT_POTENTIALS
         are_equal &= (enemy_min_support_potentials_[t] == other->enemy_min_support_potentials_[t]);
+#endif
         are_equal &= (enemy_max_support_potentials_[t] == other->enemy_max_support_potentials_[t]);
 
-#ifndef IS_SUBMISSION
+#ifdef CALCULATE_FULL_POTENTIALS
         are_equal &= (full_potentials_[t] == other->full_potentials_[t]);
         are_equal &= (enemy_full_potentials_[t] == other->enemy_full_potentials_[t]);
 #endif
@@ -1482,16 +1500,20 @@ void PlanetTimeline::AssertEquals(PlanetTimeline* other) const {
 #ifdef USE_MAX_DEFENCE_POTENTIALS
         pw_assert(max_defense_potentials_[t] == other->max_defense_potentials_[t]);
 #endif
+#ifdef USE_MIN_SUPPORT_POTENTIALS
         pw_assert(min_support_potentials_[t] == other->min_support_potentials_[t]);
+#endif
         pw_assert(max_support_potentials_[t] == other->max_support_potentials_[t]);
 
         pw_assert(potential_owner_[t] == other->potential_owner_[t]);
 
         pw_assert(enemy_min_defense_potentials_[t] == other->enemy_min_defense_potentials_[t]);
+#ifdef USE_MIN_SUPPORT_POTENTIALS
         pw_assert(enemy_min_support_potentials_[t] == other->enemy_min_support_potentials_[t]);
+#endif
         pw_assert(enemy_max_support_potentials_[t] == other->enemy_max_support_potentials_[t]);
 
-#ifndef IS_SUBMISSION
+#ifdef CALCULATE_FULL_POTENTIALS
         pw_assert(full_potentials_[t] == other->full_potentials_[t]);
         pw_assert(enemy_full_potentials_[t] == other->enemy_full_potentials_[t]);
 #endif
@@ -2106,7 +2128,7 @@ void PlanetTimeline::ReserveShips(const int owner, const int key_time, const int
 }
 
 void PlanetTimeline::RecalculateShipsGained() {
-#ifndef IS_SUBMISSION
+#ifdef CALCULATE_FULL_POTENTIALS
     for (int t = 1; t < horizon_; ++t) {
         full_potentials_[t] = this->SupportPotentialAt(t, t);
         enemy_full_potentials_[t] = this->EnemySupportPotentialAt(t, t);
@@ -2410,7 +2432,11 @@ int PlanetTimeline::CalculateGainsUntil(int end_turn) const {
         if (owner_[t] == kMe && (min_defense_potentials_[t] < 0 || (0 == min_defense_potentials_[t] && kEnemy == owner_[t-1]))) {
             would_planet_be_lost = true;
         
+#ifdef USE_MIN_SUPPORT_POTENTIALS
         } else if (would_planet_be_lost && (min_support_potentials_[t] + balance_loss > 0)) {
+#else 
+        } else if (would_planet_be_lost && (this->SupportPotentialAt(t, t) + balance_loss > 0)) {
+#endif
             would_planet_be_lost = false;
         }
     }

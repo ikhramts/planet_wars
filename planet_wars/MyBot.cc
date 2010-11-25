@@ -106,6 +106,9 @@ int main(int argc, char *argv[]) {
                 time_report << "\nTurn time: " << turn_time << "ms";
                 time_report << "\nMax time: " << max_turn_time << "ms";
                 time_report << "\nTotal time: " << total_time << "ms";
+ #ifdef CALCULATE_NUM_INVOKES_OF_RETURN_ON_MOVE
+                time_report << "\n# ReturnOnMove: " << g_bot->GetNumReturnOnMove();
+ #endif
                 std::cerr << time_report.str();
                 std::cerr.flush();
 #endif            
