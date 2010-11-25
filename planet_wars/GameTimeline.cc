@@ -72,6 +72,14 @@ void GameTimeline::SetGameMap(GameMap* game) {
 
     are_working_timelines_different_.clear();
     are_working_timelines_different_.resize(planet_timelines_.size(), false);
+
+#ifdef USE_SHADOW_TIMELINES
+    for (uint i = 0; i < planets.size(); ++i) {
+        PlanetTimeline* shadow_timeline = new PlanetTimeline();
+        shadow_timeline->Copy(planet_timelines_[i]);
+        shadow_timelines_.push_back(shadow_timeline);
+    }
+#endif
 }
 
 void GameTimeline::Update() {
@@ -359,7 +367,6 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 //#ifndef IS_SUBMISSION
 //    this->AssertWorkingTimelinesAreEqualToBase();
 //#endif
-    this->UpdatePotentials();
 #ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
     this->UpdatePotentials(sources_and_targets);
 #else 
@@ -502,6 +509,32 @@ void GameTimeline::SaveTimelinesToBase() {
 void GameTimeline::MarkTimelineAsModified(int timeline_id) {
     are_working_timelines_different_[timeline_id] = true;
 }
+
+#ifdef USE_SHADOW_TIMELINES
+void GameTimeline::CopyWorkingTimelinesToShadow() {
+    for (uint i = 0; i < are_working_timelines_different_.size(); ++i) {
+        shadow_timelines_[i]->CopyTimeline(planet_timelines_[i]);
+        shadow_timelines_[i]->CopyPotentials(planet_timelines_[i]);
+    }
+
+    this->AssertWorkingAndShadowTimelinesAreEqual(planet_timelines_);
+}
+
+void GameTimeline::AssertWorkingAndShadowTimelinesAreEqual(const PlanetTimelineList& test_planets) {
+    for (uint i = 0; i < test_planets.size(); ++i) {
+        PlanetTimeline* planet = test_planets[i];
+        PlanetTimeline* shadow = shadow_timelines_[planet->Id()];
+
+        pw_assert(planet->Equals(shadow) && "Working and shadow timelines do not match.");
+    }
+}
+
+void GameTimeline::ResetPotentialsToBase() {
+    for (uint i = 0; i < are_working_timelines_different_.size(); ++i) {
+        planet_timelines_[i]->CopyPotentials(base_planet_timelines_[i]);
+    }
+}
+#endif
 
 bool GameTimeline::HasSupportWorsenedFor(PlanetTimelineList timelines) {
     for (uint i = 0; i < timelines.size(); ++i) {
@@ -680,7 +713,7 @@ void GameTimeline::UpdatePotentials() {
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (18 == id && 11 == t) {
+            if (10 == id && 22 == t) {
                 int x = 2;
             }
 #endif
@@ -873,7 +906,7 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (22 == planet_id && 23 == t) {
+            if (10 == planet_id && 22 == t) {
                 int x = 2;
             }
 #endif
@@ -1082,6 +1115,16 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
     for (uint i = 0; i < planets_to_update.size(); ++i) {
         planets_to_update[i]->RecalculateShipsGained();
     }
+
+    
+#ifdef USE_SHADOW_TIMELINES
+    //Verify that all calculations were correct.
+    this->CopyWorkingTimelinesToShadow();
+    //this->ResetPotentialsToBase();
+
+    this->UpdatePotentials();
+    this->AssertWorkingAndShadowTimelinesAreEqual(planets_to_update);
+#endif
 }
 
 

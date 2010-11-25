@@ -74,8 +74,13 @@ public:
 
     void ResetTimelinesToBase();
     void SaveTimelinesToBase();
-
     void MarkTimelineAsModified(int timeline_id);
+
+#ifdef USE_SHADOW_TIMELINES
+    void CopyWorkingTimelinesToShadow();
+    void AssertWorkingAndShadowTimelinesAreEqual(const PlanetTimelineList& test_planets);
+    void ResetPotentialsToBase();
+#endif
 
     bool HasSupportWorsenedFor(PlanetTimelineList timelines);
     bool HasSupportWorsenedFor(PlanetTimeline* timeline);
@@ -112,6 +117,11 @@ private:
     PlanetTimelineList planet_timelines_;
     PlanetTimelineList base_planet_timelines_;
     std::vector<bool> are_working_timelines_different_;
+    
+#ifdef USE_SHADOW_TIMELINES
+    PlanetTimelineList shadow_timelines_;
+#endif
+
     std::vector<int>* when_is_feeder_allowed_to_attack_;
     int additional_growth_turns_;
 };

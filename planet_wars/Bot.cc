@@ -321,7 +321,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (6 == picking_round_ && 8 == target_id && 23 == arrival_time) {
+            if (3 == picking_round_ && 10 == target_id && 22 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -967,7 +967,7 @@ ActionList Bot::SendFleetsToFront2(const int player) {
         const int source_id = source->Id();
         
 #ifndef IS_SUBMISSION
-        if (7 == source_id) {
+        if (3 == turn_ && 2 == source_id) {
             int x = 2;
         }
 #endif
