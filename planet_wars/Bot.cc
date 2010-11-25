@@ -321,7 +321,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (3 == picking_round_ && 10 == target_id && 22 == arrival_time) {
+            if (2 == picking_round_ && 4 == target_id && 7 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -967,10 +967,16 @@ ActionList Bot::SendFleetsToFront2(const int player) {
         const int source_id = source->Id();
         
 #ifndef IS_SUBMISSION
-        if (3 == turn_ && 2 == source_id) {
+        if (12 == turn_ && 22 == source_id) {
             int x = 2;
         }
 #endif
+        pw_assert(source->OwnerAt(0) == player && "Possible feeder must be owned by player at turn 0.");
+        //if (source->OwnerAt(0) != player) {
+        //    //No ships to send at the moment.
+        //    continue;
+        //}
+
         //Work only with those reinforcement targets that are actually owned by the
         //player at the time of feeder fleet arrivals.
         PlanetTimelineList possible_feeding_targets = timeline_->EverOwnedTimelinesByDistance(player, source);
@@ -1040,7 +1046,7 @@ ActionList Bot::SendFleetsToFront2(const int player) {
 
         if (0 == available_ships) {
             //No ships to send, nothing else to do.
-            source->SetReinforcer(true);
+            //source->SetReinforcer(true);
             continue;
         }
 

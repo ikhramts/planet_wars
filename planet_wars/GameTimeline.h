@@ -137,6 +137,7 @@ public:
     void CopyTimeline(PlanetTimeline* other);
     void CopyPotentials(PlanetTimeline* other);
     bool Equals(PlanetTimeline* other) const;
+    void AssertEquals(PlanetTimeline* other) const;
 
     void Update();
 
@@ -306,6 +307,7 @@ private:
 
 #ifndef IS_SUBMISSION
     std::vector<int> full_potentials_;
+    std::vector<int> enemy_full_potentials_;
 #endif
 
     std::vector<int> potential_ships_gained_at_;

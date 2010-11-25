@@ -525,7 +525,7 @@ void GameTimeline::AssertWorkingAndShadowTimelinesAreEqual(const PlanetTimelineL
         PlanetTimeline* planet = test_planets[i];
         PlanetTimeline* shadow = shadow_timelines_[planet->Id()];
 
-        pw_assert(planet->Equals(shadow) && "Working and shadow timelines do not match.");
+        planet->AssertEquals(shadow);
     }
 }
 
@@ -713,7 +713,7 @@ void GameTimeline::UpdatePotentials() {
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (10 == id && 22 == t) {
+            if (4 == id && 20 == t) {
                 int x = 2;
             }
 #endif
@@ -906,7 +906,7 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (10 == planet_id && 22 == t) {
+            if (4 == planet_id && 20 == t) {
                 int x = 2;
             }
 #endif
@@ -1003,9 +1003,16 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                 int base_ships = base_source->ShipsFree(t - distance_to_source, base_owner);
 
 #ifdef USE_TOTAL_SHIPS_FOR_POTENTIAL_FROM_SMALLER_ENEMIES
-                if (owner == kEnemy && source->GetPlanet()->GrowthRate() < growth_rate) {
-                    ships = source->ShipsAt(t - distance_to_source);
-                    base_ships = base_source->ShipsAt(t - distance_to_source);
+                const int source_growth_rate = source->GetPlanet()->GrowthRate();
+
+                if (source->GetPlanet()->GrowthRate() < growth_rate) {
+                    if (owner == kEnemy) {
+                        ships = source->ShipsAt(t - distance_to_source);
+                    }
+
+                    if (base_owner == kEnemy) {
+                        base_ships = base_source->ShipsAt(t - distance_to_source);
+                    }
                 }
 #endif
 
@@ -1131,7 +1138,7 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 #ifndef IS_SUBMISSION
 void GameTimeline::AssertWorkingTimelinesAreEqualToBase() {
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
-        pw_assert(planet_timelines_[i]->Equals(base_planet_timelines_[i]) && "Working Timelines are different from base.");
+        planet_timelines_[i]->AssertEquals(base_planet_timelines_[i]);
     }
 }
 #endif
@@ -1196,6 +1203,7 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
 
 #ifndef IS_SUBMISSION
     full_potentials_.resize(u_horizon, 0);
+    enemy_full_potentials_.resize(u_horizon, 0);
 #endif
 
     potential_ships_gained_at_.resize(u_horizon, 0);
@@ -1313,6 +1321,7 @@ void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
 
 #ifndef IS_SUBMISSION
     full_potentials_ = other->full_potentials_;
+    enemy_full_potentials_ = other->enemy_full_potentials_;
 #endif
     potential_ships_gained_at_ = other->potential_ships_gained_at_;
     enemy_potential_ships_gained_at_ = other->enemy_potential_ships_gained_at_;
@@ -1371,8 +1380,14 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
 
 #ifndef IS_SUBMISSION
         are_equal &= (full_potentials_[t] == other->full_potentials_[t]);
+        are_equal &= (enemy_full_potentials_[t] == other->enemy_full_potentials_[t]);
 #endif
+        if (!are_equal) {
+            return false;
+        }
+    }
 
+    for (int t = 0; t < horizon_; ++t) {
         are_equal &= (potential_ships_gained_at_[t] == other->potential_ships_gained_at_[t]);
         are_equal &= (enemy_potential_ships_gained_at_[t] == other->enemy_potential_ships_gained_at_[t]);
 
@@ -1433,6 +1448,89 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
     }
 
     return are_equal;
+}
+
+void PlanetTimeline::AssertEquals(PlanetTimeline* other) const {
+    pw_assert(id_ == other->id_);
+    pw_assert(horizon_ == other->horizon_);
+
+    for (int t = 0; t < horizon_; ++t) {
+        pw_assert(owner_[t] == other->owner_[t]);
+        pw_assert(ships_[t] == other->ships_[t]);
+        pw_assert(my_arrivals_[t] == other->my_arrivals_[t]);
+        pw_assert(enemy_arrivals_[t] == other->enemy_arrivals_[t]);
+        pw_assert(ships_to_take_over_[t] == other->ships_to_take_over_[t]);
+        pw_assert(ships_gained_[t] == other->ships_gained_[t]);
+        pw_assert(available_growth_[t] == other->available_growth_[t]);
+        pw_assert(ships_reserved_[t] == other->ships_reserved_[t]);
+        pw_assert(ships_free_[t] == other->ships_free_[t]);
+
+        pw_assert(enemy_ships_to_take_over_[t] == other->enemy_ships_to_take_over_[t]);
+        pw_assert(enemy_ships_reserved_[t] == other->enemy_ships_reserved_[t]);
+        pw_assert(enemy_ships_free_[t] == other->enemy_ships_free_[t]);
+        pw_assert(enemy_available_growth_[t] == other->enemy_available_growth_[t]);
+        
+        pw_assert(my_departures_[t] == other->my_departures_[t]);
+        pw_assert(enemy_departures_[t] == other->enemy_departures_[t]);
+
+        pw_assert(my_unreserved_arrivals_[t] == other->my_unreserved_arrivals_[t]);
+        pw_assert(my_contingent_departures_[t] == other->my_contingent_departures_[t]);
+        pw_assert(enemy_contingent_departures_[t] == other->enemy_contingent_departures_[t]);
+
+        //Strategic potentials.
+        pw_assert(min_defense_potentials_[t] == other->min_defense_potentials_[t]);
+#ifdef USE_MAX_DEFENCE_POTENTIALS
+        pw_assert(max_defense_potentials_[t] == other->max_defense_potentials_[t]);
+#endif
+        pw_assert(min_support_potentials_[t] == other->min_support_potentials_[t]);
+        pw_assert(max_support_potentials_[t] == other->max_support_potentials_[t]);
+
+        pw_assert(potential_owner_[t] == other->potential_owner_[t]);
+
+        pw_assert(enemy_min_defense_potentials_[t] == other->enemy_min_defense_potentials_[t]);
+        pw_assert(enemy_min_support_potentials_[t] == other->enemy_min_support_potentials_[t]);
+        pw_assert(enemy_max_support_potentials_[t] == other->enemy_max_support_potentials_[t]);
+
+#ifndef IS_SUBMISSION
+        pw_assert(full_potentials_[t] == other->full_potentials_[t]);
+        pw_assert(enemy_full_potentials_[t] == other->enemy_full_potentials_[t]);
+#endif
+
+        pw_assert(potential_ships_gained_at_[t] == other->potential_ships_gained_at_[t]);
+        pw_assert(enemy_potential_ships_gained_at_[t] == other->enemy_potential_ships_gained_at_[t]);
+    }
+
+    pw_assert(departing_actions_.size() == other->departing_actions_.size());
+
+    for (uint i = 0; i < departing_actions_.size(); ++i) {
+        pw_assert(departing_actions_[i] == other->departing_actions_[i]);
+    }
+
+    for (uint i = 0; i < defense_potentials_.size(); ++i) {
+        pw_assert(defense_potentials_[i] == other->defense_potentials_[i]);
+        pw_assert(support_potentials_[i] == other->support_potentials_[i]);
+        pw_assert(enemy_defense_potentials_[i] == other->enemy_defense_potentials_[i]);
+        pw_assert(enemy_support_potentials_[i] == other->enemy_support_potentials_[i]);
+    }
+
+    pw_assert(total_ships_gained_ == other->total_ships_gained_);
+    pw_assert(potential_ships_gained_ == other->potential_ships_gained_);
+    pw_assert(max_potential_ships_gained_ == other->max_potential_ships_gained_);
+    pw_assert(enemy_max_potential_ships_gained_ == other->enemy_max_potential_ships_gained_);
+
+    pw_assert(will_not_be_enemys_ == other->will_not_be_enemys_);
+    pw_assert(will_not_be_mine_ == other->will_not_be_mine_);
+    pw_assert(will_be_enemys_ == other->will_be_enemys_);
+    pw_assert(will_be_mine_ == other->will_be_mine_);
+
+    pw_assert(game_ == other->game_);
+    pw_assert(planet_ == other->planet_);
+    pw_assert(game_timeline_ == other->game_timeline_);
+
+    pw_assert(is_reinforcer_ == other->is_reinforcer_);
+    pw_assert(is_recalculating_ == other->is_recalculating_);
+    pw_assert(is_hopeless_ == other->is_hopeless_);
+    pw_assert(check_for_hopelessness_ == other->check_for_hopelessness_);
 }
 
 void PlanetTimeline::Update() {
@@ -2011,6 +2109,7 @@ void PlanetTimeline::RecalculateShipsGained() {
 #ifndef IS_SUBMISSION
     for (int t = 1; t < horizon_; ++t) {
         full_potentials_[t] = this->SupportPotentialAt(t, t);
+        enemy_full_potentials_[t] = this->EnemySupportPotentialAt(t, t);
     }
 #endif
 
@@ -2124,6 +2223,11 @@ void PlanetTimeline::RecalculatePotentialGainsForArrivalTurns(const int player) 
         (player == kMe ? potential_ships_gained_at_ : enemy_potential_ships_gained_at_);
 
     for (int arrival_time = 1; arrival_time < horizon_; ++arrival_time) {
+#ifndef IS_SUBMISSION
+        if (player == kEnemy && 0 == id_ && 11 == arrival_time) {
+            int x = 2;
+        }
+#endif
         //Update the ships gained and owner to turn t if no ships are sent to the planet until t.
         owner_before_arrival = owner_without_arrival;
         ships_gained_before_arrival += growth_rate * OwnerMultiplier(owner_before_arrival) * player_multiplier;
