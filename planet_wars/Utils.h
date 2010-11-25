@@ -13,6 +13,7 @@
 //#define WITH_TIMEOUTS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 //#define STATIC_CONST_HORIZON
+//#define USE_INCREMENTAL_POTENTIAL_UPDATES
 
 /***** Basic Mechanics *****/
 #define RESERVE_ENEMY_ARRIVALS
@@ -62,7 +63,7 @@ static const int kEarliestLateMediumSupportAction = 10;
 #define USE_IMPROVED_FEEDING
 
 /***** Defense Through Offense ****/
-#define FREE_SHIPS_ON_HOPELESS_PLANETS
+//#define FREE_SHIPS_ON_HOPELESS_PLANETS
 const int kLatestPermanentLossForHopelessness = 10;
 
 //Number of planets and planet flags.

@@ -321,7 +321,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 20 == target_id && 8 == arrival_time) {
+            if (6 == picking_round_ && 8 == target_id && 23 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -724,7 +724,11 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         timeline_->PotentialShipsGainedFor(my_planets, target, use_min_support) - ships_permanently_lost;
     
 #else /* USE_PARTIAL_POTENTIAL_UPDATES */
+ #ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
     timeline_->UpdatePotentials(sources_and_targets);
+ #else
+    timeline_->UpdatePotentials();
+ #endif
 
 #ifdef USE_EXTENDED_POTENTIAL_GAINS
     PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
@@ -867,7 +871,11 @@ ActionList Bot::SendFleetsToFront(const int player) {
             timeline_->ApplyTempActions(temp_action_list);
 
             PlanetSelection sources_and_targets = Action::SourcesAndTargets(temp_action_list);
+#ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
             timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
+#else
+            timeline_->UpdatePotentials();
+#endif
             bool was_action_accepted = true;
 
 #ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
@@ -888,7 +896,11 @@ ActionList Bot::SendFleetsToFront(const int player) {
                     action->SetNumShips(fewer_ships);
                     timeline_->ApplyTempActions(temp_action_list);
 
+#ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
                     timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
+#else
+                    timeline_->UpdatePotentials();
+#endif /* USE_INCREMENTAL_POTENTIAL_UPDATES */
 
 #ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
                     if (timeline_->HasPotentialGainWorsenedFor(ever_my_planets)) {
@@ -1054,8 +1066,13 @@ ActionList Bot::SendFleetsToFront2(const int player) {
             timeline_->ApplyTempActions(temp_action_list);
     
             PlanetSelection sources_and_targets = Action::SourcesAndTargets(temp_action_list);
+
+#ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
             timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
-            
+#else
+            timeline_->UpdatePotentials();
+#endif
+
 #ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
             found_good_move = !timeline_->HasPotentialGainWorsenedFor(ever_my_planets);
 #else
@@ -1086,7 +1103,11 @@ ActionList Bot::SendFleetsToFront2(const int player) {
             timeline_->ApplyTempActions(temp_action_list);
     
             PlanetSelection sources_and_targets = Action::SourcesAndTargets(temp_action_list);
+#ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
             timeline_->UpdatePotentialsFor(ever_my_planets, sources_and_targets);
+#else
+            timeline_->UpdatePotentials();
+#endif
             
 #ifdef USE_SHIPS_GAINED_TO_RESTRAIN_FEEDERS
             found_good_move = !timeline_->HasPotentialGainWorsenedFor(ever_my_planets);
@@ -1240,7 +1261,12 @@ ActionList Bot::SendSupportFleets(const int player) {
 
             //Check whether they cause other planets to lose support.
             timeline_->ApplyTempActions(support_plan);
+
+#ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
             timeline_->UpdatePotentials(support_plan);
+#else
+            timeline_->UpdatePotentials();
+#endif
 
 #ifdef USE_DEFENSE_POTENTIAL_FOR_CONSTRAINTS
             if (timeline_->HasDefenseWorsenedFor(test_planets)) {
@@ -1276,7 +1302,12 @@ void Bot::ApplyActions(const ActionList& actions) {
     //Check whether the action has caused any planets to lose support.
     //If that's the case, set the constraints on support of those planets.
     timeline_->ApplyTempActions(actions);
+
+#ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
     timeline_->UpdatePotentials(actions);
+#else
+    timeline_->UpdatePotentials();
+#endif
 
 #ifdef USE_SUPPORT_CONSTRAINTS
     this->AddSupportConstraints(actions);

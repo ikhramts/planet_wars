@@ -39,7 +39,29 @@ void GameTimeline::SetGameMap(GameMap* game) {
         planet_timelines_.push_back(timeline);
     }
 
+    are_working_timelines_different_.resize(planet_timelines_.size(), false);
     this->UpdatePotentials();
+
+#ifdef FREE_SHIPS_ON_HOPELESS_PLANETS
+    //Check whether any planets will be hopelessly lost and irrecoverable.
+    //In that case, recalculate the hopeless timelines and update all
+    //potentials.
+    bool found_hopeless_planets = false;
+    
+    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        PlanetTimeline* planet = planet_timelines_[i];
+
+        if (planet->IsHopeless()) {
+            found_hopeless_planets = true;
+            planet->ResetStartingData();
+            planet->RecalculateTimeline(1);
+        }
+    }
+
+    if (found_hopeless_planets) {
+        this->UpdatePotentials();
+    }
+#endif
 
     //Initialize the base planet timelines.
     for (uint i = 0; i < planets.size(); ++i) {
@@ -48,8 +70,7 @@ void GameTimeline::SetGameMap(GameMap* game) {
         base_planet_timelines_.push_back(base_timeline);
     }
 
-    //Initialize indicators showing whether the base timeline is different
-    //from the working timeline.
+    are_working_timelines_different_.clear();
     are_working_timelines_different_.resize(planet_timelines_.size(), false);
 }
 
@@ -84,7 +105,8 @@ void GameTimeline::Update() {
     }
 
     if (hopeless_planets.any()) {
-        this->UpdatePotentials(hopeless_planets);
+        this->UpdatePotentials();
+        //this->UpdatePotentials(hopeless_planets);
         this->SaveTimelinesToBase();
     }
 #endif
@@ -337,9 +359,13 @@ void GameTimeline::ApplyActions(const ActionList& actions) {
 //#ifndef IS_SUBMISSION
 //    this->AssertWorkingTimelinesAreEqualToBase();
 //#endif
+    this->UpdatePotentials();
+#ifdef USE_INCREMENTAL_POTENTIAL_UPDATES
     this->UpdatePotentials(sources_and_targets);
+#else 
+    this->UpdatePotentials();
+#endif
     this->SaveTimelinesToBase();
-    //this->UpdatePotentials();
 #ifndef IS_SUBMISSION
     this->AssertWorkingTimelinesAreEqualToBase();
 #endif
@@ -807,6 +833,7 @@ void GameTimeline::UpdatePotentials() {
 
     //Update the timelines' ships gained.
     for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        are_working_timelines_different_[i] = true;
         planet_timelines_[i]->RecalculateShipsGained();
     }
 }
