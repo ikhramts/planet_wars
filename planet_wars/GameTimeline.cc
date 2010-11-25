@@ -962,7 +962,7 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                 }
 
                 //Use only the sources from the provided list.
-                if (!modified_planets[source_id]) {
+                if (!modified_planets[source_id] && !source->IsReinforcer()) {
                     continue;
                 }
                 //bool found_source = false;
