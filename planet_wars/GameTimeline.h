@@ -64,6 +64,7 @@ public:
 	PlanetTimelineList EverNotNeutralTimelinesByDistance(PlanetTimeline* source);
     PlanetTimelineList OwnedTimelinesByDistance(int owner, PlanetTimeline* source, int when = 0);
     PlanetTimelineList TimelinesByDistance(PlanetTimeline* source);
+    PlanetTimelineList FilteredTimelinesByDistance(PlanetTimeline* source, PlanetSelection selected_planets);
 	
 	//Apply actions to the timeline, changing the forecasts.
 	void ApplyActions(const ActionList& actions);

@@ -354,6 +354,21 @@ PlanetTimelineList GameTimeline::TimelinesByDistance(PlanetTimeline* source) {
     return timelines;
 }
 
+PlanetTimelineList GameTimeline::FilteredTimelinesByDistance(PlanetTimeline* source, PlanetSelection selected_planets) {
+    PlanetList planets = game_->PlanetsByDistance(source->Id());
+    PlanetTimelineList timelines;
+    
+    for (uint i = 0; i < planets.size(); ++i) {
+        const int planet_id = planets[i]->Id();
+        if (selected_planets[planet_id]) {
+            PlanetTimeline* timeline = planet_timelines_[planet_id];
+            timelines.push_back(timeline);
+        }
+    }
+    
+    return timelines;
+}
+
 void GameTimeline::ApplyActions(const ActionList& actions) {
 	if (actions.empty()) {
 		return;
@@ -704,7 +719,7 @@ void GameTimeline::UpdatePotentials() {
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (4 == id && 20 == t) {
+            if (0 == id && 18 == t) {
                 int x = 2;
             }
 #endif
@@ -882,11 +897,23 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
     const std::vector<int>& when_is_feeder_allowed_to_attack = *when_is_feeder_allowed_to_attack_;
     const int num_planets = game_->NumPlanets();
 
+    //Compose a list if timelines that are at any point not neutral in either current scenario
+    //or the base scenario.
+    PlanetSelection ever_not_neutral_planets;
+
+    for (uint i = 0; i < planet_timelines_.size(); ++i) {
+        PlanetTimeline* planet = planet_timelines_[i];
+        PlanetTimeline* base_planet = base_planet_timelines_[i];
+        const bool not_neutral = (planet->WillBeMine() | planet->WillBeEnemys());
+        const bool base_not_neutral = (base_planet->WillBeMine() | base_planet->WillBeEnemys());
+        ever_not_neutral_planets[i] = (not_neutral | base_not_neutral);
+    }
+
     for (uint i = 0; i < planets_to_update.size(); ++i) {
         PlanetTimeline* planet = planets_to_update[i];
         const int planet_id = planet->Id();
         PlanetTimeline* base_planet = base_planet_timelines_[planet_id];
-        PlanetTimelineList planets_by_distance = this->EverNotNeutralTimelinesByDistance(planet);
+        PlanetTimelineList planets_by_distance = this->FilteredTimelinesByDistance(planet, ever_not_neutral_planets);
         std::vector<int>& defense_potentials = planet->DefensePotentials();
         std::vector<int>& support_potentials = planet->SupportPotentials();
         std::vector<int>& enemy_defense_potentials = planet->EnemyDefensePotentials();
@@ -905,7 +932,7 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
-            if (4 == planet_id && 20 == t) {
+            if (0 == planet_id && 18 == t) {
                 int x = 2;
             }
 #endif
@@ -963,7 +990,8 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                 }
 
                 //Use only the sources from the provided list.
-                if (!modified_planets[source_id] && !source->IsReinforcer()) {
+                //if (!modified_planets[source_id] && !source->IsReinforcer()) {
+                if (!are_working_timelines_different_[source_id] && !source->IsReinforcer()) {
                     continue;
                 }
                 //bool found_source = false;
@@ -1472,6 +1500,13 @@ void PlanetTimeline::AssertEquals(PlanetTimeline* other) const {
     pw_assert(id_ == other->id_);
     pw_assert(horizon_ == other->horizon_);
 
+    for (uint i = 0; i < defense_potentials_.size(); ++i) {
+        pw_assert(defense_potentials_[i] == other->defense_potentials_[i]);
+        pw_assert(support_potentials_[i] == other->support_potentials_[i]);
+        pw_assert(enemy_defense_potentials_[i] == other->enemy_defense_potentials_[i]);
+        pw_assert(enemy_support_potentials_[i] == other->enemy_support_potentials_[i]);
+    }
+
     for (int t = 0; t < horizon_; ++t) {
         pw_assert(owner_[t] == other->owner_[t]);
         pw_assert(ships_[t] == other->ships_[t]);
@@ -1526,13 +1561,6 @@ void PlanetTimeline::AssertEquals(PlanetTimeline* other) const {
 
     for (uint i = 0; i < departing_actions_.size(); ++i) {
         pw_assert(departing_actions_[i] == other->departing_actions_[i]);
-    }
-
-    for (uint i = 0; i < defense_potentials_.size(); ++i) {
-        pw_assert(defense_potentials_[i] == other->defense_potentials_[i]);
-        pw_assert(support_potentials_[i] == other->support_potentials_[i]);
-        pw_assert(enemy_defense_potentials_[i] == other->enemy_defense_potentials_[i]);
-        pw_assert(enemy_support_potentials_[i] == other->enemy_support_potentials_[i]);
     }
 
     pw_assert(total_ships_gained_ == other->total_ships_gained_);

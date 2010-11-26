@@ -10,7 +10,7 @@
 //#define IS_SUBMISSION
 
 //Various switches in the bot's logic.
-#define WITH_TIMEOUTS
+//#define WITH_TIMEOUTS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 //#define STATIC_CONST_HORIZON
 
@@ -37,7 +37,6 @@
 #define CONSIDER_MY_EXTENDED_POTENTIAL_GAINS
 #define USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
 
-
 //#define UPDATE_ADDITIONAL_GROWTH_TURNS
 static const int kTurnsPerGame = 200;
 static const int kAdditionalTurnsOfGrowth = 0;
@@ -49,8 +48,8 @@ static const int kAdditionalTurnsOfGrowth = 0;
 #define USE_INCREMENTAL_POTENTIAL_UPDATES
 
 #ifndef IS_SUBMISSION
- //#define USE_SHADOW_TIMELINES
- //#define CALCULATE_FULL_POTENTIALS
+ #define USE_SHADOW_TIMELINES
+ #define CALCULATE_FULL_POTENTIALS
 #endif
 
 /***** Support Action Settings *****/

@@ -326,7 +326,7 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (1 == picking_round_ && 13 == target_id && 9 == arrival_time) {
+            if (6 == picking_round_ && 8 == target_id && 14 == arrival_time) {
                 int x = 2;
             }
 #endif
