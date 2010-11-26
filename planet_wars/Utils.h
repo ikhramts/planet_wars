@@ -10,7 +10,7 @@
 //#define IS_SUBMISSION
 
 //Various switches in the bot's logic.
-//#define WITH_TIMEOUTS
+#define WITH_TIMEOUTS
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 //#define STATIC_CONST_HORIZON
 
@@ -19,7 +19,7 @@
 #endif
 
 /***** Basic Mechanics *****/
-#define RESERVE_ENEMY_ARRIVALS
+//#define RESERVE_ENEMY_ARRIVALS
 
 /***** Return Calculation Settings *****/
 //#define ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
@@ -48,8 +48,8 @@ static const int kAdditionalTurnsOfGrowth = 0;
 #define USE_INCREMENTAL_POTENTIAL_UPDATES
 
 #ifndef IS_SUBMISSION
- #define USE_SHADOW_TIMELINES
- #define CALCULATE_FULL_POTENTIALS
+ //#define USE_SHADOW_TIMELINES
+ //#define CALCULATE_FULL_POTENTIALS
 #endif
 
 /***** Support Action Settings *****/
@@ -80,8 +80,8 @@ static const int kEarliestLateMediumSupportAction = 10;
 #define USE_IMPROVED_FEEDING
 
 /***** Defense Through Offense ****/
-#define FREE_SHIPS_ON_HOPELESS_PLANETS
-#define WITH_HOPELESS_FIX
+//#define FREE_SHIPS_ON_HOPELESS_PLANETS
+//#define WITH_HOPELESS_FIX
 const int kLatestPermanentLossForHopelessness = 10;
 
 //Number of planets and planet flags.

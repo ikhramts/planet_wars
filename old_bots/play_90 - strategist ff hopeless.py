@@ -6,7 +6,7 @@
 
 # A Half Cautious Reinforcer that considers opponent's best counter-move to
 # any given move.
-botName = "iouri.90."
+botName = "iouri.90.."
 cmd = "tcp.exe 72.44.46.68 995 " + botName + " -p victory strategist_ff_hopeless.exe"
 
 import os
