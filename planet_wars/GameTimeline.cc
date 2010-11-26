@@ -28,7 +28,7 @@ void GameTimeline::SetGameMap(GameMap* game) {
 #ifdef UPDATE_ADDITIONAL_GROWTH_TURNS
     additional_growth_turns_ = kTurnsPerGame - horizon_;
 #else
-    additional_growth_turns_ = 0;
+    additional_growth_turns_ = kAdditionalTurnsOfGrowth;
 #endif
 
     //Update the ships gained from planets vector.

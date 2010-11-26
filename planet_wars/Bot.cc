@@ -103,6 +103,11 @@ ActionList Bot::MakeMoves() {
 
     ActionList found_actions = this->FindActionsFor(kMe); 
     my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
+
+#ifdef WITH_TIMEOUTS
+    //Give at most 50 ms to complete the feeding.
+    SetTimeOut(0.050);
+#endif
     
 #ifdef DO_NOT_FEED_ON_FIRST_TURN
     if (1 != turn_) {
@@ -314,14 +319,14 @@ ActionList Bot::BestRemainingMove(PlanetTimelineList& invadeable_planets,
         const int earliest_arrival = std::max(earliest_allowed_arrival, earliest_possible_arrival);
         
 #ifndef IS_SUBMISSION
-        if (1 == picking_round_ && 20 == target_id) {
+        if (1 == picking_round_ && 0 == target_id) {
             int x = 2;
         }
 #endif
 
         for (int arrival_time = earliest_arrival; arrival_time < latest_arrivals[i]; ++arrival_time) {
 #ifndef IS_SUBMISSION
-            if (2 == picking_round_ && 4 == target_id && 7 == arrival_time) {
+            if (1 == picking_round_ && 13 == target_id && 9 == arrival_time) {
                 int x = 2;
             }
 #endif
@@ -641,6 +646,12 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         return return_ratio;
     }
 
+#ifndef IS_SUBMISSION
+ #ifdef CALCULATE_NUM_INVOKES_OF_RETURN_ON_MOVE
+    ++num_return_on_move_;
+ #endif
+#endif
+    
     //Perform a more thorough check of the move.  Apply it to the timeline, and see how it
     //impacts ship returns and strategic defense_potentials.
     //Do preliminary calcs.
@@ -650,6 +661,7 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     //Calculate the number of additional ships lost permanently to fights vs.
     //neutral forces due to this move.
+#ifdef ADD_SHIPS_LOST_TO_NEUTRALS
     int future_ships_lost = 0;
 
     for (int t = arrival_time; t < horizon; ++t) {
@@ -665,16 +677,12 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
         }
     }
 
-#ifndef IS_SUBMISSION
- #ifdef CALCULATE_NUM_INVOKES_OF_RETURN_ON_MOVE
-    ++num_return_on_move_;
- #endif
-#endif
-
     const int neutral_ships = (was_neutral ? target->ShipsAt(arrival_time - 1) : 0);
     const int ships_permanently_lost = std::max(0, neutral_ships - future_ships_lost);
-    //const int updated_ships_gained = timeline_->ShipsGainedFromBase();
-    
+#else
+    const int ships_permanently_lost = 0;
+#endif
+
     //Recalculate the ships to send.
     int updated_ships_to_send = ships_to_send;
 
@@ -1104,6 +1112,17 @@ ActionList Bot::SendFleetsToFront2(const int player) {
             }
 
             --target_index;
+
+#ifdef WITH_TIMEOUTS
+            //Head for the exit if there's no more time left.
+            if (HasTimedOut()) {
+                if (!found_good_move) {
+                    action->Free();
+                }
+
+                return reinforcing_fleets;
+            }
+#endif
         } while (!found_good_move && target_index >= 0);
 
         //If no good move was found, try sending fewer ships to the closest good target.
