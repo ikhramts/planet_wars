@@ -744,14 +744,20 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     timeline_->UpdatePotentials();
  #endif
 
-#ifdef USE_EXTENDED_POTENTIAL_GAINS
+ #ifdef USE_EXTENDED_POTENTIAL_GAINS
     PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
     const int updated_ships_gained = 
         this->PotentialShipsGained(target, my_planets) - ships_permanently_lost;
-#else /* USE_EXTENDED_POTENTIAL_GAINS */
+ #else /* USE_EXTENDED_POTENTIAL_GAINS */
+  #ifdef CALCULATE_SHIPS_GAINED_ONLY_ON_MY_PLANETS
+    PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
+    const int updated_ships_gained = 
+        timeline_->PotentialShipsGainedFor(my_planets, target) - ships_permanently_lost;
+  #else
     const int updated_ships_gained = 
         timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
-#endif /* USE_EXTENDED_POTENTIAL_GAINS */
+  #endif /* CALCULATE_SHIPS_GAINED_ONLY_ON_MY_PLANETS */
+ #endif /* USE_EXTENDED_POTENTIAL_GAINS */
 #endif /* USE_PARTIAL_POTENTIAL_UPDATES */
 
     const double updated_return_ratio = ReturnRatio(updated_ships_gained, updated_ships_to_send) * multiplier;
