@@ -81,6 +81,7 @@ static const int kEarliestLateMediumSupportAction = 10;
 
 /***** Defense Through Offense ****/
 #define FREE_SHIPS_ON_HOPELESS_PLANETS
+#define WITH_HOPELESS_FIX
 const int kLatestPermanentLossForHopelessness = 10;
 
 //Number of planets and planet flags.

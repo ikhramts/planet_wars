@@ -510,6 +510,11 @@ void GameTimeline::SaveTimelinesToBase() {
 }
 
 void GameTimeline::MarkTimelineAsModified(int timeline_id) {
+#ifndef IS_SUBMISSION
+    if (25 == timeline_id) {
+        int x = 2;
+    }
+#endif
     are_working_timelines_different_[timeline_id] = true;
 }
 
@@ -1988,13 +1993,17 @@ void PlanetTimeline::RecalculateTimeline(int starting_at) {
             if (kMe == prev_owner && enemy_ships > 0) {
 #ifdef RESERVE_ENEMY_ARRIVALS
  #ifdef FREE_SHIPS_ON_HOPELESS_PLANETS
+   #ifdef WITH_HOPELESS_FIX
+                if (!is_hopeless_) {
+   #else 
                 if (is_hopeless_) {
+   #endif
  #endif
                 this->ReserveShips(kMe, i, enemy_ships);
  #ifdef FREE_SHIPS_ON_HOPELESS_PLANETS
                 }
  #endif
-#endif
+#endif /* RESERVE_ENEMY_ARRIVALS */
             } else if (kEnemy == prev_owner && my_ships > 0) {
                 const int ships_to_reserve = my_ships - my_unreserved_arrivals_[i];
 
