@@ -19,7 +19,7 @@
 #endif
 
 /***** Basic Mechanics *****/
-#define RESERVE_ENEMY_ARRIVALS
+//#define RESERVE_ENEMY_ARRIVALS
 
 /***** Return Calculation Settings *****/
 //#define ADD_FUTURE_ENEMY_ARRIVALS_TO_SHIPS_SENT
@@ -27,7 +27,6 @@
 #define ADD_SHIPS_LOST_TO_NEUTRALS
 #define SUBTRACT_FUTURE_ATTACK_ARRIVALS_FROM_SHIPS_SENT
 //#define USE_PARTIAL_POTENTIAL_UPDATES
-//#define USE_EXTENDED_POTENTIAL_GAINS
 
 #ifndef USE_EXTENDED_POTENTIAL_GAINS
  #define CALCULATE_SHIPS_GAINED_ONLY_ON_MY_PLANETS
@@ -48,8 +47,8 @@ static const int kAdditionalTurnsOfGrowth = 0;
 #define USE_INCREMENTAL_POTENTIAL_UPDATES
 
 #ifndef IS_SUBMISSION
- #define USE_SHADOW_TIMELINES
- #define CALCULATE_FULL_POTENTIALS
+ //#define USE_SHADOW_TIMELINES
+ //#define CALCULATE_FULL_POTENTIALS
 #endif
 
 /***** Support Action Settings *****/
@@ -81,7 +80,7 @@ static const int kEarliestLateMediumSupportAction = 10;
 
 /***** Defense Through Offense ****/
 #define FREE_SHIPS_ON_HOPELESS_PLANETS
-#define WITH_HOPELESS_FIX
+//#define WITH_HOPELESS_FIX
 const int kLatestPermanentLossForHopelessness = 10;
 
 //Number of planets and planet flags.

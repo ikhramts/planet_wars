@@ -105,6 +105,9 @@ ActionList Bot::MakeMoves() {
     my_best_actions.insert(my_best_actions.end(), found_actions.begin(), found_actions.end());
 
 #ifdef WITH_TIMEOUTS
+ #ifndef IS_SUBMISSION
+    turn_run_time_ = MillisElapsed();
+ #endif
     //Give at most 50 ms to complete the feeding.
     SetTimeOut(0.050);
 #endif
@@ -123,6 +126,14 @@ ActionList Bot::MakeMoves() {
 #ifdef DO_NOT_FEED_ON_FIRST_TURN
     }
 #endif /* DO_NOT_FEED_ON_FIRST_TURN */
+
+#ifndef IS_SUBMISSION
+ #ifdef WITH_TIMEOUTS
+    turn_run_time_ += MillisElapsed();
+ #else
+    turn_run_time_ = MillisElapsed();
+ #endif
+#endif
 
     return my_best_actions;
 }
@@ -744,20 +755,14 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     timeline_->UpdatePotentials();
  #endif
 
- #ifdef USE_EXTENDED_POTENTIAL_GAINS
-    PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
-    const int updated_ships_gained = 
-        this->PotentialShipsGained(target, my_planets) - ships_permanently_lost;
- #else /* USE_EXTENDED_POTENTIAL_GAINS */
-  #ifdef CALCULATE_SHIPS_GAINED_ONLY_ON_MY_PLANETS
+ #ifdef CALCULATE_SHIPS_GAINED_ONLY_ON_MY_PLANETS
     PlanetTimelineList my_planets = timeline_->EverOwnedTimelines(player);
     const int updated_ships_gained = 
         timeline_->PotentialShipsGainedFor(my_planets, target) - ships_permanently_lost;
-  #else
+ #else
     const int updated_ships_gained = 
         timeline_->PotentialShipsGainedForTarget(target, use_min_support) - ships_permanently_lost;
-  #endif /* CALCULATE_SHIPS_GAINED_ONLY_ON_MY_PLANETS */
- #endif /* USE_EXTENDED_POTENTIAL_GAINS */
+ #endif /* CALCULATE_SHIPS_GAINED_ONLY_ON_MY_PLANETS */
 #endif /* USE_PARTIAL_POTENTIAL_UPDATES */
 
     const double updated_return_ratio = ReturnRatio(updated_ships_gained, updated_ships_to_send) * multiplier;
@@ -1385,111 +1390,6 @@ void Bot::AddSupportConstraints(const ActionList &actions) {
         }
 #endif /* USE_BETTER_CONSTRAINTS */
     }
-}
-
-int Bot::PotentialShipsGained(PlanetTimeline* target, const PlanetTimelineList& base_calculation_planets) {
-    const int ships_gained_on_my_planets = timeline_->PotentialShipsGainedFor(base_calculation_planets, target);
-    
-    std::bitset<kMaxNumPlanets> planets_to_exclude;
-
-    for (uint i = 0; i < base_calculation_planets.size(); ++i) {
-        planets_to_exclude[base_calculation_planets[i]->Id()] = true;
-    }
-
-#ifdef CONSIDER_MY_EXTENDED_POTENTIAL_GAINS
-    //const int my_additional_potential_gains = 
-    //    this->PotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
-    //const int base_my_additional_potential_gains = 
-    //    this->BasePotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
-    //const int my_net_additional_gains = my_additional_potential_gains - base_my_additional_potential_gains;
-    const int my_net_additional_gains = this->NetPotentialAdditionalShipsGainedForPlayer(kMe, planets_to_exclude);
-#else
-    const int my_net_additional_gains = 0;
-#endif
-
-    //const int enemy_additional_potential_gains = 
-    //    this->PotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
-    //const int base_enemy_additional_potential_gains = 
-    //    this->BasePotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
-    //const int enemy_net_additional_gains = enemy_additional_potential_gains - base_enemy_additional_potential_gains;
-    const int enemy_net_additional_gains = this->NetPotentialAdditionalShipsGainedForPlayer(kEnemy, planets_to_exclude);
-
-    const int total_potential_ships_gained = ships_gained_on_my_planets + my_net_additional_gains - 
-        enemy_net_additional_gains;
-    //const int total_potential_ships_gained = ships_gained_on_my_planets + my_additional_potential_gains - 
-    //    enemy_additional_potential_gains;
-
-    //const int total_potential_ships_gained = ships_gained_on_my_planets; 
-
-
-    return total_potential_ships_gained;
-}
-
-int Bot::PotentialAdditionalShipsGainedForPlayer(const int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude) {
-    int potential_ships_gained = 0;
-    PlanetTimelineList planets = timeline_->Timelines();
-
-    for (uint i = 0; i < planets.size(); ++i) {
-        if (planets_to_exclude[i]) {
-            continue;
-        }
-
-        PlanetTimeline* planet = planets[i];
-#ifdef USE_MAX_POTENTIAL_SHIPS_GAINED_FOR_EXTENDED_GAINS
-        potential_ships_gained += planet->MaxPotentialShipsGainedFor(player);
-#else
-        potential_ships_gained += planet->PotentialShipsGainedFor(player);
-#endif
-    }
-
-    return potential_ships_gained;
-}
-
-int Bot::BasePotentialAdditionalShipsGainedForPlayer(const int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude) {
-    int potential_ships_gained = 0;
-    PlanetTimelineList planets = timeline_->BaseTimelines();
-
-    for (uint i = 0; i < planets.size(); ++i) {
-        if (planets_to_exclude[i]) {
-            continue;
-        }
-
-        PlanetTimeline* planet = planets[i];
-#ifdef USE_MAX_POTENTIAL_SHIPS_GAINED_FOR_EXTENDED_GAINS
-        potential_ships_gained += planet->MaxPotentialShipsGainedFor(player);
-#else
-        potential_ships_gained += planet->PotentialShipsGainedFor(player);
-#endif
-    }
-
-    return potential_ships_gained;
-}
-
-int Bot::NetPotentialAdditionalShipsGainedForPlayer(int player, const std::bitset<kMaxNumPlanets>& planets_to_exclude) {
-    int potential_ships_gained = 0;
-    PlanetTimelineList planets = timeline_->Timelines();
-    PlanetTimelineList base_planets = timeline_->BaseTimelines();
-
-    for (uint i = 0; i < planets.size(); ++i) {
-        if (planets_to_exclude[i]) {
-            continue;
-        }
-
-        PlanetTimeline* planet = planets[i];
-        PlanetTimeline* base_planet = base_planets[i];
-
-#ifdef USE_MAX_POTENTIAL_SHIPS_GAINED_FOR_EXTENDED_GAINS
-        const int ships_gained = planet->MaxPotentialShipsGainedFor(player);
-        const int base_ships_gained = base_planet->MaxPotentialShipsGainedFor(player);
-#else
-        const int ships_gained = planet->PotentialShipsGainedFor(player);
-        const int base_ships_gained = base_planet->PotentialShipsGainedFor(player);
-#endif
-        potential_ships_gained += (ships_gained - base_ships_gained);
-
-    }
-
-    return potential_ships_gained;
 }
 
 /************************************************

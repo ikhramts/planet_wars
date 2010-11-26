@@ -705,18 +705,9 @@ void GameTimeline::UpdatePotentials() {
         PlanetTimelineList planets_by_distance = this->EverNotNeutralTimelinesByDistance(planet);
         std::vector<int>& defense_potentials = planet->DefensePotentials();
         std::vector<int>& support_potentials = planet->SupportPotentials();
-        std::vector<int>& enemy_defense_potentials = planet->EnemyDefensePotentials();
-        std::vector<int>& enemy_support_potentials = planet->EnemySupportPotentials();
         const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
         const int growth_rate = planet->GetPlanet()->GrowthRate();
-
-        //Check whether we'll need to update enemy's numbers.
-        bool update_enemy_potentials = false;
-
-        if (!planet->WillBeMine()) {
-            update_enemy_potentials = true;
-        }
 
 #ifndef IS_SUBMISSION
         const int id = planet->Id();
@@ -732,7 +723,6 @@ void GameTimeline::UpdatePotentials() {
             const int planet_owner = planet->OwnerAt(t);
             const int prev_owner = planet->OwnerAt(t - 1);
             const int starting_potential = planet->StartingPotentialAt(t);
-            const int enemy_starting_potential = planet->EnemyStartingPotentialAt(t);
             const int offset = t * (t - 1) / 2 - 1;
 
             for (int d = 1; d <= t; ++d) {
@@ -740,13 +730,6 @@ void GameTimeline::UpdatePotentials() {
                 support_potentials[offset + d] = starting_potential;
             }
 
-            if (update_enemy_potentials) {
-                for (int d = 1; d <= t; ++d) {
-                    enemy_defense_potentials[offset + d] = enemy_starting_potential;
-                    enemy_support_potentials[offset + d] = enemy_starting_potential;
-                }
-            }
-            
             //Set initial values for min and max potentials.
             int min_defense_potential = starting_potential;
 #ifdef USE_MAX_DEFENCE_POTENTIALS
@@ -754,11 +737,8 @@ void GameTimeline::UpdatePotentials() {
 #endif
 #ifdef USE_MIN_SUPPORT_POTENTIALS
             int min_support_potential = starting_potential;
-            int enemy_min_support_potential = enemy_starting_potential;
 #endif
             int max_support_potential = starting_potential;
-            int enemy_min_defense_potential = enemy_starting_potential;
-            int enemy_max_support_potential = enemy_starting_potential;
             
             //Calculate the neighbours' contributions to the defense_potentials.
             for (uint s = 0; s < planets_by_distance.size(); ++s) {
@@ -793,8 +773,8 @@ void GameTimeline::UpdatePotentials() {
 #endif
 
                 const int ships_from_source = OwnerMultiplier(owner) * ships;
-                
                 const int first_d = distance_to_source + (kMe == owner ? 1 : 0);
+
                 for (int d = first_d; d <= t; ++d) {
                     defense_potentials[offset + d] += ships_from_source;
                 }
@@ -802,21 +782,6 @@ void GameTimeline::UpdatePotentials() {
                 for (int d = distance_to_source; d <= t; ++d) {
                     support_potentials[offset + d] += ships_from_source;
                 }
-
-                //Update this planet's effect on enemy's potentials.
-                if (update_enemy_potentials) {
-                    const int enemy_first_d = distance_to_source + (kEnemy == owner ? 1 : 0);
-
-                    for (int d = enemy_first_d; d <= t; ++d) {
-                        enemy_defense_potentials[offset + d] -= ships_from_source;
-                        enemy_support_potentials[offset + d] -= ships_from_source;
-                    }
-
-                    if (enemy_first_d != distance_to_source) {
-                        enemy_support_potentials[offset + distance_to_source] -= ships_from_source;
-                    }
-                }
-
             }
 
             //Calculate the summaries.
@@ -851,33 +816,6 @@ void GameTimeline::UpdatePotentials() {
             planet->SetMinSupportPotentialAt(t, min_support_potential);
 #endif
             planet->SetMaxSupportPotentialAt(t, max_support_potential);
-
-            if (update_enemy_potentials) {
-                for (int d = first_source_distance; d <= t; ++d) {
-                    const int index = offset + d;
-
-                    if (enemy_min_defense_potential > enemy_defense_potentials[index]) {
-                        enemy_min_defense_potential = enemy_defense_potentials[index];
-                    }
-
-#ifdef USE_MIN_SUPPORT_POTENTIALS
-                    if (enemy_min_support_potential > enemy_support_potentials[index]) {
-                        enemy_min_support_potential = enemy_support_potentials[index];
-                    }
-#endif
-                    if (enemy_max_support_potential < enemy_support_potentials[index]) {
-                        enemy_max_support_potential = enemy_support_potentials[index];
-                    }
-                }
-            
-                //Update min/max defense_potentials at each turn.
-                planet->SetEnemyMinDefensePotentialAt(t, enemy_min_defense_potential);
-#ifdef USE_MIN_SUPPORT_POTENTIALS
-                planet->SetEnemyMinSupportPotentialAt(t, enemy_min_support_potential);
-#endif
-                planet->SetEnemyMaxSupportPotentialAt(t, enemy_max_support_potential);
-
-            } /* End updating enemy min/max potentials. */
         } /* End iterating over turns. */
     } /* End iterating over planets. */
 
@@ -921,19 +859,11 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
         PlanetTimelineList planets_by_distance = this->FilteredTimelinesByDistance(planet, ever_not_neutral_planets);
         std::vector<int>& defense_potentials = planet->DefensePotentials();
         std::vector<int>& support_potentials = planet->SupportPotentials();
-        std::vector<int>& enemy_defense_potentials = planet->EnemyDefensePotentials();
-        std::vector<int>& enemy_support_potentials = planet->EnemySupportPotentials();
         const int first_source_distance = game_->GetDistance(planets_by_distance[0]->Id(), planet->Id());
         const int first_t = first_source_distance;
         const int growth_rate = planet->GetPlanet()->GrowthRate();
 
         this->MarkTimelineAsModified(planet_id);
-
-        //Check whether we'll need to update enemy's numbers.
-        bool update_enemy_potentials = false;
-        if (!planet->WillBeMine()) {
-            update_enemy_potentials = true;
-        }
 
         for (int t = 1; t < horizon_; ++t) {
 #ifndef IS_SUBMISSION
@@ -945,16 +875,12 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
             const int planet_owner = planet->OwnerAt(t);
             const int prev_planet_owner = planet->OwnerAt(t - 1);
             const int starting_potential = planet->StartingPotentialAt(t);
-            const int enemy_starting_potential = planet->EnemyStartingPotentialAt(t);
 
             const int base_planet_owner = base_planet->OwnerAt(t);
             const int base_prev_planet_owner = base_planet->OwnerAt(t - 1);
             const int base_starting_potential = base_planet->StartingPotentialAt(t);
-            const int base_enemy_starting_potential = base_planet->EnemyStartingPotentialAt(t);
 
             const int starting_potential_diff = starting_potential - base_starting_potential;
-            const int enemy_starting_potential_diff = enemy_starting_potential - base_enemy_starting_potential;
-
             const int offset = t * (t - 1) / 2 - 1;
 
             if (starting_potential_diff != 0) {
@@ -964,13 +890,6 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                 }
             }
 
-            if (update_enemy_potentials && enemy_starting_potential_diff != 0) {
-                for (int d = 1; d <= t; ++d) {
-                    enemy_defense_potentials[offset + d] += enemy_starting_potential_diff;
-                    enemy_support_potentials[offset + d] += enemy_starting_potential_diff;
-                }
-            }
-            
             //Set up initial values for min and max potentials.
             int min_defense_potential = starting_potential;
 #ifdef USE_MAX_DEFENCE_POTENTIALS
@@ -978,11 +897,8 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 #endif
 #ifdef USE_MIN_SUPPORT_POTENTIALS
             int min_support_potential = starting_potential;
-            int enemy_min_support_potential = enemy_starting_potential;
 #endif
             int max_support_potential = starting_potential;
-            int enemy_min_defense_potential = enemy_starting_potential;
-            int enemy_max_support_potential = enemy_starting_potential;
             
             //Calculate the neighbours' contributions to the defense_potentials.
             for (uint s = 0; s < planets_by_distance.size(); ++s) {
@@ -1073,26 +989,6 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
                         support_potentials[offset + d] += defense_potential_change;
                     }
                 }
-
-                //Update the effect of the source on enemy's potentials.
-                if (update_enemy_potentials) {
-                    const int enemy_first_d = distance_to_source + (kEnemy == owner || kEnemy == base_owner ? 1 : 0);
-
-                    if (enemy_first_d != distance_to_source) {
-                        const int multiplier = (kEnemy == owner ? 0 : 1);
-                        const int base_multiplier = (kEnemy == base_owner ? 0 : 1);
-                        const int change = ships_from_source * multiplier - base_ships_from_source * base_multiplier;
-                        enemy_defense_potentials[offset + distance_to_source] -= change;
-                        enemy_support_potentials[offset + distance_to_source] -= defense_potential_change;
-                    }
-
-                    if (0 != defense_potential_change) {
-                        for (int d = enemy_first_d; d <= t; ++d) {
-                            enemy_defense_potentials[offset + d] -= defense_potential_change;
-                            enemy_support_potentials[offset + d] -= defense_potential_change;
-                        }
-                    }
-                }
             }
 
             //Calculate the summaries.
@@ -1127,33 +1023,6 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
             planet->SetMinSupportPotentialAt(t, min_support_potential);
 #endif
             planet->SetMaxSupportPotentialAt(t, max_support_potential);
-            
-            if (update_enemy_potentials) {
-                for (int d = first_source_distance; d <= t; ++d) {
-                    const int index = offset + d;
-
-                    if (enemy_min_defense_potential > enemy_defense_potentials[index]) {
-                        enemy_min_defense_potential = enemy_defense_potentials[index];
-                    }
-
-#ifdef USE_MIN_SUPPORT_POTENTIALS
-                    if (enemy_min_support_potential > enemy_support_potentials[index]) {
-                        enemy_min_support_potential = enemy_support_potentials[index];
-                    }
-#endif
-
-                    if (enemy_max_support_potential < enemy_support_potentials[index]) {
-                        enemy_max_support_potential = enemy_support_potentials[index];
-                    }
-                }
-            
-                //Update min/max defense_potentials at each turn.
-                planet->SetEnemyMinDefensePotentialAt(t, enemy_min_defense_potential);
-#ifdef USE_MIN_SUPPORT_POTENTIALS
-                planet->SetEnemyMinSupportPotentialAt(t, enemy_min_support_potential);
-#endif
-                planet->SetEnemyMaxSupportPotentialAt(t, enemy_max_support_potential);
-            }
         }
     }
     
@@ -1234,23 +1103,11 @@ void PlanetTimeline::Initialize(int forecast_horizon, Planet *planet, GameMap *g
 #endif
     max_support_potentials_.resize(u_horizon, 0);
 
-    enemy_defense_potentials_.resize(u_horizon*(u_horizon + 1)/2, 0);
-    enemy_min_defense_potentials_.resize(u_horizon, 0);
-    enemy_support_potentials_.resize(u_horizon*(u_horizon + 1)/2, 0);
-#ifdef USE_MIN_SUPPORT_POTENTIALS
-    enemy_min_support_potentials_.resize(u_horizon, 0);
-#endif
-    enemy_max_support_potentials_.resize(u_horizon, 0);
-    
     potential_owner_.resize(u_horizon, 0);
 
 #ifdef CALCULATE_FULL_POTENTIALS
     full_potentials_.resize(u_horizon, 0);
-    enemy_full_potentials_.resize(u_horizon, 0);
 #endif
-
-    potential_ships_gained_at_.resize(u_horizon, 0);
-    enemy_potential_ships_gained_at_.resize(u_horizon, 0);
 
     will_not_be_mine_ = false;
 	will_be_mine_ = false;
@@ -1358,23 +1215,9 @@ void PlanetTimeline::CopyPotentials(PlanetTimeline* other) {
 #endif
     max_support_potentials_ = other->max_support_potentials_;
 
-    enemy_defense_potentials_ = other->enemy_defense_potentials_;
-    enemy_min_defense_potentials_ = other->enemy_min_defense_potentials_;
-    enemy_support_potentials_ = other->enemy_support_potentials_;
-#ifdef USE_MIN_SUPPORT_POTENTIALS
-    enemy_min_support_potentials_ = other->enemy_min_support_potentials_;
-#endif
-    enemy_max_support_potentials_ = other->enemy_max_support_potentials_;
-
 #ifdef CALCULATE_FULL_POTENTIALS
     full_potentials_ = other->full_potentials_;
-    enemy_full_potentials_ = other->enemy_full_potentials_;
 #endif
-    potential_ships_gained_at_ = other->potential_ships_gained_at_;
-    enemy_potential_ships_gained_at_ = other->enemy_potential_ships_gained_at_;
-
-    max_potential_ships_gained_ = other->max_potential_ships_gained_;
-    enemy_max_potential_ships_gained_ = other->enemy_max_potential_ships_gained_;
 
     potential_owner_ = other->potential_owner_;
 }
@@ -1423,25 +1266,9 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
 
         are_equal &= (potential_owner_[t] == other->potential_owner_[t]);
 
-        are_equal &= (enemy_min_defense_potentials_[t] == other->enemy_min_defense_potentials_[t]);
-#ifdef USE_MIN_SUPPORT_POTENTIALS
-        are_equal &= (enemy_min_support_potentials_[t] == other->enemy_min_support_potentials_[t]);
-#endif
-        are_equal &= (enemy_max_support_potentials_[t] == other->enemy_max_support_potentials_[t]);
-
 #ifdef CALCULATE_FULL_POTENTIALS
         are_equal &= (full_potentials_[t] == other->full_potentials_[t]);
-        are_equal &= (enemy_full_potentials_[t] == other->enemy_full_potentials_[t]);
 #endif
-        if (!are_equal) {
-            return false;
-        }
-    }
-
-    for (int t = 0; t < horizon_; ++t) {
-        are_equal &= (potential_ships_gained_at_[t] == other->potential_ships_gained_at_[t]);
-        are_equal &= (enemy_potential_ships_gained_at_[t] == other->enemy_potential_ships_gained_at_[t]);
-
         if (!are_equal) {
             return false;
         }
@@ -1466,19 +1293,10 @@ bool PlanetTimeline::Equals(PlanetTimeline* other) const {
             return false;
         }
 
-        if (enemy_defense_potentials_[i] != other->enemy_defense_potentials_[i]) {
-            return false;
-        }
-
-        if (enemy_support_potentials_[i] != other->enemy_support_potentials_[i]) {
-            return false;
-        }
     }
 
     are_equal &= (total_ships_gained_ == other->total_ships_gained_);
     are_equal &= (potential_ships_gained_ == other->potential_ships_gained_);
-    are_equal &= (max_potential_ships_gained_ == other->max_potential_ships_gained_);
-    are_equal &= (enemy_max_potential_ships_gained_ == other->enemy_max_potential_ships_gained_);
 
     are_equal &= (will_not_be_enemys_ == other->will_not_be_enemys_);
     are_equal &= (will_not_be_mine_ == other->will_not_be_mine_);
@@ -1508,8 +1326,6 @@ void PlanetTimeline::AssertEquals(PlanetTimeline* other) const {
     for (uint i = 0; i < defense_potentials_.size(); ++i) {
         pw_assert(defense_potentials_[i] == other->defense_potentials_[i]);
         pw_assert(support_potentials_[i] == other->support_potentials_[i]);
-        pw_assert(enemy_defense_potentials_[i] == other->enemy_defense_potentials_[i]);
-        pw_assert(enemy_support_potentials_[i] == other->enemy_support_potentials_[i]);
     }
 
     for (int t = 0; t < horizon_; ++t) {
@@ -1547,19 +1363,9 @@ void PlanetTimeline::AssertEquals(PlanetTimeline* other) const {
 
         pw_assert(potential_owner_[t] == other->potential_owner_[t]);
 
-        pw_assert(enemy_min_defense_potentials_[t] == other->enemy_min_defense_potentials_[t]);
-#ifdef USE_MIN_SUPPORT_POTENTIALS
-        pw_assert(enemy_min_support_potentials_[t] == other->enemy_min_support_potentials_[t]);
-#endif
-        pw_assert(enemy_max_support_potentials_[t] == other->enemy_max_support_potentials_[t]);
-
 #ifdef CALCULATE_FULL_POTENTIALS
         pw_assert(full_potentials_[t] == other->full_potentials_[t]);
-        pw_assert(enemy_full_potentials_[t] == other->enemy_full_potentials_[t]);
 #endif
-
-        pw_assert(potential_ships_gained_at_[t] == other->potential_ships_gained_at_[t]);
-        pw_assert(enemy_potential_ships_gained_at_[t] == other->enemy_potential_ships_gained_at_[t]);
     }
 
     pw_assert(departing_actions_.size() == other->departing_actions_.size());
@@ -1570,8 +1376,6 @@ void PlanetTimeline::AssertEquals(PlanetTimeline* other) const {
 
     pw_assert(total_ships_gained_ == other->total_ships_gained_);
     pw_assert(potential_ships_gained_ == other->potential_ships_gained_);
-    pw_assert(max_potential_ships_gained_ == other->max_potential_ships_gained_);
-    pw_assert(enemy_max_potential_ships_gained_ == other->enemy_max_potential_ships_gained_);
 
     pw_assert(will_not_be_enemys_ == other->will_not_be_enemys_);
     pw_assert(will_not_be_mine_ == other->will_not_be_mine_);
@@ -1727,26 +1531,6 @@ int PlanetTimeline::ShipsGainedForActions(const ActionList& actions) const {
     return ships_gained_by_action_owner;
 }
 
-int PlanetTimeline::PotentialShipsGainedFor(const int player) const {
-    if (player == kMe) {
-        return potential_ships_gained_at_[1];
-
-    } else {
-        return enemy_potential_ships_gained_at_[1];
-    }
-}
-
-int PlanetTimeline::MaxPotentialShipsGainedFor(const int player) const {
-    //Find the maximum ships that a player can gain from this planet given an
-    //invasion at any point in time up to the horizon.
-    if (kMe == player) {
-        return max_potential_ships_gained_;
-
-    }
-
-    return enemy_max_potential_ships_gained_;
-}
-
 int PlanetTimeline::ShipsRequredToPosess(int arrival_time, int by_whom) const {
     int ships_required = 0;
 
@@ -1897,28 +1681,6 @@ void PlanetTimeline::RemoveDeparture(Action *action) {
     }
 
     this->MarkAsChanged();
-}
-
-int PlanetTimeline::DefensePotentialAt(const int t, const int d, const int player) const {
-    const int offset = t*(t-1)/2 - 1;
-    
-    if (player == kMe) {
-        return defense_potentials_[offset + d];
-
-    } else {
-        return enemy_defense_potentials_[offset + d];
-    }
-}
-
-int PlanetTimeline::SupportPotentialAt(const int t, const int d, const int player) const {
-    const int offset = t*(t-1)/2 - 1;
-    
-    if (player == kMe) {
-        return support_potentials_[offset + d];
-
-    } else {
-        return enemy_support_potentials_[offset + d];
-    }
 }
 
 void PlanetTimeline::ResetStartingData() {
@@ -2175,8 +1937,6 @@ void PlanetTimeline::RecalculateShipsGained() {
     total_ships_gained_ = this->CalculateGainsUntil(horizon_);
 
     this->RecalculatePotentialShipsGained();
-    this->RecalculatePotentialGainsForArrivalTurns(kMe);
-    this->RecalculatePotentialGainsForArrivalTurns(kEnemy);
 }
 
 void PlanetTimeline::RecalculatePotentialShipsGained() {
@@ -2253,197 +2013,6 @@ void PlanetTimeline::RecalculatePotentialShipsGained() {
     check_for_hopelessness_ = false;
 }
 
-void PlanetTimeline::RecalculatePotentialGainsForArrivalTurns(const int player) {
-    const int growth_rate = planet_->GrowthRate();
-    const int opponent = OtherPlayer(player);
-    int ships_gained_before_arrival = 0;
-    int potential_ships_gained_after_arrival = 0;
-    int owner_before_arrival = this->OwnerAt(0);
-    int owner_without_arrival = owner_before_arrival;
-    int owner_after_arrival = owner_before_arrival;
-    int prev_owner_after_arrival = owner_after_arrival;
-    int prev_full_support = 0;
-    int support_adjustment_before_arrival = 0;
-    bool has_lost_planet = false;
-    const int player_multiplier = OwnerMultiplier(player);
-
-    int cur_ships = this->ShipsAt(0);
-    
-    int& max_potential_ships_gained = (kMe == player ? max_potential_ships_gained_ : enemy_max_potential_ships_gained_);
-    max_potential_ships_gained = -9999;
-
-    const std::vector<int>& player_arrivals = (player == kMe ? my_arrivals_ : enemy_arrivals_);
-    const std::vector<int>& opponent_arrivals = (player == kMe ? enemy_arrivals_ : my_arrivals_);
-    const std::vector<int>& player_min_defense = (player == kMe ? min_defense_potentials_ : enemy_min_defense_potentials_);
-    const std::vector<int>& player_max_support = (player == kMe ? max_support_potentials_ : enemy_max_support_potentials_);
-    const std::vector<int>& player_departures = (player == kMe ? my_departures_ : enemy_departures_);
-    const std::vector<int>& opponent_departures = (player == kMe ? enemy_departures_ : my_departures_);
-    std::vector<int>& potential_ships_gained = 
-        (player == kMe ? potential_ships_gained_at_ : enemy_potential_ships_gained_at_);
-
-    for (int arrival_time = 1; arrival_time < horizon_; ++arrival_time) {
-#ifndef IS_SUBMISSION
-        if (player == kEnemy && 0 == id_ && 11 == arrival_time) {
-            int x = 2;
-        }
-#endif
-        //Update the ships gained and owner to turn t if no ships are sent to the planet until t.
-        owner_before_arrival = owner_without_arrival;
-        ships_gained_before_arrival += growth_rate * OwnerMultiplier(owner_before_arrival) * player_multiplier;
-
-        //Update the potential adjustment.
-        if (player == this->OwnerAt(arrival_time - 1) && opponent == owner_before_arrival) {
-            support_adjustment_before_arrival -= growth_rate * 2;
-        }
-
-        const int prev_ships = cur_ships;
-        const int base_ships = prev_ships + (kNeutral == owner_before_arrival ? 0 : growth_rate);
-        const int min_defense = player_min_defense[arrival_time] + support_adjustment_before_arrival;
-
-        //Check whether there will be a battle on the planet in this turn.
-        if (0 == player_arrivals[arrival_time] && 0 == opponent_arrivals[arrival_time]) {
-            //Ships don't arrive.  Check whether a player-owned planet could be lost anyway.
-            if (player == owner_before_arrival && min_defense < 0) {
-                //Enemy would likely invade the planet and it would be lost.
-                cur_ships = 1;
-                owner_without_arrival = opponent;
-
-            } else {
-                owner_without_arrival = owner_before_arrival;
-                cur_ships = base_ships;
-                pw_assert(cur_ships >= 0 && "The number of ships must be non-negative");
-            }
-
-        } else {
-            //A fleet has arrived.  Resolve the battle.
-            const int neutral_ships = (kNeutral == owner_before_arrival ? base_ships : 0);
-            const int player_ships = player_arrivals[arrival_time] + (player == owner_before_arrival ? base_ships : 0);
-            const int opponent_ships = opponent_arrivals[arrival_time] + (opponent == owner_before_arrival ? base_ships : 0);
-            
-            BattleOutcome outcome;
-
-            if (player == kMe) {
-                outcome = ResolveBattle(owner_before_arrival, neutral_ships, player_ships, opponent_ships);
-
-            } else {
-                outcome = ResolveBattle(owner_before_arrival, neutral_ships, opponent_ships, player_ships);
-            }
-
-            owner_without_arrival = outcome.owner;
-            cur_ships = outcome.ships_remaining;
-
-            //Check whether the opponent has capability to win regardless of the battle outcome.
-            if (opponent == owner_before_arrival && owner_without_arrival == player && min_defense <= 0) {
-                cur_ships = 0;
-                owner_without_arrival = opponent;
-            
-            } else if (player == owner_before_arrival && min_defense < 0) {
-                cur_ships = 1;
-                owner_without_arrival = opponent;
-            }
-        }
-        
-        //Account for departures.
-        if (owner_without_arrival == player && player_departures[arrival_time] > 0) {
-            cur_ships = std::max(0, cur_ships - player_departures[arrival_time]);
-
-        } else if (owner_without_arrival == opponent && opponent_departures[arrival_time] > 0) {
-            cur_ships = std::max(0, cur_ships - opponent_departures[arrival_time]);
-        }
-        
-        //Update the potential ships gained from the planet if ships
-        //would be sent to conquer the planet at arrival_time.
-        const int full_support = 
-            this->SupportPotentialAt(arrival_time, arrival_time, player) - support_adjustment_before_arrival;
-        const int ships_on_planet = this->ShipsAt(arrival_time);
-
-        prev_owner_after_arrival = owner_after_arrival;
-        
-        //Resolve the battle that would theoretically occur if I sent the ships to the planet.
-        if ((player != owner_before_arrival && full_support > 0) || (player == owner_before_arrival && full_support >= 0)) {
-            owner_after_arrival = player;
-
-        } else {
-            owner_after_arrival = owner_without_arrival;
-        }
-        
-        //Recalculate the potential ship gains after the ships arrive.
-        if (player == owner_without_arrival && 1 != arrival_time) {
-            potential_ships_gained_after_arrival -= growth_rate * OwnerMultiplier(owner_before_arrival) * player_multiplier;
-
-        } else if (opponent == prev_owner_after_arrival && opponent == owner_after_arrival && 1 != arrival_time) {
-            potential_ships_gained_after_arrival += growth_rate;
-
-        } else {
-            pw_assert((player != owner_without_arrival || 1 == arrival_time) && "Player is expected to be the owner at this point.");
-
-            //Need to recalculate the potential ships gained.
-            int prev_potential_owner = owner_after_arrival;
-            int potential_owner = owner_after_arrival;
-            int support_adjustment = support_adjustment_before_arrival;
-            const int growth_rate = planet_->GrowthRate();
-
-            potential_ships_gained_after_arrival = 0;
-
-            for (int t = arrival_time + 1; t < horizon_; ++t) {
-                potential_ships_gained_after_arrival += 
-                    OwnerMultiplier(prev_potential_owner) * player_multiplier * growth_rate;
-                const int max_support = player_max_support[t] + support_adjustment;
-                const int full_support = this->SupportPotentialAt(t, t, player) + support_adjustment;
-                const int actual_owner = this->OwnerAt(t);
-                
-                //Check whether the owner has changed.
-#ifdef USE_FULL_POTENTIALS_FOR_POTENTIAL_GAINS
-                if (prev_potential_owner == opponent && full_support > 0) {
-#else
-                if (prev_potential_owner == opponent && actual_owner == opponent && max_support > 0) {
-                    potential_owner = player;
-
-                } else if (prev_potential_owner == opponent && full_support > 0) {
-#endif
-                    potential_owner = player;
-
-                } else if (prev_potential_owner == player && full_support < 0) {
-                    potential_owner = opponent;
-                
-                } else {
-                    //potential_owner = actual_owner;
-                    potential_owner = prev_potential_owner;
-                }
-
-                prev_potential_owner = potential_owner;
-
-                //Update the potential adjustment.
-
-                if (actual_owner == player && opponent == potential_owner) {
-                    support_adjustment -= growth_rate * 2;
-
-                } else if (opponent == actual_owner && player == potential_owner) {
-                    support_adjustment += growth_rate * 2;
-
-                } else if (kNeutral == actual_owner) {
-                    if (player == potential_owner) {
-                        support_adjustment += growth_rate;
-                 
-                    } else if (opponent == potential_owner) {
-                        support_adjustment -= growth_rate;
-                    }
-                }
-            } //End iterating over turns.
-
-            potential_ships_gained_after_arrival += 
-                OwnerMultiplier(prev_potential_owner) * growth_rate * game_timeline_->AdditionalGrowthTurns();
-        } //End updating potential_ships_gained_after_t
-        
-        const int potential_gains_given_arrival = ships_gained_before_arrival + potential_ships_gained_after_arrival;
-        potential_ships_gained[arrival_time] = potential_gains_given_arrival;
-
-        if (max_potential_ships_gained < potential_gains_given_arrival) {
-            max_potential_ships_gained = potential_gains_given_arrival;
-        }
-    } //End iterating over arrival times.
-}
-
 int PlanetTimeline::CalculateGainsUntil(int end_turn) const {
     bool would_planet_be_lost = false;
     const int growth_rate = planet_->GrowthRate();
@@ -2511,17 +2080,8 @@ int PlanetTimeline::NeutralPotentialAdjustmentAt(int when) const {
 }
 
 int PlanetTimeline::StartingPotentialAt(const int when) const {
-    return this->PlayerStartingPotentialAt(when, kMe);
-}
-
-int PlanetTimeline::EnemyStartingPotentialAt(const int when) const {
-    return -this->PlayerStartingPotentialAt(when, kEnemy);
-}
-
-int PlanetTimeline::PlayerStartingPotentialAt(const int when, const int player) const {
     const int planet_owner = this->OwnerAt(when);
-    const int owner_multiplier = OwnerMultiplier(player);
-    const int unadjusted_potential = this->ShipsAt(when) * (planet_owner == player ? 1 : -1) * owner_multiplier;
+    const int unadjusted_potential = this->ShipsAt(when) * (planet_owner == kMe ? 1 : -1);
 
     //Calculate the adjustment to potential due to having to overcome additional neutral forces
     //when the planet does not appear neutral any more.
@@ -2536,7 +2096,6 @@ int PlanetTimeline::PlayerStartingPotentialAt(const int when, const int player) 
         const int enemy_additional_ships_needed = std::max(0, neutral_ships - enemy_arrivals);
 
         neutral_adjustment = enemy_additional_ships_needed - my_additional_ships_needed;
-        neutral_adjustment *= owner_multiplier;
     }
 
     const int starting_potential = unadjusted_potential + neutral_adjustment;

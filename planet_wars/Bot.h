@@ -31,6 +31,10 @@ public:
     ActionList MakeMoves();
     int GetNumReturnOnMove() const          {return num_return_on_move_;}
 
+#ifndef IS_SUBMISSION
+    int GetTurnRunTime() const              {return turn_run_time_;}
+#endif
+
 private:
     ActionList FindActionsFor(int player);
 
@@ -78,6 +82,11 @@ private:
 
     ActionList committed_actions_;
     SupportConstraints* support_constraints_;
+
+#ifndef IS_SUBMISSION
+    int turn_run_time_;
+#endif
+
 };
 
 class CounterActionResult {

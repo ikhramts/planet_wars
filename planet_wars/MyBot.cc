@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
                 DoTurn(&game_map);
 
 #ifndef IS_SUBMISSION
-                const int turn_time = MillisElapsed();
+                const int turn_time = g_bot->GetTurnRunTime();
                 if (max_turn_time < turn_time) {
                     max_turn_time = turn_time;
                 }
