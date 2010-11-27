@@ -7,10 +7,13 @@
 #define PLANET_WARS_UTILS_H_
 
 //Switch between test environment and contest environment.
-#define IS_SUBMISSION
+//#define IS_SUBMISSION
 
 //Various switches in the bot's logic.
 #define WITH_TIMEOUTS
+#ifdef WITH_TIMEOUTS
+ #define WITH_FINER_TIME_CHECKS
+#endif
 //#define MAKE_ENEMY_MOVES_ON_FIRST_TURN
 //#define STATIC_CONST_HORIZON
 

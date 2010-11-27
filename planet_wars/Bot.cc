@@ -718,6 +718,14 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
 
     //Apply the actions.
     timeline_->ApplyTempActions(invasion_plan);
+
+#ifdef WITH_FINER_TIME_CHECKS
+        if (HasTimedOut()) {
+            timeline_->ResetTimelinesToBase();
+            return -1;
+        }
+#endif
+
     std::bitset<kMaxNumPlanets> sources_and_targets = Action::SourcesAndTargets(invasion_plan);
     
 
@@ -753,6 +761,13 @@ double Bot::ReturnForMove(const ActionList& invasion_plan, const double best_ret
     timeline_->UpdatePotentials(sources_and_targets);
  #else
     timeline_->UpdatePotentials();
+ #endif
+
+ #ifdef WITH_FINER_TIME_CHECKS
+        if (HasTimedOut()) {
+            timeline_->ResetTimelinesToBase();
+            return -1;
+        }
  #endif
 
  #ifdef CALCULATE_SHIPS_GAINED_ONLY_ON_MY_PLANETS

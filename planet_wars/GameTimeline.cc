@@ -4,6 +4,7 @@
 #include <bitset>
 #include "GameTimeline.h"
 #include "Utils.h"
+#include "Timer.h"
 
 /************************************************
                GameTimeline class
@@ -445,7 +446,12 @@ void GameTimeline::ApplyTempActions(const ActionList& actions) {
 		PlanetTimeline* source = actions[i]->Source();
 		source->AddDeparture(actions[i]);
         are_working_timelines_different_[source->Id()] = true;
-	}
+#ifdef WITH_FINER_TIME_CHECKS
+        if (HasTimedOut()) {
+            return;
+        }
+#endif
+    }
 }
 
 void GameTimeline::UnapplyActions(const ActionList &actions) {
@@ -1024,6 +1030,12 @@ void GameTimeline::UpdatePotentialsFor(PlanetTimelineList &planets_to_update, co
 #endif
             planet->SetMaxSupportPotentialAt(t, max_support_potential);
         }
+
+#ifdef WITH_FINER_TIME_CHECKS
+        if (HasTimedOut()) {
+            return;
+        }
+#endif
     }
     
     //Update the timelines' ships gained.
