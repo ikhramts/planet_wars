@@ -10,9 +10,9 @@ script that compiles the submission zip file.  Other tools that I made to prepar
 challenge submission -- PlanetWarrior testing environment and the map extractor 
 bookmarklet -- are located in other repositories linked below. 
 
-Before using this, be aware that this competition occurred in 2010.  The code, tools, 
-links, and other materials may be dead, out of date, or no longer relevant.  I have not 
-maintained this repository since the contest submission, and will not maintain it.
+Before using the repository, be aware that this competition occurred in 2010.  The code, 
+tools, links, and other materials may be dead, out of date, or no longer relevant.  I have 
+not maintained this repository since the contest submission, and will not maintain it.
 
 Useful Links
 ------------
